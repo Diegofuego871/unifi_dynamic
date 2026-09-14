@@ -5,6 +5,20 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.16.1] - 2026-09-14
+
+### Fixed
+
+- `manifest.json`: added the required `issue_tracker` key, which made the HACS
+  validation workflow fail.
+- `manifest.json`: replaced the placeholder `documentation` URL with the
+  actual repository URL.
+- `manifest.json`: sorted the keys as hassfest requires (`domain`, `name`,
+  then alphabetical).
+- `manifest.json`: corrected `codeowners` to the actual GitHub handle.
+
+No functional changes; this release only fixes repository metadata.
+
 ## [1.16.0] - 2026-09-11
 
 ### Added
@@ -51,5 +65,6 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.16.1
 [1.16.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.16.0
 [1.15.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.15.0
