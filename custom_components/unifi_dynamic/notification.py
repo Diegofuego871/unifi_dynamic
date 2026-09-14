@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    CONF_ICON_URL,
     CONF_MSG_ACCESS_POINT,
     CONF_MSG_CONNECTION,
     CONF_MSG_IP,
@@ -23,7 +22,7 @@ from .const import (
     CONF_NOTIFY_WHEN_EMPTY,
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PERSISTENT_WHEN_EMPTY,
-    DEFAULT_ICON_URL,
+    DATA_PUSH_IMAGE,
     DEFAULT_NOTIFY_NEW_CLIENTS,
     DEFAULT_NOTIFY_SERVICE,
     DEFAULT_NOTIFY_WHEN_EMPTY,
@@ -66,33 +65,22 @@ def notify_target(entry: ConfigEntry) -> str | None:
     return target
 
 
-def notification_data(entry: ConfigEntry, tag: str) -> dict[str, Any] | None:
+def notification_data(
+    hass: HomeAssistant, tag: str
+) -> dict[str, Any] | None:
     """
-    Baut das data-Payload für die Companion-App.
+    Zusatzdaten für die Companion-App: Bild, Klickziel und Tag.
 
-    Gibt None zurück, wenn keine Bild-URL konfiguriert ist. Das ist Absicht:
-    Ziele wie Telegram oder E-Mail lehnen unbekannte data-Keys ab. Erst eine
-    gesetzte Bild-URL gilt als Signal, dass das Ziel die Companion-App ist.
-
-    Der Tag steuert, welche Meldungen sich gegenseitig ersetzen: Purge-Meldungen
-    überschreiben die vorige, Neugeräte-Meldungen sind pro MAC eigenständig.
+    Das Bild liefert die Integration selbst aus, es gibt nichts zu
+    konfigurieren. Fehlt es, entfällt der ganze Block. Der Tag steuert, welche
+    Meldungen sich gegenseitig ersetzen: Purge-Meldungen überschreiben die
+    vorige, Neugeräte-Meldungen sind pro MAC eigenständig.
     """
-    icon_url = str(
-        entry.options.get(CONF_ICON_URL, entry.data.get(CONF_ICON_URL, DEFAULT_ICON_URL))
-        or ""
-    ).strip()
-
-    if not icon_url:
+    image_url = hass.data.get(DATA_PUSH_IMAGE)
+    if not image_url:
         return None
 
-    if not icon_url.startswith(("/", "http://", "https://")):
-        _LOGGER.warning(
-            "icon_url '%s' ist weder absoluter Pfad noch URL und wird ignoriert",
-            icon_url,
-        )
-        return None
-
-    return {"tag": tag, "url": NOTIFICATION_URL, "icon_url": icon_url}
+    return {"tag": tag, "url": NOTIFICATION_URL, "icon_url": image_url}
 
 
 def _purge_tag(entry: ConfigEntry) -> str:
@@ -213,6 +201,12 @@ def build_persistent_message(result: PurgeResult) -> str:
 # ---------------------------------------------------------------------------
 
 
+async def _async_call_notify(
+    hass: HomeAssistant, service: str, payload: dict[str, Any]
+) -> None:
+    await hass.services.async_call("notify", service, payload, blocking=True)
+
+
 async def _async_push(
     hass: HomeAssistant,
     target: str,
@@ -220,7 +214,13 @@ async def _async_push(
     message: str,
     data: dict[str, Any] | None = None,
 ) -> None:
-    """Sendet an einen notify-Service oder eine notify-Entity."""
+    """
+    Sendet an einen notify-Service oder eine notify-Entity.
+
+    Lehnt ein Ziel die Zusatzdaten ab, etwa Telegram oder E-Mail mit
+    "extra keys not allowed", wird derselbe Aufruf einmal ohne data
+    wiederholt. Die Meldung kommt damit in jedem Fall an, nur ohne Bild.
+    """
     domain, _, object_id = target.partition(".")
     if domain != "notify" or not object_id:
         _LOGGER.warning(
@@ -229,36 +229,51 @@ async def _async_push(
         )
         return
 
-    payload: dict[str, Any] = {"title": title, "message": message}
-    if data:
-        payload["data"] = data
+    plain: dict[str, Any] = {"title": title, "message": message}
 
-    try:
-        if hass.services.has_service("notify", object_id):
-            # Klassischer notify-Service, z. B. eine notify-Gruppe.
-            await hass.services.async_call("notify", object_id, payload, blocking=False)
-        elif hass.states.get(target) is not None and hass.services.has_service(
-            "notify", "send_message"
-        ):
-            # Neue notify-Entity: send_message kennt nur message und title.
-            if data:
+    if hass.services.has_service("notify", object_id):
+        if data:
+            try:
+                await _async_call_notify(hass, object_id, {**plain, "data": data})
+                return
+            except Exception as err:  # noqa: BLE001
                 _LOGGER.debug(
-                    "Ziel '%s' ist eine notify-Entity; die Bild-URL wird dort "
-                    "nicht unterstützt und entfällt",
+                    "Ziel '%s' hat die Zusatzdaten abgelehnt (%s), erneuter "
+                    "Versuch ohne Bild",
                     target,
+                    err,
                 )
+
+        try:
+            await _async_call_notify(hass, object_id, plain)
+        except Exception:  # noqa: BLE001 - Meldung darf den Purge nie kippen
+            _LOGGER.exception("Benachrichtigung an '%s' fehlgeschlagen", target)
+        return
+
+    if hass.states.get(target) is not None and hass.services.has_service(
+        "notify", "send_message"
+    ):
+        # Neue notify-Entity: send_message kennt nur message und title.
+        if data:
+            _LOGGER.debug(
+                "Ziel '%s' ist eine notify-Entity; Bild und Klickziel werden "
+                "dort nicht unterstützt und entfallen",
+                target,
+            )
+        try:
             await hass.services.async_call(
                 "notify",
                 "send_message",
-                {"title": title, "message": message, "entity_id": target},
-                blocking=False,
+                {**plain, "entity_id": target},
+                blocking=True,
             )
-        else:
-            _LOGGER.warning(
-                "Benachrichtigungsziel '%s' existiert nicht, Meldung verworfen", target
-            )
-    except Exception:  # noqa: BLE001 - Benachrichtigung darf den Purge nie kippen
-        _LOGGER.exception("Benachrichtigung an '%s' fehlgeschlagen", target)
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Benachrichtigung an '%s' fehlgeschlagen", target)
+        return
+
+    _LOGGER.warning(
+        "Benachrichtigungsziel '%s' existiert nicht, Meldung verworfen", target
+    )
 
 
 async def async_send_purge_report(
@@ -318,7 +333,7 @@ async def async_send_purge_report(
         target,
         title,
         build_push_message(result),
-        notification_data(entry, _purge_tag(entry)),
+        notification_data(hass, _purge_tag(entry)),
     )
 
 
@@ -421,7 +436,7 @@ async def async_send_new_clients_report(
             NEW_CLIENTS_TITLE,
             build_new_clients_summary(clients),
             notification_data(
-                entry, f"{NEW_CLIENT_TAG_PREFIX}_summary_{entry.entry_id}"
+                hass, f"{NEW_CLIENT_TAG_PREFIX}_summary_{entry.entry_id}"
             ),
         )
         return
@@ -435,6 +450,6 @@ async def async_send_new_clients_report(
             NEW_CLIENT_TITLE,
             build_new_client_message(mac, data, fields),
             notification_data(
-                entry, f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}"
+                hass, f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}"
             ),
         )

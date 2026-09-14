@@ -11,7 +11,7 @@ CONF_SCAN_INTERVAL = "scan_interval"
 CONF_PURGE_DAYS = "purge_days"
 
 DEFAULT_VERIFY_SSL = False
-DEFAULT_SCAN_INTERVAL = 60
+DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_PURGE_DAYS = 30
 
 # API-Pfade
@@ -76,7 +76,7 @@ CONF_PURGE_EXCLUDE = "purge_exclude"
 
 # Tägliche Purge-Zeit (lokale Zeit, im UI änderbar)
 CONF_PURGE_TIME = "purge_time"
-DEFAULT_PURGE_TIME = "03:30:00"
+DEFAULT_PURGE_TIME = "19:00:00"
 
 # --- Benachrichtigungen ----------------------------------------------------
 
@@ -126,18 +126,24 @@ NEW_CLIENT_NAME_GRACE = 60
 # gegen die eigene Instanz auf.
 NOTIFICATION_URL = "/config/integrations/integration/unifi_dynamic"
 
-# Optionales Bild für die Companion-App. Nur wenn gesetzt, wird überhaupt ein
-# data-Block mitgeschickt; Ziele wie Telegram oder E-Mail lehnen unbekannte
-# data-Keys sonst mit "extra keys not allowed" ab.
-CONF_ICON_URL = "icon_url"
-DEFAULT_ICON_URL = ""
+# Mitgeliefertes Bild für die Companion-App. Der Ordner brand/ wird beim Setup
+# als statischer Pfad registriert und ist damit ohne Authentifizierung
+# abrufbar, wie /local/. Nichts zu konfigurieren.
+STATIC_URL_PATH = "/unifi_dynamic"
+BRAND_DIR = "brand"
+PUSH_IMAGE_FILE = "icon.png"
+PUSH_IMAGE_URL = f"{STATIC_URL_PATH}/{PUSH_IMAGE_FILE}"
+
+# Eigener hass.data-Schlüssel: hass.data[DOMAIN] bildet ausschliesslich
+# entry_id -> Coordinator ab und darf keine Fremdschlüssel enthalten.
+DATA_PUSH_IMAGE = "unifi_dynamic_push_image"
 
 # Android ersetzt Meldungen mit gleichem Tag, statt sie zu stapeln.
 NOTIFICATION_TAG_PREFIX = "unifi_dynamic_purge"
 
 DEFAULT_NOTIFY_SERVICE = NOTIFY_NONE
 DEFAULT_PERSISTENT_NOTIFICATION = True
-DEFAULT_NOTIFY_WHEN_EMPTY = True
+DEFAULT_NOTIFY_WHEN_EMPTY = False
 
 # Gegenstück zu notify_when_empty, aber für die anhaltende Benachrichtigung.
 # Vorgabe True, damit sich das bisherige Verhalten nicht ändert.

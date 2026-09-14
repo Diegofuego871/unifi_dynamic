@@ -19,6 +19,7 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   Testlauf („dry run") ohne Löschen.
 - Push-Benachrichtigung bei neu erkannten Clients, mit einzeln schaltbarem
   Inhalt (Anzeigename, Verbindungsart, SSID, Access Point, IP, MAC).
+- Das Bild der Meldung bringt die Integration mit, nichts einzurichten.
 - Anhaltende Benachrichtigung in der Seitenleiste mit dem Bericht des letzten
   Purge-Laufs, getrennt schaltbar von der Push-Meldung.
 - SSID- und Access-Point-Sensoren nur für Clients, die je im WLAN gesehen
@@ -60,34 +61,33 @@ ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind.
 
 ### Abfrage
 
-| Option | Bedeutung |
-| --- | --- |
-| Abfrageintervall | Wie oft die Clientliste vom Controller geholt wird |
+| Option | Bedeutung | Vorgabe |
+| --- | --- | --- |
+| Abfrageintervall | Wie oft die Clientliste vom Controller geholt wird | 30 s |
 
 ### Automatisches Entfernen
 
-| Option | Bedeutung |
-| --- | --- |
-| Entfernen nach Tagen ohne Sichtung | Schwelle in Tagen, 0 deaktiviert das Entfernen |
-| Uhrzeit des täglichen Laufs | Lokale Zeit des Aufräumlaufs |
-| Geräte vom Entfernen ausnehmen | Mehrfachauswahl; ausgewählte Clients werden nie automatisch entfernt |
+| Option | Bedeutung | Vorgabe |
+| --- | --- | --- |
+| Entfernen nach Tagen ohne Sichtung | Schwelle in Tagen, 0 deaktiviert das Entfernen | 30 |
+| Uhrzeit des täglichen Laufs | Lokale Zeit des Aufräumlaufs | 19:00 |
+| Geräte vom Entfernen ausnehmen | Mehrfachauswahl; ausgewählte Clients werden nie automatisch entfernt | leer |
 
 ### Push-Benachrichtigung
 
-| Option | Bedeutung |
-| --- | --- |
-| Ziel für Push-Benachrichtigung | notify-Service oder notify-Entity, etwa eine notify-Gruppe |
-| Auch melden, wenn nichts entfernt wurde | Push nach jedem täglichen Lauf, auch ohne Treffer |
-| Neue Geräte melden | Push, sobald ein Client zum ersten Mal auftaucht |
-| Inhalt: … | Sechs Schalter für Anzeigename, Verbindungsart, SSID, Access Point, IP und MAC |
-| Bild-URL | Grosses Bild in der Push-Meldung, etwa `/local/pic/logo.png` |
+| Option | Bedeutung | Vorgabe |
+| --- | --- | --- |
+| Ziel für Push-Benachrichtigung | notify-Service oder notify-Entity, etwa eine notify-Gruppe | keines |
+| Auch melden, wenn nichts entfernt wurde | Push nach jedem täglichen Lauf, auch ohne Treffer | aus |
+| Neue Geräte melden | Push, sobald ein Client zum ersten Mal auftaucht | an |
+| Inhalt: … | Sechs Schalter für Anzeigename, Verbindungsart, SSID, Access Point, IP und MAC | alle an ausser MAC |
 
 ### Anhaltende Benachrichtigung
 
-| Option | Bedeutung |
-| --- | --- |
-| Anhaltende Benachrichtigung erstellen | Bericht des Aufräumlaufs in der Seitenleiste |
-| Auch erstellen, wenn nichts entfernt wurde | Andernfalls erscheint sie nur bei tatsächlichen Treffern |
+| Option | Bedeutung | Vorgabe |
+| --- | --- | --- |
+| Anhaltende Benachrichtigung erstellen | Bericht des Aufräumlaufs in der Seitenleiste | an |
+| Auch erstellen, wenn nichts entfernt wurde | Andernfalls erscheint sie nur bei tatsächlichen Treffern | an |
 
 ## Aktion `unifi_dynamic.purge_now`
 
@@ -113,6 +113,11 @@ Controller-Uhr kein Thema.
 War Home Assistant länger als eine Stunde ohne erfolgreichen Poll, wird die
 Ausfallzeit allen Zeitstempeln gutgeschrieben. Sonst würde ein Neustart nach
 längerem Stillstand sämtliche Clients auf einmal als überfällig einstufen.
+
+Das Bild in den Push-Meldungen liefert die Integration selbst aus: Der Ordner
+`brand/` wird als statischer Pfad unter `/unifi_dynamic/` registriert, also
+über denselben Mechanismus wie `/local/`. Lehnt ein Benachrichtigungsziel die
+Zusatzdaten ab, wird die Meldung ohne sie erneut gesendet.
 
 Die Namen der Access Points stammen aus `/stat/device`. Diese Liste wird
 deutlich seltener geholt als die Clientliste und im Cache gehalten. Schlägt

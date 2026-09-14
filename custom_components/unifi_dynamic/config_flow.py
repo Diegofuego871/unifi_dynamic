@@ -15,7 +15,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     CONF_API_KEY,
     CONF_HOST,
-    CONF_ICON_URL,
     CONF_NOTIFY_NEW_CLIENTS,
     CONF_NOTIFY_SERVICE,
     CONF_NOTIFY_WHEN_EMPTY,
@@ -26,7 +25,6 @@ from .const import (
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
-    DEFAULT_ICON_URL,
     DEFAULT_NOTIFY_NEW_CLIENTS,
     DEFAULT_NOTIFY_SERVICE,
     DEFAULT_NOTIFY_WHEN_EMPTY,
@@ -44,7 +42,7 @@ from .const import (
 from .coordinator import preferred_client_name
 
 # Options-Keys aus früheren Versionen, die beim Speichern verworfen werden.
-OBSOLETE_OPTIONS = ("notification_icon",)
+OBSOLETE_OPTIONS = ("notification_icon", "icon_url")
 
 # Abschnitte im Optionsformular. Sie gruppieren nur die Anzeige; gespeichert
 # werden die Options weiterhin flach, damit der restliche Code unverändert
@@ -71,26 +69,6 @@ def _flatten(user_input: dict[str, Any]) -> dict[str, Any]:
         else:
             flat[key] = value
     return flat
-
-# Beispiel, das im UI als Hilfetext erscheint.
-ICON_URL_EXAMPLE = "/local/pic/unifi_dynamic_logo.png"
-
-# Dateisystempfade, die Benutzer erfahrungsgemäss statt der URL eintragen.
-FILESYSTEM_PREFIXES = ("/config/www/", "/homeassistant/www/", "/usr/share/hassio/homeassistant/www/")
-
-
-def _validate_icon_url(value: str) -> str | None:
-    """Gibt einen Fehlerschlüssel zurück, wenn die Bild-URL nicht ladbar ist."""
-    if not value:
-        return None
-
-    if value.lower().startswith(FILESYSTEM_PREFIXES):
-        return "icon_url_filesystem_path"
-
-    if not value.startswith(("/", "http://", "https://")):
-        return "icon_url_invalid"
-
-    return None
 
 TEST_TIMEOUT = ClientTimeout(total=20)
 
@@ -269,44 +247,27 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        errors: dict[str, str] = {}
-        current: dict[str, Any] = {**self.config_entry.options}
-
         if user_input is not None:
             submitted = _flatten(user_input)
-            current.update(submitted)
 
-            icon_url = str(submitted.get(CONF_ICON_URL, "") or "").strip()
-            error = _validate_icon_url(icon_url)
-
-            if error:
-                # Bewusst als Formularfehler und nicht am Feld: das Feld steckt
-                # im eingeklappten Abschnitt und wäre sonst unsichtbar.
-                errors["base"] = error
-            else:
-                # Bestehende Options erhalten, statt sie komplett zu ersetzen.
-                data = {**self.config_entry.options, **submitted}
-                # Leerbares Feld: fehlt es im Ergebnis, wurde es bewusst gelöscht.
-                data[CONF_ICON_URL] = icon_url
-                # Mehrfachauswahl: leere Auswahl muss die alte überschreiben.
-                data[CONF_PURGE_EXCLUDE] = [
-                    str(mac).strip().lower()
-                    for mac in submitted.get(CONF_PURGE_EXCLUDE, []) or []
-                    if str(mac).strip()
-                ]
-                for key in OBSOLETE_OPTIONS:
-                    data.pop(key, None)
-                return self.async_create_entry(title="", data=data)
+            # Bestehende Options erhalten, statt sie komplett zu ersetzen.
+            data = {**self.config_entry.options, **submitted}
+            # Mehrfachauswahl: leere Auswahl muss die alte überschreiben.
+            data[CONF_PURGE_EXCLUDE] = [
+                str(mac).strip().lower()
+                for mac in submitted.get(CONF_PURGE_EXCLUDE, []) or []
+                if str(mac).strip()
+            ]
+            for key in OBSOLETE_OPTIONS:
+                data.pop(key, None)
+            return self.async_create_entry(title="", data=data)
 
         return self.async_show_form(
             step_id="init",
-            data_schema=self._build_schema(current, expand_push=bool(errors)),
-            errors=errors,
+            data_schema=self._build_schema({**self.config_entry.options}),
         )
 
-    def _build_schema(
-        self, current: dict[str, Any], expand_push: bool = False
-    ) -> vol.Schema:
+    def _build_schema(self, current: dict[str, Any]) -> vol.Schema:
         """Baut das Optionsformular aus den aktuellen bzw. eingegebenen Werten."""
         data = self.config_entry.data
 
@@ -334,7 +295,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         notify_default = str(
             current.get(CONF_NOTIFY_SERVICE, DEFAULT_NOTIFY_SERVICE) or NOTIFY_NONE
         )
-        icon_url_default = str(current.get(CONF_ICON_URL, DEFAULT_ICON_URL) or "")
 
         notify_options = _notify_options(self.hass)
         # Ein früher gewähltes Ziel, das aktuell nicht existiert, bleibt
@@ -378,15 +338,6 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 for key, default in MESSAGE_FIELDS
             }
         )
-        push_fields[
-            vol.Optional(
-                CONF_ICON_URL,
-                description={"suggested_value": icon_url_default or None},
-            )
-        ] = selector.TextSelector(
-            selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
-        )
-
         return vol.Schema(
             {
                 vol.Required(SECTION_POLLING): section(
@@ -423,10 +374,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     {"collapsed": True},
                 ),
                 vol.Required(SECTION_PUSH): section(
-                    vol.Schema(push_fields),
-                    # Bei einem Fehler in der Bild-URL aufklappen, damit das
-                    # Feld sichtbar ist.
-                    {"collapsed": not expand_push},
+                    vol.Schema(push_fields), {"collapsed": True}
                 ),
                 vol.Required(SECTION_PERSISTENT): section(
                     vol.Schema(

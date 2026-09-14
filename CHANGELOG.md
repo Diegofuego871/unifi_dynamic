@@ -5,6 +5,43 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.17.0] - 2026-09-14
+
+### Changed
+
+- Different defaults for new installations. Existing installations keep their
+  stored settings and are not touched.
+
+  | Setting | Old | New |
+  | --- | --- | --- |
+  | Polling interval | 60 s | 30 s |
+  | Time of the daily run | 03:30 | 19:00 |
+  | Also report when nothing was removed (push) | on | off |
+  | Remove after days without a sighting | 30 | 30 (unchanged) |
+
+- The image in push notifications is now shipped with the integration. The
+  `brand/` folder is registered as a static path at `/unifi_dynamic/`, so the
+  companion app can load `icon.png` without any setup.
+- The **Image URL** option has been removed. There is nothing left to
+  configure; the image is always included. Any previously stored value is
+  discarded the next time the options are saved.
+- If a notify target rejects the extra data, for example Telegram or email
+  with "extra keys not allowed", the same message is sent again without the
+  data block. The notification always arrives, just without the image.
+- Notify calls are now blocking, which is what makes the fallback above
+  possible.
+
+### Fixed
+
+- `strings.json` was out of sync with `translations/en.json` and missed the
+  two `purge_exclude` entries added in 1.16.0.
+
+### Notes
+
+- `http` was added to the manifest dependencies because the integration now
+  registers a static path.
+- The push section of the options dialog is down from ten fields to nine.
+
 ## [1.16.1] - 2026-09-14
 
 ### Fixed
@@ -65,6 +102,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.17.0
 [1.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.16.1
 [1.16.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.16.0
 [1.15.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.15.0

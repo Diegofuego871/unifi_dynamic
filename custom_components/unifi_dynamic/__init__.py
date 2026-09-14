@@ -6,8 +6,10 @@ import asyncio
 import logging
 
 from datetime import time as dt_time
+from pathlib import Path
 
 import voluptuous as vol
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
 from homeassistant.core import (
@@ -27,12 +29,17 @@ from homeassistant.util import dt as dt_util
 from .const import (
     ATTR_DRY_RUN,
     ATTR_ENTRY_ID,
+    BRAND_DIR,
     CONF_PURGE_TIME,
+    DATA_PUSH_IMAGE,
     DEFAULT_PURGE_TIME,
     DOMAIN,
+    PUSH_IMAGE_FILE,
+    PUSH_IMAGE_URL,
     NEW_CLIENT_NAME_GRACE,
     PURGE_STARTUP_DELAY,
     SERVICE_PURGE_NOW,
+    STATIC_URL_PATH,
 )
 from .coordinator import (
     PurgeResult,
@@ -63,6 +70,8 @@ _KIND_SUFFIX = {
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    await _async_register_brand_path(hass)
+
     coordinator = UnifiDynamicCoordinator(hass, entry)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
@@ -237,6 +246,52 @@ def _purge_time(entry: ConfigEntry) -> dt_time:
         parsed = dt_util.parse_time(DEFAULT_PURGE_TIME)
 
     return parsed
+
+
+# ---------------------------------------------------------------------------
+# Mitgeliefertes Bild für Push-Meldungen
+# ---------------------------------------------------------------------------
+
+
+async def _async_register_brand_path(hass: HomeAssistant) -> None:
+    """
+    Macht den Ordner brand/ unter STATIC_URL_PATH abrufbar.
+
+    Statische Pfade werden ohne Authentifizierung ausgeliefert, genau wie
+    /local/. Nur so kann die Companion-App das Bild laden. Läuft einmal pro
+    Home-Assistant-Instanz, nicht pro Config-Entry.
+    """
+    if DATA_PUSH_IMAGE in hass.data:
+        return
+
+    brand_path = Path(__file__).parent / BRAND_DIR
+    image_path = brand_path / PUSH_IMAGE_FILE
+
+    exists = await hass.async_add_executor_job(image_path.is_file)
+    if not exists:
+        hass.data[DATA_PUSH_IMAGE] = None
+        _LOGGER.debug(
+            "%s nicht gefunden, Push-Meldungen werden ohne Bild gesendet",
+            image_path,
+        )
+        return
+
+    try:
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(STATIC_URL_PATH, str(brand_path), True)]
+        )
+    except Exception as err:  # noqa: BLE001 - Bild ist nur Kosmetik
+        hass.data[DATA_PUSH_IMAGE] = None
+        _LOGGER.warning(
+            "Statischer Pfad %s konnte nicht registriert werden (%s), "
+            "Push-Meldungen werden ohne Bild gesendet",
+            STATIC_URL_PATH,
+            err,
+        )
+        return
+
+    hass.data[DATA_PUSH_IMAGE] = PUSH_IMAGE_URL
+    _LOGGER.debug("Bild für Push-Meldungen bereitgestellt unter %s", PUSH_IMAGE_URL)
 
 
 # ---------------------------------------------------------------------------

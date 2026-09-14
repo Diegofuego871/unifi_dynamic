@@ -19,6 +19,7 @@ the client has not been reported by the UniFi controller for a while.
   a dry run without deleting anything.
 - Push notification for newly detected clients, with individually selectable
   content (display name, connection type, SSID, access point, IP, MAC).
+- The notification image ships with the integration, nothing to configure.
 - Persistent notification in the sidebar with the report of the last purge
   run, toggled separately from the push notification.
 - SSID and access point sensors only for clients that have been seen on
@@ -59,34 +60,33 @@ grouped into four sections, collapsed when opened.
 
 ### Polling
 
-| Option | Meaning |
-| --- | --- |
-| Polling interval | How often the client list is fetched from the controller |
+| Option | Meaning | Default |
+| --- | --- | --- |
+| Polling interval | How often the client list is fetched from the controller | 30 s |
 
 ### Automatic removal
 
-| Option | Meaning |
-| --- | --- |
-| Remove after days without a sighting | Threshold in days, 0 disables removal |
-| Time of the daily run | Local time of the cleanup run |
-| Exclude devices from removal | Multi-select; the chosen clients are never removed automatically |
+| Option | Meaning | Default |
+| --- | --- | --- |
+| Remove after days without a sighting | Threshold in days, 0 disables removal | 30 |
+| Time of the daily run | Local time of the cleanup run | 19:00 |
+| Exclude devices from removal | Multi-select; the chosen clients are never removed automatically | empty |
 
 ### Push notification
 
-| Option | Meaning |
-| --- | --- |
-| Push notification target | notify service or notify entity, for example a notify group |
-| Also report when nothing was removed | Push after every daily run, even with no hits |
-| Report new devices | Push as soon as a client appears for the first time |
-| Content: … | Six switches for display name, connection type, SSID, access point, IP and MAC |
-| Image URL | Large image in the push notification, e.g. `/local/pic/logo.png` |
+| Option | Meaning | Default |
+| --- | --- | --- |
+| Push notification target | notify service or notify entity, for example a notify group | none |
+| Also report when nothing was removed | Push after every daily run, even with no hits | off |
+| Report new devices | Push as soon as a client appears for the first time | on |
+| Content: … | Six switches for display name, connection type, SSID, access point, IP and MAC | all on except MAC |
 
 ### Persistent notification
 
-| Option | Meaning |
-| --- | --- |
-| Create persistent notification | Report of the cleanup run in the sidebar |
-| Also create when nothing was removed | Otherwise it only appears on actual hits |
+| Option | Meaning | Default |
+| --- | --- | --- |
+| Create persistent notification | Report of the cleanup run in the sidebar | on |
+| Also create when nothing was removed | Otherwise it only appears on actual hits | on |
 
 ## Action `unifi_dynamic.purge_now`
 
@@ -112,6 +112,11 @@ millisecond variants, missing values and a deviating controller clock.
 If Home Assistant went more than an hour without a successful poll, the
 downtime is credited to every timestamp. Otherwise a restart after a longer
 standstill would classify all clients as overdue at once.
+
+The image shown in push notifications is served by the integration itself:
+the `brand/` folder is registered as a static path under `/unifi_dynamic/`,
+the same mechanism behind `/local/`. If a notify target rejects the extra
+data, the message is sent again without it.
 
 Access point names come from `/stat/device`. That list is fetched far less
 often than the client list and kept in the cache. If the request fails, the
