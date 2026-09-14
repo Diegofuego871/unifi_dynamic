@@ -1,53 +1,55 @@
+🇬🇧 English | 🇩🇪 [Deutsch](README.de.md)
+
 # UniFi Dynamic Clients
 
-Home-Assistant-Integration, die pro UniFi-Client (verkabelt oder WLAN) automatisch ein Gerät mit den passenden Entitäten anlegt und wieder entfernt, sobald der Client vom UniFi-Controller nicht mehr gemeldet wird.
+Home Assistant integration that automatically creates a device with matching entities for every UniFi client (wired or wireless), and removes it again once the UniFi controller no longer reports that client.
 
-## Funktionen
+## Features
 
-- Legt pro Client ein Device mit Sensoren an: IP, SSID, Verbindungsart, "Last seen", MAC sowie einen "Online"-Binary-Sensor.
-- Automatisches, konfigurierbares Entfernen ("Purge") von Clients und Entities nach X Tagen ohne Sichtung, inklusive täglichem Lauf zu einer festen Uhrzeit.
-- Aktion `unifi_dynamic.purge_now` zum manuellen Auslösen des Purge, wahlweise als Testlauf ("dry run") ohne Löschen.
-- Push-Benachrichtigung bei neu erkannten Clients, konfigurierbarer Inhalt (Name, Verbindungsart, SSID, Access Point, IP, MAC).
-- Anhaltende Benachrichtigung in der Home-Assistant-Seitenleiste mit dem Bericht des letzten Purge-Laufs.
-- Automatische Bereinigung von WLAN-only-Entities bei Clients, die nie im WLAN gesehen wurden.
+- Creates a device per client with sensors for IP, SSID, connection type, "Last seen" and MAC, plus an "Online" binary sensor.
+- Automatic, configurable removal ("purge") of clients and entities after X days without a sighting, including a daily run at a fixed time.
+- `unifi_dynamic.purge_now` action to trigger the purge manually, optionally as a dry run without deleting anything.
+- Push notification for newly detected clients, with configurable content (name, connection type, SSID, access point, IP, MAC).
+- Persistent notification in the Home Assistant sidebar with the report of the last purge run.
+- Automatic cleanup of wireless-only entities for clients that were never seen on Wi-Fi.
 
 ## Installation
 
-### Über HACS (Custom Repository)
+### Via HACS (Custom Repository)
 
-1. HACS öffnen → Drei-Punkte-Menü (oben rechts) → **Custom repositories**.
-2. Repository-URL `https://github.com/Diegofuego871/unifi_dynamic` eintragen, Kategorie **Integration** wählen.
-3. "UniFi Dynamic Clients" in HACS suchen und installieren.
-4. Home Assistant neu starten.
+1. Open HACS → three-dot menu (top right) → **Custom repositories**.
+2. Enter the repository URL `https://github.com/Diegofuego871/unifi_dynamic`, choose category **Integration**.
+3. Search for "UniFi Dynamic Clients" in HACS and install it.
+4. Restart Home Assistant.
 
-### Manuell
+### Manual
 
-1. Ordner `custom_components/unifi_dynamic` aus diesem Repository in das `custom_components`-Verzeichnis der Home-Assistant-Konfiguration kopieren.
-2. Home Assistant neu starten.
+1. Copy the `custom_components/unifi_dynamic` folder from this repository into the `custom_components` directory of your Home Assistant configuration.
+2. Restart Home Assistant.
 
-## Einrichtung
+## Setup
 
-Nach der Installation: **Einstellungen → Geräte & Dienste → Integration hinzufügen → "UniFi Dynamic Clients"**.
+After installation: **Settings → Devices & Services → Add Integration → "UniFi Dynamic Clients"**.
 
-Benötigte Angaben:
+Required fields:
 
-| Feld | Beschreibung |
+| Field | Description |
 |---|---|
-| Host oder IP | Adresse des UniFi-Controllers, ohne `https://` |
-| API-Key | API-Schlüssel des UniFi-Controllers |
-| SSL-Zertifikat prüfen | Deaktivieren bei selbstsigniertem Zertifikat |
-| Abfrageintervall | Wie oft die Clientliste abgefragt wird (Sekunden) |
-| Entfernen nach Tagen ohne Sichtung | 0 deaktiviert das automatische Entfernen |
+| Host or IP | Address of the UniFi controller, without `https://` |
+| API key | API key of the UniFi controller |
+| Verify SSL certificate | Disable for a self-signed certificate |
+| Polling interval | How often the client list is queried (seconds) |
+| Remove after days without a sighting | 0 disables automatic removal |
 
-Weitere Optionen (Abfrageintervall, Purge-Zeit, Push- und Persistent-Benachrichtigungen) lassen sich nachträglich über **Konfigurieren** an der Integration anpassen.
+Further options (polling interval, purge time, push and persistent notifications) can be adjusted afterwards via **Configure** on the integration.
 
-## Aktion `unifi_dynamic.purge_now`
+## Action `unifi_dynamic.purge_now`
 
-| Feld | Pflicht | Beschreibung |
+| Field | Required | Description |
 |---|---|---|
-| `dry_run` | Nein | Nur ermitteln, was entfernt würde. Es wird nichts gelöscht. |
-| `entry_id` | Nein | Ohne Angabe laufen alle eingerichteten UniFi-Hosts. |
+| `dry_run` | No | Only determine what would be removed. Nothing is deleted. |
+| `entry_id` | No | Without it, all configured UniFi hosts run. |
 
-## Lizenz
+## License
 
-Siehe [LICENSE](LICENSE).
+See [LICENSE](LICENSE).
