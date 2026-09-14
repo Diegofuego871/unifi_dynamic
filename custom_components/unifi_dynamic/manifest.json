@@ -1,0 +1,17 @@
+{
+  "domain": "unifi_dynamic",
+  "name": "UniFi Dynamic Clients",
+  "version": "1.15.0",
+  "documentation": "https://github.com/Diegofuego871/unifi_dynamic",
+  "issue_tracker": "https://github.com/Diegofuego871/unifi_dynamic/issues",
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "integration_type": "hub",
+  "dependencies": [
+    "persistent_notification"
+  ],
+  "codeowners": [
+    "@Diegofuego871"
+  ],
+  "requirements": []
+}

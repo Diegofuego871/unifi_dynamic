@@ -1,0 +1,14 @@
+{
+  "options": {
+    "step": {
+      "init": {
+        "sections": {
+          "polling": "mdi:refresh",
+          "cleanup": "mdi:trash-can-outline",
+          "push": "mdi:cellphone-message",
+          "persistent": "mdi:bell-badge-outline"
+        }
+      }
+    }
+  }
+}

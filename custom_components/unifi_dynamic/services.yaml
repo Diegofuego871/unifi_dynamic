@@ -1,0 +1,23 @@
+purge_now:
+  name: Purge jetzt ausführen
+  description: >-
+    Führt den Purge sofort aus, statt auf den täglichen Lauf um 03:30 zu warten.
+    Das Ergebnis wird geloggt, als Benachrichtigung gemeldet und als
+    Service-Antwort zurückgegeben.
+  fields:
+    dry_run:
+      name: Testlauf
+      description: >-
+        Nur ermitteln, was entfernt würde. Es wird nichts gelöscht.
+      required: false
+      default: false
+      selector:
+        boolean:
+    entry_id:
+      name: Config Entry
+      description: >-
+        Optional. Ohne Angabe laufen alle eingerichteten UniFi-Hosts.
+      required: false
+      selector:
+        config_entry:
+          integration: unifi_dynamic

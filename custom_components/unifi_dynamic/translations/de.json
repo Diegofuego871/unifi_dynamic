@@ -1,0 +1,117 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "UniFi Controller",
+        "data": {
+          "host": "Host oder IP",
+          "api_key": "API-Key",
+          "verify_ssl": "SSL-Zertifikat prüfen",
+          "scan_interval": "Abfrageintervall (Sekunden)",
+          "purge_days": "Entfernen nach Tagen ohne Sichtung"
+        },
+        "data_description": {
+          "host": "Adresse des UniFi-Controllers, ohne https://",
+          "purge_days": "0 deaktiviert das automatische Entfernen."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen. Host und API-Key prüfen."
+    },
+    "abort": {
+      "already_configured": "Dieser Host ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Einstellungen",
+        "sections": {
+          "polling": {
+            "name": "Abfrage",
+            "description": "Wie oft die Integration den Controller abfragt.",
+            "data": {
+              "scan_interval": "Abfrageintervall (Sekunden)"
+            },
+            "data_description": {
+              "scan_interval": "Wie oft die Clientliste vom Controller geholt wird."
+            }
+          },
+          "cleanup": {
+            "name": "Automatisches Entfernen",
+            "description": "Wann Clients aus Home Assistant verschwinden, die der Controller nicht mehr meldet.",
+            "data": {
+              "purge_days": "Entfernen nach Tagen ohne Sichtung",
+              "purge_time": "Uhrzeit des täglichen Laufs"
+            },
+            "data_description": {
+              "purge_days": "Client und Gerät werden entfernt, wenn sie so lange nicht mehr gesehen wurden. 0 deaktiviert das Entfernen.",
+              "purge_time": "Uhrzeit des täglichen Aufräumlaufs, lokale Zeit. Dabei prüft die Integration für jeden Client, wie lange er nicht mehr gesehen wurde. Wer über der Schwelle liegt, verliert seine Entitäten und sein Gerät in Home Assistant; danach kommt der Bericht als Benachrichtigung.\n\nSteht «Entfernen nach Tagen ohne Sichtung» auf 0, läuft nichts und diese Uhrzeit hat keine Wirkung.\n\nZusätzlich läuft eine Prüfung 60 Sekunden nach jedem Start von Home Assistant. Sie meldet nur, wenn tatsächlich etwas entfernt wurde, damit nicht jeder Neustart eine Meldung erzeugt.\n\nUnabhängig davon kannst du den Lauf jederzeit über die Aktion unifi_dynamic.purge_now auslösen, auf Wunsch als Testlauf ohne Löschen."
+            }
+          },
+          "push": {
+            "name": "Push-Benachrichtigung",
+            "description": "Ziel, Auslöser und Inhalt der Meldungen aufs Handy. Die Häkchen mit «Inhalt» bestimmen, welche Angaben in der Meldung über neu erkannte Geräte stehen. Ist alles davon aus, wird ersatzweise der Anzeigename gemeldet.",
+            "data": {
+              "notify_service": "Ziel für Push-Benachrichtigung",
+              "notify_when_empty": "Auch melden, wenn nichts entfernt wurde",
+              "notify_new_clients": "Neue Geräte melden",
+              "message_name": "Inhalt: Anzeigename",
+              "message_connection": "Inhalt: Verbindungsart",
+              "message_ssid": "Inhalt: SSID",
+              "message_access_point": "Inhalt: Access Point",
+              "message_ip": "Inhalt: IP-Adresse",
+              "message_mac": "Inhalt: MAC-Adresse",
+              "icon_url": "Bild-URL für die Push-Benachrichtigung"
+            },
+            "data_description": {
+              "notify_service": "notify-Service oder notify-Entity, zum Beispiel eine notify-Gruppe.",
+              "notify_when_empty": "Aktiv bedeutet eine Push nach jedem täglichen Lauf, auch ohne Treffer.",
+              "notify_new_clients": "Push-Meldung, sobald ein Client zum ersten Mal in der UniFi-API auftaucht, mit Name, Verbindungsart, SSID und IP. Verwendet dasselbe Ziel wie oben. Bei der Erstbefüllung nach der Installation wird bewusst nichts gemeldet, sonst käme eine Meldung pro bereits vorhandenem Client. Tauchen mehr als fünf Clients gleichzeitig auf, kommt eine Sammelmeldung statt Einzelmeldungen. Clients, für die der Controller beim ersten Auftauchen noch keinen Namen kennt, werden bis zu 60 Sekunden zurückgehalten, damit statt der MAC der DHCP-Hostname in der Meldung steht. Erzeugt keine anhaltende Benachrichtigung.",
+              "message_name": "Name aus dem Controller, sonst DHCP-Hostname, sonst die MAC.",
+              "message_connection": "Kabel oder Wireless.",
+              "message_ssid": "Nur bei WLAN-Clients.",
+              "message_access_point": "Nur bei WLAN-Clients. Name aus der UniFi-Geräteliste, sonst dessen MAC.",
+              "message_ip": "Aktuelle IP-Adresse des Clients.",
+              "message_mac": "Standardmässig aus. Wird weggelassen, wenn der Anzeigename ohnehin die MAC ist.",
+              "icon_url": "Grosses Bild rechts in der Push-Meldung.\n\nAblage: Datei in den Ordner www im Konfigurationsverzeichnis legen, also /homeassistant/www/ bzw. /config/www/, je nach Installation. Existiert der Ordner www noch nicht, anlegen und Home Assistant einmal neu starten, sonst wird die Datei nicht ausgeliefert. Unterordner sind erlaubt.\n\nEintrag hier: nicht den Dateisystempfad, sondern den Teil ab www durch /local/ ersetzen. Beispiel: die Datei /homeassistant/www/pic/unifi_dynamic_logo.png wird zum Eintrag /local/pic/unifi_dynamic_logo.png.\n\nEine vollständige URL mit https:// funktioniert ebenfalls, sie muss vom Handy aus erreichbar sein. Leer lassen schaltet das Bild ab."
+            }
+          },
+          "persistent": {
+            "name": "Anhaltende Benachrichtigung",
+            "description": "Meldungen in der Seitenleiste von Home Assistant. Betrifft nur den Aufräumlauf; neu erkannte Geräte erzeugen grundsätzlich keine anhaltende Benachrichtigung.",
+            "data": {
+              "persistent_notification": "Anhaltende Benachrichtigung erstellen",
+              "persistent_when_empty": "Auch erstellen, wenn nichts entfernt wurde"
+            },
+            "data_description": {
+              "persistent_notification": "Bericht des Aufräumlaufs mit Details je entferntem Client.",
+              "persistent_when_empty": "Aus bedeutet: die Meldung erscheint nur, wenn tatsächlich etwas entfernt wurde. Die vorherige bleibt dann stehen und zeigt weiterhin den letzten echten Lauf samt Zeitpunkt."
+            }
+          }
+        }
+      }
+    },
+    "error": {
+      "icon_url_filesystem_path": "Das ist ein Dateisystempfad. Die App lädt über HTTP: der Ordner /homeassistant/www/ wird als /local/ ausgeliefert. Trage stattdessen zum Beispiel /local/pic/unifi_dynamic_logo.png ein.",
+      "icon_url_invalid": "Muss mit / beginnen, zum Beispiel /local/pic/unifi_dynamic_logo.png, oder eine vollständige URL mit https:// sein."
+    }
+  },
+  "services": {
+    "purge_now": {
+      "name": "Purge jetzt ausführen",
+      "description": "Führt den Purge sofort aus, statt auf den täglichen Lauf zu warten.",
+      "fields": {
+        "dry_run": {
+          "name": "Testlauf",
+          "description": "Nur ermitteln, was entfernt würde. Es wird nichts gelöscht."
+        },
+        "entry_id": {
+          "name": "Config Entry",
+          "description": "Optional. Ohne Angabe laufen alle eingerichteten UniFi-Hosts."
+        }
+      }
+    }
+  }
+}
