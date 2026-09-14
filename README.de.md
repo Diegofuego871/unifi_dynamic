@@ -1,98 +1,126 @@
-🇬🇧 [English](README.md) | 🇩🇪 Deutsch
-
 # UniFi Dynamic Clients
 
-Home-Assistant-Integration, die pro UniFi-Client (verkabelt oder WLAN) automatisch ein Gerät mit den passenden Entitäten anlegt und wieder entfernt, sobald der Client vom UniFi-Controller nicht mehr gemeldet wird.
+[English](README.md) · **Deutsch**
+
+Home-Assistant-Integration, die pro UniFi-Client (verkabelt oder WLAN)
+automatisch ein Gerät mit den passenden Entitäten anlegt und wieder entfernt,
+sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
 ## Funktionen
 
-- Legt pro Client ein Device mit Sensoren an: IP, SSID, Verbindungsart, "Last seen", MAC sowie einen "Online"-Binary-Sensor.
-- Automatisches, konfigurierbares Entfernen ("Purge") von Clients und Entities nach X Tagen ohne Sichtung, inklusive täglichem Lauf zu einer festen Uhrzeit.
-- Aktion `unifi_dynamic.purge_now` zum manuellen Auslösen des Purge, wahlweise als Testlauf ("dry run") ohne Löschen.
-- Push-Benachrichtigung bei neu erkannten Clients, konfigurierbarer Inhalt (Name, Verbindungsart, SSID, Access Point, IP, MAC).
-- Anhaltende Benachrichtigung in der Home-Assistant-Seitenleiste mit dem Bericht des letzten Purge-Laufs.
-- Automatische Bereinigung von WLAN-only-Entities bei Clients, die nie im WLAN gesehen wurden.
+- Legt pro Client ein Gerät mit Sensoren an: IP, MAC, SSID, Access Point,
+  Verbindungsart und „Last seen" sowie einen Binary-Sensor „Online".
+- Persistenter Client-Cache: Werte offline gegangener Clients bleiben nach
+  Neustart, Reload und Options-Änderung erhalten.
+- Automatisches, konfigurierbares Entfernen („Purge") nach X Tagen ohne
+  Sichtung, inklusive täglichem Lauf zu einer einstellbaren Uhrzeit.
+- Einzelne Geräte lassen sich vom automatischen Entfernen ausnehmen.
+- Aktion `unifi_dynamic.purge_now` zum manuellen Auslösen, wahlweise als
+  Testlauf („dry run") ohne Löschen.
+- Push-Benachrichtigung bei neu erkannten Clients, mit einzeln schaltbarem
+  Inhalt (Anzeigename, Verbindungsart, SSID, Access Point, IP, MAC).
+- Anhaltende Benachrichtigung in der Seitenleiste mit dem Bericht des letzten
+  Purge-Laufs, getrennt schaltbar von der Push-Meldung.
+- SSID- und Access-Point-Sensoren nur für Clients, die je im WLAN gesehen
+  wurden. Reine Kabel-Clients bekommen sie nicht.
 
 ## Installation
 
 ### Über HACS (Custom Repository)
 
 1. HACS öffnen → Drei-Punkte-Menü (oben rechts) → **Custom repositories**.
-2. Repository-URL `https://github.com/Diegofuego871/unifi_dynamic` eintragen, Kategorie **Integration** wählen.
-3. "UniFi Dynamic Clients" in HACS suchen und installieren.
+2. Repository-URL `https://github.com/Diegofuego871/unifi_dynamic` eintragen,
+   Kategorie **Integration** wählen.
+3. „UniFi Dynamic Clients" in HACS suchen und installieren.
 4. Home Assistant neu starten.
 
 ### Manuell
 
-1. Ordner `custom_components/unifi_dynamic` aus diesem Repository in das `custom_components`-Verzeichnis der Home-Assistant-Konfiguration kopieren.
+1. Ordner `custom_components/unifi_dynamic` aus diesem Repository in das
+   `custom_components`-Verzeichnis der Home-Assistant-Konfiguration kopieren.
 2. Home Assistant neu starten.
 
 ## Einrichtung
 
-Nach der Installation: **Einstellungen → Geräte & Dienste → Integration hinzufügen → "UniFi Dynamic Clients"**.
-
-Benötigte Angaben:
+**Einstellungen → Geräte & Dienste → Integration hinzufügen → „UniFi Dynamic
+Clients"**.
 
 | Feld | Beschreibung |
-|---|---|
+| --- | --- |
 | Host oder IP | Adresse des UniFi-Controllers, ohne `https://` |
 | API-Key | API-Schlüssel des UniFi-Controllers |
 | SSL-Zertifikat prüfen | Deaktivieren bei selbstsigniertem Zertifikat |
 | Abfrageintervall | Wie oft die Clientliste abgefragt wird (Sekunden) |
 | Entfernen nach Tagen ohne Sichtung | 0 deaktiviert das automatische Entfernen |
 
-Weitere Optionen (Abfrageintervall, Purge-Zeit, Push- und Persistent-Benachrichtigungen) lassen sich nachträglich über **Konfigurieren** an der Integration anpassen, siehe [Optionen](#optionen) unten.
-
 ## Optionen
 
-Über **Konfigurieren** an der Integration erreichbar, gruppiert in vier ein-/ausklappbare Abschnitte.
+Nachträglich über **Konfigurieren** an der Integration erreichbar. Der Dialog
+ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind.
 
 ### Abfrage
 
-| Feld | Standard | Beschreibung |
-|---|---|---|
-| Abfrageintervall (Sekunden) | 60 | Wie oft die Clientliste vom Controller geholt wird. Bereich: 10–3600. |
+| Option | Bedeutung |
+| --- | --- |
+| Abfrageintervall | Wie oft die Clientliste vom Controller geholt wird |
 
 ### Automatisches Entfernen
 
-| Feld | Standard | Beschreibung |
-|---|---|---|
-| Entfernen nach Tagen ohne Sichtung | 30 | Client und Gerät werden entfernt, wenn sie so lange nicht mehr gesehen wurden. 0 deaktiviert das Entfernen. Bereich: 0–3650. |
-| Uhrzeit des täglichen Laufs | 03:30:00 | Lokale Zeit des täglichen Aufräumlaufs. Wer über der Schwelle liegt, verliert seine Entitäten und sein Gerät; danach kommt der Bericht als Benachrichtigung. Bei "Entfernen nach Tagen ohne Sichtung" = 0 hat diese Uhrzeit keine Wirkung. Zusätzlich läuft 60 Sekunden nach jedem HA-Start eine Prüfung, die nur bei tatsächlichem Entfernen meldet. Unabhängig davon lässt sich der Lauf jederzeit über die Aktion `unifi_dynamic.purge_now` auslösen, auf Wunsch als Testlauf. |
+| Option | Bedeutung |
+| --- | --- |
+| Entfernen nach Tagen ohne Sichtung | Schwelle in Tagen, 0 deaktiviert das Entfernen |
+| Uhrzeit des täglichen Laufs | Lokale Zeit des Aufräumlaufs |
+| Geräte vom Entfernen ausnehmen | Mehrfachauswahl; ausgewählte Clients werden nie automatisch entfernt |
 
 ### Push-Benachrichtigung
 
-| Feld | Standard | Beschreibung |
-|---|---|---|
-| Ziel für Push-Benachrichtigung | Keine | notify-Service oder notify-Entity, zum Beispiel eine notify-Gruppe. |
-| Auch melden, wenn nichts entfernt wurde | Ein | Aktiv bedeutet eine Push nach jedem täglichen Lauf, auch ohne Treffer. |
-| Neue Geräte melden | Ein | Push-Meldung, sobald ein Client zum ersten Mal in der UniFi-API auftaucht, mit Name, Verbindungsart, SSID und IP. Bei der Erstbefüllung nach der Installation wird bewusst nichts gemeldet. Ab mehr als fünf gleichzeitig neuen Clients kommt eine Sammelmeldung statt Einzelmeldungen. Clients ohne bekannten Namen werden bis zu 60 Sekunden zurückgehalten, damit statt der MAC der DHCP-Hostname erscheint. |
-| Inhalt: Anzeigename | Ein | Name aus dem Controller, sonst DHCP-Hostname, sonst die MAC. |
-| Inhalt: Verbindungsart | Ein | Kabel oder Wireless. |
-| Inhalt: SSID | Ein | Nur bei WLAN-Clients. |
-| Inhalt: Access Point | Ein | Nur bei WLAN-Clients. Name aus der UniFi-Geräteliste, sonst dessen MAC. |
-| Inhalt: IP-Adresse | Ein | Aktuelle IP-Adresse des Clients. |
-| Inhalt: MAC-Adresse | Aus | Wird weggelassen, wenn der Anzeigename ohnehin die MAC ist. |
-| Bild-URL für die Push-Benachrichtigung | Leer | Grosses Bild rechts in der Push-Meldung. Datei in `www/` im Konfigurationsverzeichnis ablegen (`/config/www/` bzw. `/homeassistant/www/`), Eintrag hier als `/local/...`-Pfad oder vollständige `https://`-URL. Leer schaltet das Bild ab. |
+| Option | Bedeutung |
+| --- | --- |
+| Ziel für Push-Benachrichtigung | notify-Service oder notify-Entity, etwa eine notify-Gruppe |
+| Auch melden, wenn nichts entfernt wurde | Push nach jedem täglichen Lauf, auch ohne Treffer |
+| Neue Geräte melden | Push, sobald ein Client zum ersten Mal auftaucht |
+| Inhalt: … | Sechs Schalter für Anzeigename, Verbindungsart, SSID, Access Point, IP und MAC |
+| Bild-URL | Grosses Bild in der Push-Meldung, etwa `/local/pic/logo.png` |
 
 ### Anhaltende Benachrichtigung
 
-| Feld | Standard | Beschreibung |
-|---|---|---|
-| Anhaltende Benachrichtigung erstellen | Ein | Bericht des Aufräumlaufs mit Details je entferntem Client, in der Home-Assistant-Seitenleiste. Betrifft nur den Aufräumlauf; neu erkannte Geräte erzeugen grundsätzlich keine anhaltende Benachrichtigung. |
-| Auch erstellen, wenn nichts entfernt wurde | Ein | Aus bedeutet: Die Meldung erscheint nur, wenn tatsächlich etwas entfernt wurde. Die vorherige bleibt dann stehen und zeigt weiterhin den letzten echten Lauf samt Zeitpunkt. |
+| Option | Bedeutung |
+| --- | --- |
+| Anhaltende Benachrichtigung erstellen | Bericht des Aufräumlaufs in der Seitenleiste |
+| Auch erstellen, wenn nichts entfernt wurde | Andernfalls erscheint sie nur bei tatsächlichen Treffern |
 
 ## Aktion `unifi_dynamic.purge_now`
 
+Löst den Aufräumlauf sofort aus, statt auf die eingestellte Uhrzeit zu warten.
+
 | Feld | Pflicht | Beschreibung |
-|---|---|---|
+| --- | --- | --- |
 | `dry_run` | Nein | Nur ermitteln, was entfernt würde. Es wird nichts gelöscht. |
 | `entry_id` | Nein | Ohne Angabe laufen alle eingerichteten UniFi-Hosts. |
 
+Die Aktion liefert eine strukturierte Antwort mit Anzahl entfernter Clients,
+Entitäten und Geräte sowie der Anzahl ausgenommener Clients.
+
+## Funktionsweise
+
+Die Integration fragt `/stat/sta` ab, also die Liste der aktiven Clients. Ein
+Client, der nicht mehr erscheint, verschwindet nicht sofort: Sein letzter
+Stand bleibt im Cache und altert. Grundlage dafür ist ein eigener Zeitstempel,
+der bei jeder Sichtung gesetzt wird, nicht das UniFi-Feld `last_seen`. Damit
+sind Millisekunden-Varianten, fehlende Werte und eine abweichende
+Controller-Uhr kein Thema.
+
+War Home Assistant länger als eine Stunde ohne erfolgreichen Poll, wird die
+Ausfallzeit allen Zeitstempeln gutgeschrieben. Sonst würde ein Neustart nach
+längerem Stillstand sämtliche Clients auf einmal als überfällig einstufen.
+
+Die Namen der Access Points stammen aus `/stat/device`. Diese Liste wird
+deutlich seltener geholt als die Clientliste und im Cache gehalten. Schlägt
+der Abruf fehl, zeigen die Sensoren die MAC des Access Points.
+
 ## Changelog
 
-- **1.15.1** – Release-/Update-Ablauf über HACS verifiziert (Version-Bump, Tag, Update-Erkennung, Installation).
-- **1.15.0** – Erste über HACS veröffentlichte Version.
+Siehe [CHANGELOG.md](CHANGELOG.md).
 
 ## Lizenz
 

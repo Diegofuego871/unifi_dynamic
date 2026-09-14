@@ -162,10 +162,13 @@ def build_push_message(result: PurgeResult) -> str:
 
 def build_persistent_message(result: PurgeResult) -> str:
     if not result.changed:
+        protected = (
+            f", davon {result.protected} geschützt" if result.protected else ""
+        )
         return (
             "Purge-Lauf abgeschlossen.\n\n"
             "Keine Clients entfernt. Im Cache: "
-            f"{_plural(result.cache_size, 'Client', 'Clients')}, "
+            f"{_plural(result.cache_size, 'Client', 'Clients')}{protected}, "
             f"Schwelle: {result.purge_days} Tage.\n\n"
             "Entfernte Entitäten: keine"
         )
@@ -178,6 +181,11 @@ def build_persistent_message(result: PurgeResult) -> str:
         f"- {_plural(result.removed_devices, 'Gerät', 'Geräte')}, davon "
         f"{_plural(result.orphan_devices, 'leeres Gerät', 'leere Geräte')}"
     )
+    if result.protected:
+        lines.append(
+            f"- {_plural(result.protected, 'Client', 'Clients')} vom Entfernen "
+            "ausgenommen"
+        )
 
     for client in result.clients:
         lines.append("")

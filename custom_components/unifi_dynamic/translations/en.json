@@ -43,11 +43,13 @@
             "description": "When clients the controller no longer reports disappear from Home Assistant.",
             "data": {
               "purge_days": "Remove after days without a sighting",
-              "purge_time": "Time of the daily run"
+              "purge_time": "Time of the daily run",
+              "purge_exclude": "Exclude devices from removal"
             },
             "data_description": {
               "purge_days": "Client and device are removed after this many days without a sighting. 0 disables removal.",
-              "purge_time": "Time of the daily cleanup run, local time. The integration checks how long each client has not been seen. Anything past the threshold loses its entities and its device in Home Assistant; the report is then sent as a notification.\n\nIf “Remove after days without a sighting” is set to 0, nothing runs and this time has no effect.\n\nA check also runs 60 seconds after each Home Assistant start. It only reports when something was actually removed, so a restart does not produce a message.\n\nIndependently of this you can trigger the run at any time via the unifi_dynamic.purge_now action, optionally as a dry run."
+              "purge_time": "Time of the daily cleanup run, local time. The integration checks how long each client has not been seen. Anything past the threshold loses its entities and its device in Home Assistant; the report is then sent as a notification.\n\nIf “Remove after days without a sighting” is set to 0, nothing runs and this time has no effect.\n\nA check also runs 60 seconds after each Home Assistant start. It only reports when something was actually removed, so a restart does not produce a message.\n\nIndependently of this you can trigger the run at any time via the unifi_dynamic.purge_now action, optionally as a dry run.",
+              "purge_exclude": "Selected clients are never removed automatically, no matter how long they have not been seen. The list contains every client the integration knows, with name and MAC. Leave empty to apply the threshold above to all."
             }
           },
           "push": {

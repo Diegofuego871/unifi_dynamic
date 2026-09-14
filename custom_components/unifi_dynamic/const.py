@@ -71,6 +71,9 @@ DOWNTIME_GRACE_SECONDS = 3600
 # Restore-States von Home Assistant vollständig durch sind.
 PURGE_STARTUP_DELAY = 60
 
+# MACs, die vom automatischen Entfernen ausgenommen sind.
+CONF_PURGE_EXCLUDE = "purge_exclude"
+
 # Tägliche Purge-Zeit (lokale Zeit, im UI änderbar)
 CONF_PURGE_TIME = "purge_time"
 DEFAULT_PURGE_TIME = "03:30:00"

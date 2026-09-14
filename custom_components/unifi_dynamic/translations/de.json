@@ -43,11 +43,13 @@
             "description": "Wann Clients aus Home Assistant verschwinden, die der Controller nicht mehr meldet.",
             "data": {
               "purge_days": "Entfernen nach Tagen ohne Sichtung",
-              "purge_time": "Uhrzeit des täglichen Laufs"
+              "purge_time": "Uhrzeit des täglichen Laufs",
+              "purge_exclude": "Geräte vom Entfernen ausnehmen"
             },
             "data_description": {
               "purge_days": "Client und Gerät werden entfernt, wenn sie so lange nicht mehr gesehen wurden. 0 deaktiviert das Entfernen.",
-              "purge_time": "Uhrzeit des täglichen Aufräumlaufs, lokale Zeit. Dabei prüft die Integration für jeden Client, wie lange er nicht mehr gesehen wurde. Wer über der Schwelle liegt, verliert seine Entitäten und sein Gerät in Home Assistant; danach kommt der Bericht als Benachrichtigung.\n\nSteht «Entfernen nach Tagen ohne Sichtung» auf 0, läuft nichts und diese Uhrzeit hat keine Wirkung.\n\nZusätzlich läuft eine Prüfung 60 Sekunden nach jedem Start von Home Assistant. Sie meldet nur, wenn tatsächlich etwas entfernt wurde, damit nicht jeder Neustart eine Meldung erzeugt.\n\nUnabhängig davon kannst du den Lauf jederzeit über die Aktion unifi_dynamic.purge_now auslösen, auf Wunsch als Testlauf ohne Löschen."
+              "purge_time": "Uhrzeit des täglichen Aufräumlaufs, lokale Zeit. Dabei prüft die Integration für jeden Client, wie lange er nicht mehr gesehen wurde. Wer über der Schwelle liegt, verliert seine Entitäten und sein Gerät in Home Assistant; danach kommt der Bericht als Benachrichtigung.\n\nSteht «Entfernen nach Tagen ohne Sichtung» auf 0, läuft nichts und diese Uhrzeit hat keine Wirkung.\n\nZusätzlich läuft eine Prüfung 60 Sekunden nach jedem Start von Home Assistant. Sie meldet nur, wenn tatsächlich etwas entfernt wurde, damit nicht jeder Neustart eine Meldung erzeugt.\n\nUnabhängig davon kannst du den Lauf jederzeit über die Aktion unifi_dynamic.purge_now auslösen, auf Wunsch als Testlauf ohne Löschen.",
+              "purge_exclude": "Ausgewählte Clients werden nie automatisch entfernt, egal wie lange sie nicht gesehen wurden. Die Liste enthält alle Clients, die die Integration kennt, mit Name und MAC. Leer lassen heisst: die Schwelle oben gilt für alle."
             }
           },
           "push": {

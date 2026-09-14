@@ -22,6 +22,7 @@ from .const import (
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PERSISTENT_WHEN_EMPTY,
     CONF_PURGE_DAYS,
+    CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
@@ -40,6 +41,7 @@ from .const import (
     NOTIFY_NONE,
     SITES_PATH,
 )
+from .coordinator import preferred_client_name
 
 # Options-Keys aus früheren Versionen, die beim Speichern verworfen werden.
 OBSOLETE_OPTIONS = ("notification_icon",)
@@ -108,6 +110,41 @@ async def _test_connection(
         if resp.status >= 400:
             text = await resp.text()
             raise ConnectionError(f"HTTP {resp.status}: {text[:200]}")
+
+
+def _client_options(
+    hass: HomeAssistant, entry_id: str, selected: list[str]
+) -> list[selector.SelectOptionDict]:
+    """
+    Auswahlliste aller von der Integration verwalteten Clients.
+
+    Gefüllt aus dem Client-Cache des Coordinators. Bereits ausgewählte MACs,
+    die dort nicht mehr stehen, bleiben wählbar, damit sie beim Speichern
+    nicht still verloren gehen.
+    """
+    coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+    clients: dict[str, str] = {}
+
+    if coordinator is not None:
+        for mac, data in (coordinator.data or {}).items():
+            clients[str(mac).lower()] = preferred_client_name(data or {}, mac)
+
+    options = [
+        selector.SelectOptionDict(value=mac, label=f"{name} ({mac})")
+        for mac, name in sorted(clients.items(), key=lambda item: item[1].lower())
+    ]
+
+    known = set(clients)
+    for mac in selected:
+        mac_l = str(mac).strip().lower()
+        if mac_l and mac_l not in known:
+            options.append(
+                selector.SelectOptionDict(
+                    value=mac_l, label=f"{mac_l} (nicht mehr bekannt)"
+                )
+            )
+
+    return options
 
 
 def _notify_options(hass: HomeAssistant) -> list[selector.SelectOptionDict]:
@@ -251,6 +288,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 data = {**self.config_entry.options, **submitted}
                 # Leerbares Feld: fehlt es im Ergebnis, wurde es bewusst gelöscht.
                 data[CONF_ICON_URL] = icon_url
+                # Mehrfachauswahl: leere Auswahl muss die alte überschreiben.
+                data[CONF_PURGE_EXCLUDE] = [
+                    str(mac).strip().lower()
+                    for mac in submitted.get(CONF_PURGE_EXCLUDE, []) or []
+                    if str(mac).strip()
+                ]
                 for key in OBSOLETE_OPTIONS:
                     data.pop(key, None)
                 return self.async_create_entry(title="", data=data)
@@ -279,6 +322,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             current.get(CONF_PURGE_TIME, data.get(CONF_PURGE_TIME, DEFAULT_PURGE_TIME))
             or DEFAULT_PURGE_TIME
         )
+        excluded_default = [
+            str(mac).strip().lower()
+            for mac in (current.get(CONF_PURGE_EXCLUDE) or [])
+            if str(mac).strip()
+        ]
+        client_options = _client_options(
+            self.hass, self.config_entry.entry_id, excluded_default
+        )
+
         notify_default = str(
             current.get(CONF_NOTIFY_SERVICE, DEFAULT_NOTIFY_SERVICE) or NOTIFY_NONE
         )
@@ -356,6 +408,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             vol.Required(
                                 CONF_PURGE_TIME, default=purge_time_default
                             ): selector.TimeSelector(),
+                            vol.Optional(
+                                CONF_PURGE_EXCLUDE, default=excluded_default
+                            ): selector.SelectSelector(
+                                selector.SelectSelectorConfig(
+                                    options=client_options,
+                                    multiple=True,
+                                    mode=selector.SelectSelectorMode.DROPDOWN,
+                                    sort=False,
+                                )
+                            ),
                         }
                     ),
                     {"collapsed": True},

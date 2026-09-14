@@ -284,6 +284,7 @@ def _result_to_dict(entry: ConfigEntry, result: PurgeResult) -> dict:
         "removed_entities": result.removed_entities,
         "removed_devices": result.removed_devices,
         "orphan_devices": result.orphan_devices,
+        "protected": result.protected,
         "clients": [
             {
                 "mac": client.mac,

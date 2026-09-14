@@ -28,6 +28,7 @@ from .const import (
     CONF_API_KEY,
     CONF_HOST,
     CONF_PURGE_DAYS,
+    CONF_PURGE_EXCLUDE,
     CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
     DEVICES_PATH,
@@ -116,6 +117,14 @@ def _extract_clients(payload: Any) -> dict[str, dict[str, Any]]:
     return out
 
 
+def get_excluded_macs(entry: ConfigEntry) -> set[str]:
+    """MACs, die vom automatischen Entfernen ausgenommen sind."""
+    raw = entry.options.get(CONF_PURGE_EXCLUDE, entry.data.get(CONF_PURGE_EXCLUDE, []))
+    if not isinstance(raw, (list, tuple, set)):
+        return set()
+    return {str(mac).strip().lower() for mac in raw if str(mac).strip()}
+
+
 def _get_int_option(entry: ConfigEntry, key: str, default: int) -> int:
     raw = entry.options.get(key, entry.data.get(key, default))
     try:
@@ -160,6 +169,7 @@ class PurgeResult:
     removed_entities: int = 0
     removed_devices: int = 0
     orphan_devices: int = 0
+    protected: int = 0
 
     @property
     def removed_clients(self) -> int:
@@ -702,11 +712,16 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         ent_reg = er.async_get(self.hass)
         entries = er.async_entries_for_config_entry(ent_reg, self.entry.entry_id)
 
+        excluded = get_excluded_macs(self.entry)
         threshold = purge_days * 86400
         now = time.time()
         stale: list[tuple[str, float]] = []
 
         for mac, data in list(self._client_cache.items()):
+            if mac in excluded:
+                result.protected += 1
+                continue
+
             seen = as_epoch_seconds(data.get(FIELD_SEEN_AT))
             if seen is None:
                 # Darf nach _normalise_cache nicht vorkommen. Defensiv
@@ -770,7 +785,9 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         if stale and not dry_run:
             self._schedule_save()
 
-        result.orphan_devices = self._purge_orphan_devices(dev_reg, ent_reg, dry_run)
+        result.orphan_devices = self._purge_orphan_devices(
+            dev_reg, ent_reg, dry_run, excluded
+        )
         result.removed_devices += result.orphan_devices
 
         if result.changed:
@@ -784,6 +801,11 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 result.removed_devices,
                 result.orphan_devices,
             )
+            if result.protected:
+                _LOGGER.info(
+                    "Purge: %s Clients sind vom Entfernen ausgenommen",
+                    result.protected,
+                )
         else:
             _LOGGER.debug(
                 "Purge abgeschlossen%s: nichts zu entfernen (%s Clients im Cache, "
@@ -813,13 +835,17 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         dev_reg: dr.DeviceRegistry,
         ent_reg: er.EntityRegistry,
         dry_run: bool = False,
+        excluded: set[str] | None = None,
     ) -> int:
         """
         Entfernt Geräte dieser Integration, die keine Entities mehr haben.
 
         er.async_entries_for_device liefert Entities aller Integrationen, ein
         mit einer anderen Integration verschmolzenes Gerät ist also geschützt.
+        Ausgenommene MACs bleiben ebenfalls stehen, auch wenn ihre Entities
+        ausserhalb der Integration entfernt wurden.
         """
+        protected = excluded or set()
         removed = 0
 
         for device in list(
@@ -831,6 +857,9 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 if len(identifier) == 2 and identifier[0] == DOMAIN
             ]
             if not domain_macs:
+                continue
+
+            if any(str(mac).lower() in protected for mac in domain_macs):
                 continue
 
             if er.async_entries_for_device(

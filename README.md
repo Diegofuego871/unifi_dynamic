@@ -1,98 +1,125 @@
-🇬🇧 English | 🇩🇪 [Deutsch](README.de.md)
-
 # UniFi Dynamic Clients
 
-Home Assistant integration that automatically creates a device with matching entities for every UniFi client (wired or wireless), and removes it again once the UniFi controller no longer reports that client.
+**English** · [Deutsch](README.de.md)
+
+Home Assistant integration that automatically creates a device with matching
+entities for every UniFi client, wired or wireless, and removes it again once
+the client has not been reported by the UniFi controller for a while.
 
 ## Features
 
-- Creates a device per client with sensors for IP, SSID, connection type, "Last seen" and MAC, plus an "Online" binary sensor.
-- Automatic, configurable removal ("purge") of clients and entities after X days without a sighting, including a daily run at a fixed time.
-- `unifi_dynamic.purge_now` action to trigger the purge manually, optionally as a dry run without deleting anything.
-- Push notification for newly detected clients, with configurable content (name, connection type, SSID, access point, IP, MAC).
-- Persistent notification in the Home Assistant sidebar with the report of the last purge run.
-- Automatic cleanup of wireless-only entities for clients that were never seen on Wi-Fi.
+- Creates one device per client with sensors for IP, MAC, SSID, access point,
+  connection type and "Last seen", plus an "Online" binary sensor.
+- Persistent client cache: values of clients that went offline survive
+  restarts, reloads and option changes.
+- Configurable automatic removal ("purge") after X days without a sighting,
+  including a daily run at a configurable time.
+- Individual devices can be excluded from automatic removal.
+- Action `unifi_dynamic.purge_now` to trigger the run manually, optionally as
+  a dry run without deleting anything.
+- Push notification for newly detected clients, with individually selectable
+  content (display name, connection type, SSID, access point, IP, MAC).
+- Persistent notification in the sidebar with the report of the last purge
+  run, toggled separately from the push notification.
+- SSID and access point sensors only for clients that have been seen on
+  wireless. Wired-only clients do not get them.
 
 ## Installation
 
-### Via HACS (Custom Repository)
+### Via HACS (custom repository)
 
 1. Open HACS → three-dot menu (top right) → **Custom repositories**.
-2. Enter the repository URL `https://github.com/Diegofuego871/unifi_dynamic`, choose category **Integration**.
+2. Enter the repository URL `https://github.com/Diegofuego871/unifi_dynamic`
+   and choose the category **Integration**.
 3. Search for "UniFi Dynamic Clients" in HACS and install it.
 4. Restart Home Assistant.
 
-### Manual
+### Manually
 
-1. Copy the `custom_components/unifi_dynamic` folder from this repository into the `custom_components` directory of your Home Assistant configuration.
+1. Copy the folder `custom_components/unifi_dynamic` from this repository into
+   the `custom_components` directory of your Home Assistant configuration.
 2. Restart Home Assistant.
 
 ## Setup
 
-After installation: **Settings → Devices & Services → Add Integration → "UniFi Dynamic Clients"**.
-
-Required fields:
+**Settings → Devices & services → Add integration → "UniFi Dynamic Clients"**.
 
 | Field | Description |
-|---|---|
+| --- | --- |
 | Host or IP | Address of the UniFi controller, without `https://` |
 | API key | API key of the UniFi controller |
 | Verify SSL certificate | Disable for a self-signed certificate |
-| Polling interval | How often the client list is queried (seconds) |
+| Polling interval | How often the client list is fetched (seconds) |
 | Remove after days without a sighting | 0 disables automatic removal |
-
-Further options (polling interval, purge time, push and persistent notifications) can be adjusted afterwards via **Configure** on the integration, see [Options](#options) below.
 
 ## Options
 
-Reachable via **Configure** on the integration, grouped into four collapsible sections.
+Available afterwards via **Configure** on the integration. The dialog is
+grouped into four sections, collapsed when opened.
 
 ### Polling
 
-| Field | Default | Description |
-|---|---|---|
-| Polling interval (seconds) | 60 | How often the client list is fetched from the controller. Range: 10–3600. |
+| Option | Meaning |
+| --- | --- |
+| Polling interval | How often the client list is fetched from the controller |
 
 ### Automatic removal
 
-| Field | Default | Description |
-|---|---|---|
-| Remove after days without a sighting | 30 | Client and device are removed after this many days without a sighting. 0 disables removal. Range: 0–3650. |
-| Time of the daily run | 03:30:00 | Local time of the daily cleanup run. Anything past the threshold loses its entities and device; the report is then sent as a notification. Has no effect if "Remove after days without a sighting" is 0. A check also runs 60 seconds after each Home Assistant start and only reports if something was actually removed. Independently, the run can be triggered anytime via the `unifi_dynamic.purge_now` action, optionally as a dry run. |
+| Option | Meaning |
+| --- | --- |
+| Remove after days without a sighting | Threshold in days, 0 disables removal |
+| Time of the daily run | Local time of the cleanup run |
+| Exclude devices from removal | Multi-select; the chosen clients are never removed automatically |
 
 ### Push notification
 
-| Field | Default | Description |
-|---|---|---|
-| Push notification target | None | notify service or notify entity, for example a notify group. |
-| Also report when nothing was removed | On | Enabled means a push after every daily run, even with no hits. |
-| Report new devices | On | Push notification as soon as a client appears in the UniFi API for the first time, with name, connection type, SSID and IP. Nothing is reported during the initial fill after installation. If more than five clients appear at once, a single summary is sent instead. Clients without a known name yet are held back up to 60 seconds so the DHCP hostname appears instead of the MAC. |
-| Content: Display name | On | Name from the controller, otherwise DHCP hostname, otherwise the MAC. |
-| Content: Connection type | On | Wired or wireless. |
-| Content: SSID | On | Wireless clients only. |
-| Content: Access point | On | Wireless clients only. Name from the UniFi device list, otherwise its MAC. |
-| Content: IP address | On | Current IP address of the client. |
-| Content: MAC address | Off | Omitted when the display name is the MAC anyway. |
-| Push notification image URL | Empty | Large image on the right of the push notification. Place the file in `www/` inside the configuration directory (`/config/www/` or `/homeassistant/www/`), and enter it here as a `/local/...` path or a full `https://` URL. Leave empty to disable the image. |
+| Option | Meaning |
+| --- | --- |
+| Push notification target | notify service or notify entity, for example a notify group |
+| Also report when nothing was removed | Push after every daily run, even with no hits |
+| Report new devices | Push as soon as a client appears for the first time |
+| Content: … | Six switches for display name, connection type, SSID, access point, IP and MAC |
+| Image URL | Large image in the push notification, e.g. `/local/pic/logo.png` |
 
 ### Persistent notification
 
-| Field | Default | Description |
-|---|---|---|
-| Create persistent notification | On | Report of the cleanup run with details per removed client, shown in the Home Assistant sidebar. Applies to the cleanup run only; newly detected devices never create a persistent notification. |
-| Also create when nothing was removed | On | Off means the message only appears when something was actually removed. The previous one then stays and keeps showing the last real run and its time. |
+| Option | Meaning |
+| --- | --- |
+| Create persistent notification | Report of the cleanup run in the sidebar |
+| Also create when nothing was removed | Otherwise it only appears on actual hits |
 
 ## Action `unifi_dynamic.purge_now`
 
+Triggers the cleanup run immediately instead of waiting for the configured
+time.
+
 | Field | Required | Description |
-|---|---|---|
+| --- | --- | --- |
 | `dry_run` | No | Only determine what would be removed. Nothing is deleted. |
 | `entry_id` | No | Without it, all configured UniFi hosts run. |
 
+The action returns a structured response with the number of removed clients,
+entities and devices, plus the number of excluded clients.
+
+## How it works
+
+The integration queries `/stat/sta`, the list of active clients. A client that
+no longer appears does not vanish immediately: its last state stays in the
+cache and ages. The basis for this is an own timestamp written on every
+sighting, not the UniFi field `last_seen`. That removes any issue with
+millisecond variants, missing values and a deviating controller clock.
+
+If Home Assistant went more than an hour without a successful poll, the
+downtime is credited to every timestamp. Otherwise a restart after a longer
+standstill would classify all clients as overdue at once.
+
+Access point names come from `/stat/device`. That list is fetched far less
+often than the client list and kept in the cache. If the request fails, the
+sensors show the access point's MAC instead.
+
 ## Changelog
 
-- **1.15.1** – Verified the HACS release/update flow (version bump, tag, update detection, installation).
-- **1.15.0** – First version published via HACS.
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
