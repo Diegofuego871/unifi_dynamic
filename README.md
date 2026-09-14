@@ -89,6 +89,11 @@ Reachable via **Configure** on the integration, grouped into four collapsible se
 | `dry_run` | No | Only determine what would be removed. Nothing is deleted. |
 | `entry_id` | No | Without it, all configured UniFi hosts run. |
 
+## Changelog
+
+- **1.15.1** – Verified the HACS release/update flow (version bump, tag, update detection, installation).
+- **1.15.0** – First version published via HACS.
+
 ## License
 
 See [LICENSE](LICENSE).

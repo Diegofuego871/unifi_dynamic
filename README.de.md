@@ -89,6 +89,11 @@ Weitere Optionen (Abfrageintervall, Purge-Zeit, Push- und Persistent-Benachricht
 | `dry_run` | Nein | Nur ermitteln, was entfernt würde. Es wird nichts gelöscht. |
 | `entry_id` | Nein | Ohne Angabe laufen alle eingerichteten UniFi-Hosts. |
 
+## Changelog
+
+- **1.15.1** – Release-/Update-Ablauf über HACS verifiziert (Version-Bump, Tag, Update-Erkennung, Installation).
+- **1.15.0** – Erste über HACS veröffentlichte Version.
+
 ## Lizenz
 
 Siehe [LICENSE](LICENSE).
