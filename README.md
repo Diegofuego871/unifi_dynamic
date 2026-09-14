@@ -41,7 +41,46 @@ Required fields:
 | Polling interval | How often the client list is queried (seconds) |
 | Remove after days without a sighting | 0 disables automatic removal |
 
-Further options (polling interval, purge time, push and persistent notifications) can be adjusted afterwards via **Configure** on the integration.
+Further options (polling interval, purge time, push and persistent notifications) can be adjusted afterwards via **Configure** on the integration, see [Options](#options) below.
+
+## Options
+
+Reachable via **Configure** on the integration, grouped into four collapsible sections.
+
+### Polling
+
+| Field | Default | Description |
+|---|---|---|
+| Polling interval (seconds) | 60 | How often the client list is fetched from the controller. Range: 10–3600. |
+
+### Automatic removal
+
+| Field | Default | Description |
+|---|---|---|
+| Remove after days without a sighting | 30 | Client and device are removed after this many days without a sighting. 0 disables removal. Range: 0–3650. |
+| Time of the daily run | 03:30:00 | Local time of the daily cleanup run. Anything past the threshold loses its entities and device; the report is then sent as a notification. Has no effect if "Remove after days without a sighting" is 0. A check also runs 60 seconds after each Home Assistant start and only reports if something was actually removed. Independently, the run can be triggered anytime via the `unifi_dynamic.purge_now` action, optionally as a dry run. |
+
+### Push notification
+
+| Field | Default | Description |
+|---|---|---|
+| Push notification target | None | notify service or notify entity, for example a notify group. |
+| Also report when nothing was removed | On | Enabled means a push after every daily run, even with no hits. |
+| Report new devices | On | Push notification as soon as a client appears in the UniFi API for the first time, with name, connection type, SSID and IP. Nothing is reported during the initial fill after installation. If more than five clients appear at once, a single summary is sent instead. Clients without a known name yet are held back up to 60 seconds so the DHCP hostname appears instead of the MAC. |
+| Content: Display name | On | Name from the controller, otherwise DHCP hostname, otherwise the MAC. |
+| Content: Connection type | On | Wired or wireless. |
+| Content: SSID | On | Wireless clients only. |
+| Content: Access point | On | Wireless clients only. Name from the UniFi device list, otherwise its MAC. |
+| Content: IP address | On | Current IP address of the client. |
+| Content: MAC address | Off | Omitted when the display name is the MAC anyway. |
+| Push notification image URL | Empty | Large image on the right of the push notification. Place the file in `www/` inside the configuration directory (`/config/www/` or `/homeassistant/www/`), and enter it here as a `/local/...` path or a full `https://` URL. Leave empty to disable the image. |
+
+### Persistent notification
+
+| Field | Default | Description |
+|---|---|---|
+| Create persistent notification | On | Report of the cleanup run with details per removed client, shown in the Home Assistant sidebar. Applies to the cleanup run only; newly detected devices never create a persistent notification. |
+| Also create when nothing was removed | On | Off means the message only appears when something was actually removed. The previous one then stays and keeps showing the last real run and its time. |
 
 ## Action `unifi_dynamic.purge_now`
 
