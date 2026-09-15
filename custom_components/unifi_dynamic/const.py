@@ -116,11 +116,12 @@ NEW_CLIENT_TAG_PREFIX = "unifi_dynamic_new"
 # einer Meldung pro Gerät.
 MAX_NEW_CLIENT_MESSAGES = 5
 
-# Kennt der Controller beim ersten Auftauchen noch keinen Namen, wird die
-# Meldung so lange zurückgehalten. In dieser Zeit pollt der Coordinator weiter
-# und zieht den DHCP-Hostnamen nach, sobald die Lease durch ist. Clients, die
-# bereits einen Namen haben, werden sofort gemeldet.
-NEW_CLIENT_NAME_GRACE = 60
+# Fehlt beim ersten Auftauchen noch eine der Angaben, die laut Einstellungen in
+# der Meldung stehen sollen, wird die Meldung zurückgehalten. In dieser Zeit
+# pollt der Coordinator weiter und zieht Hostname, IP, SSID und AP-Name nach.
+# Gesendet wird, sobald alles beisammen ist, spätestens nach Ablauf der Grenze.
+NEW_CLIENT_WAIT_TIMEOUT = 120
+NEW_CLIENT_WAIT_INTERVAL = 5
 
 # Klickziel der Push-Meldungen. Relativer Pfad, die Companion-App löst ihn
 # gegen die eigene Instanz auf.

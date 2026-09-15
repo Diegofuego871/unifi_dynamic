@@ -20,6 +20,8 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 - Push-Benachrichtigung bei neu erkannten Clients, mit einzeln schaltbarem
   Inhalt (Anzeigename, Verbindungsart, SSID, Access Point, IP, MAC).
 - Das Bild der Meldung bringt die Integration mit, nichts einzurichten.
+- Die Neugeräte-Meldung wartet, bis alle gewählten Angaben tatsächlich
+  vorliegen, und sendet dann sofort.
 - Anhaltende Benachrichtigung in der Seitenleiste mit dem Bericht des letzten
   Purge-Laufs, getrennt schaltbar von der Push-Meldung.
 - SSID- und Access-Point-Sensoren nur für Clients, die je im WLAN gesehen

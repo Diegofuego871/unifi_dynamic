@@ -7,6 +7,7 @@ import logging
 
 from datetime import time as dt_time
 from pathlib import Path
+from time import monotonic
 
 import voluptuous as vol
 from homeassistant.components.http import StaticPathConfig
@@ -34,10 +35,11 @@ from .const import (
     DATA_PUSH_IMAGE,
     DEFAULT_PURGE_TIME,
     DOMAIN,
+    NEW_CLIENT_WAIT_INTERVAL,
+    NEW_CLIENT_WAIT_TIMEOUT,
+    PURGE_STARTUP_DELAY,
     PUSH_IMAGE_FILE,
     PUSH_IMAGE_URL,
-    NEW_CLIENT_NAME_GRACE,
-    PURGE_STARTUP_DELAY,
     SERVICE_PURGE_NOW,
     STATIC_URL_PATH,
 )
@@ -47,7 +49,12 @@ from .coordinator import (
     client_slug,
     preferred_client_name,
 )
-from .notification import async_send_new_clients_report, async_send_purge_report
+from .notification import (
+    async_send_new_clients_report,
+    async_send_purge_report,
+    message_fields,
+    missing_message_fields,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -188,45 +195,74 @@ def _register_new_client_handler(
 
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _after_start)
 
-    async def _send_after_grace(clients: list[tuple[str, dict]]) -> None:
-        """
-        Meldung für noch namenlose Clients verzögern.
+    def _incomplete(
+        clients: list[tuple[str, dict]]
+    ) -> dict[str, list[str]]:
+        """MAC -> noch fehlende Angaben, nur für unvollständige Clients."""
+        fields = message_fields(entry)
+        pending = {
+            mac: missing_message_fields(mac, data, fields) for mac, data in clients
+        }
+        return {mac: missing for mac, missing in pending.items() if missing}
 
-        Der Name stammt vom Controller, nicht von Home Assistant: beim ersten
-        Auftauchen ist die DHCP-Lease oft noch nicht durch, der Hostname kommt
-        wenige Sekunden später. In der Wartezeit pollt der Coordinator weiter,
-        danach wird der Cache erneut gelesen.
-        """
-        await asyncio.sleep(NEW_CLIENT_NAME_GRACE)
-
-        refreshed = [
+    def _refresh(clients: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
+        return [
             (mac, coordinator.client_snapshot(mac) or snapshot)
             for mac, snapshot in clients
         ]
-        await _send_when_started(refreshed)
 
-    def _is_named(mac: str, data: dict) -> bool:
-        return preferred_client_name(data, mac).lower() != mac.lower()
+    async def _wait_then_send(clients: list[tuple[str, dict]]) -> None:
+        """
+        Meldung zurückhalten, bis alle gewünschten Angaben vorliegen.
+
+        Die Werte stammen vom Controller, nicht von Home Assistant: Hostname
+        und IP brauchen die DHCP-Lease, der AP-Name die Geräteliste. Die Gruppe
+        wartet gemeinsam, damit die Sammelmeldung ab mehreren neuen Clients
+        erhalten bleibt. Nach Ablauf der Grenze wird mit dem gesendet, was da
+        ist; die Meldung fällt also nie aus.
+        """
+        deadline = monotonic() + NEW_CLIENT_WAIT_TIMEOUT
+
+        while True:
+            clients = _refresh(clients)
+            incomplete = _incomplete(clients)
+
+            if not incomplete:
+                break
+
+            if monotonic() >= deadline:
+                _LOGGER.debug(
+                    "Wartezeit von %s s abgelaufen, Meldung wird unvollständig "
+                    "gesendet: %s",
+                    NEW_CLIENT_WAIT_TIMEOUT,
+                    incomplete,
+                )
+                break
+
+            await asyncio.sleep(NEW_CLIENT_WAIT_INTERVAL)
+
+        await _send_when_started(clients)
 
     async def _handle(clients: list[tuple[str, dict]]) -> None:
-        named = [(mac, data) for mac, data in clients if _is_named(mac, data)]
-        unnamed = [(mac, data) for mac, data in clients if not _is_named(mac, data)]
+        incomplete = _incomplete(clients)
 
-        if named:
-            await _send_when_started(named)
+        if not incomplete:
+            await _send_when_started(clients)
+            return
 
-        if unnamed:
-            _LOGGER.debug(
-                "%s neuer Client bzw. Clients noch ohne Namen, Meldung wartet %s s",
-                len(unnamed),
-                NEW_CLIENT_NAME_GRACE,
-            )
-            entry.async_create_background_task(
-                hass,
-                _send_after_grace(unnamed),
-                f"{DOMAIN}_new_client_grace",
-                eager_start=True,
-            )
+        _LOGGER.debug(
+            "Meldung über %s neue Client(s) wartet auf fehlende Angaben (%s), "
+            "höchstens %s s",
+            len(clients),
+            incomplete,
+            NEW_CLIENT_WAIT_TIMEOUT,
+        )
+        entry.async_create_background_task(
+            hass,
+            _wait_then_send(clients),
+            f"{DOMAIN}_new_client_wait",
+            eager_start=True,
+        )
 
     coordinator.async_set_new_client_callback(_handle)
     entry.async_on_unload(lambda: coordinator.async_set_new_client_callback(None))

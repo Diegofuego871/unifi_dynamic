@@ -567,7 +567,15 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._anchor = now
 
         # Vor der Meldung über neue Clients, damit dort der AP-Name steht.
+        refreshed = False
         if self._needs_ap_refresh():
+            await self._async_refresh_ap_names()
+            refreshed = True
+
+        # Hängt ein erstmals gesehener Client an einer unbekannten AP-MAC, wird
+        # die Geräteliste sofort nachgeladen, ohne die Sperrfrist abzuwarten.
+        # Betrifft nur den Erstkontakt und ist damit selten.
+        if new_macs and not first_fill and not refreshed and self._has_unknown_ap(new_macs):
             await self._async_refresh_ap_names()
 
         self._schedule_save()
@@ -620,6 +628,14 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             for data in self._client_cache.values()
             if data.get("ap_mac")
         )
+
+    def _has_unknown_ap(self, macs: list[str]) -> bool:
+        """True, wenn einer der Clients an einem unbekannten AP hängt."""
+        for mac in macs:
+            ap_mac = str(self._client_cache.get(mac, {}).get("ap_mac") or "").lower()
+            if ap_mac and ap_mac not in self._ap_names:
+                return True
+        return False
 
     async def _async_refresh_ap_names(self) -> None:
         """

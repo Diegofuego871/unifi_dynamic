@@ -5,6 +5,31 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.18.0] - 2026-09-15
+
+### Changed
+
+- The new-device notification now waits for **every** detail selected under
+  "Content", not just for the display name. If the display name, IP, SSID or
+  access point name is still missing, the message is held back and sent as
+  soon as everything is there.
+- SSID and access point are only waited for on wireless clients. The MAC is
+  always available and never delays anything. Unselected details never delay
+  anything either.
+- The wait limit went from 60 to 120 seconds, and completeness is now checked
+  every 5 seconds instead of waiting the full period. In practice the message
+  therefore arrives earlier than before.
+- Clients that appear together wait as a group, which keeps the summary
+  message for more than five new clients intact.
+- When a newly seen client is connected to an unknown access point MAC, the
+  UniFi device list is fetched immediately instead of waiting for the rate
+  limit, so the access point name is available within the wait window.
+
+### Notes
+
+- The message never fails to arrive: once the limit is reached it is sent with
+  whatever is available.
+
 ## [1.17.0] - 2026-09-14
 
 ### Changed
@@ -102,6 +127,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.18.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.18.0
 [1.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.17.0
 [1.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.16.1
 [1.16.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.16.0

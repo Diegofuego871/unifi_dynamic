@@ -356,6 +356,42 @@ def message_fields(entry: ConfigEntry) -> dict[str, bool]:
     }
 
 
+def missing_message_fields(
+    mac: str, data: dict[str, Any], fields: dict[str, bool]
+) -> list[str]:
+    """
+    Welche der gewünschten Angaben für diesen Client noch fehlen.
+
+    Geprüft wird nur, was für diesen Client überhaupt vorkommen kann: SSID und
+    Access Point gibt es ausschliesslich bei WLAN-Clients, die MAC ist immer
+    vorhanden und blockiert nie. Ist die Liste leer, ist die Meldung
+    vollständig.
+    """
+    missing: list[str] = []
+    wireless = data.get("is_wired") is False
+
+    if fields.get(CONF_MSG_NAME) and preferred_client_name(data, mac).lower() == mac.lower():
+        missing.append("name")
+
+    if fields.get(CONF_MSG_CONNECTION) and data.get("is_wired") is None:
+        missing.append("connection")
+
+    if fields.get(CONF_MSG_IP) and not data.get("ip"):
+        missing.append("ip")
+
+    if wireless and fields.get(CONF_MSG_SSID) and not data.get("essid"):
+        missing.append("ssid")
+
+    if wireless and fields.get(CONF_MSG_ACCESS_POINT):
+        ap_mac = str(data.get("ap_mac") or "").strip().lower()
+        ap_name = str(data.get(FIELD_AP_NAME) or "").strip()
+        # access_point_name fällt auf die MAC zurück; das gilt als unaufgelöst.
+        if not ap_mac or not ap_name or ap_name.lower() == ap_mac:
+            missing.append("access_point")
+
+    return missing
+
+
 def build_new_client_message(
     mac: str, data: dict[str, Any], fields: dict[str, bool] | None = None
 ) -> str:
