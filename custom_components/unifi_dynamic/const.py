@@ -123,9 +123,10 @@ MAX_NEW_CLIENT_MESSAGES = 5
 NEW_CLIENT_WAIT_TIMEOUT = 120
 NEW_CLIENT_WAIT_INTERVAL = 5
 
-# Klickziel der Push-Meldungen. Relativer Pfad, die Companion-App löst ihn
+# Klickziele der Push-Meldungen. Relative Pfade, die Companion-App löst sie
 # gegen die eigene Instanz auf.
 NOTIFICATION_URL = "/config/integrations/integration/unifi_dynamic"
+DEVICE_URL_TEMPLATE = "/config/devices/device/{device_id}"
 
 # Mitgeliefertes Bild für die Companion-App. Der Ordner brand/ wird beim Setup
 # als statischer Pfad registriert und ist damit ohne Authentifizierung

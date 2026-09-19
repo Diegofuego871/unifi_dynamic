@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -28,6 +29,7 @@ from .const import (
     DEFAULT_NOTIFY_WHEN_EMPTY,
     DEFAULT_PERSISTENT_NOTIFICATION,
     DEFAULT_PERSISTENT_WHEN_EMPTY,
+    DEVICE_URL_TEMPLATE,
     DOMAIN,
     FIELD_AP_NAME,
     MAX_NEW_CLIENT_MESSAGES,
@@ -65,8 +67,16 @@ def notify_target(entry: ConfigEntry) -> str | None:
     return target
 
 
+def device_url(hass: HomeAssistant, mac: str) -> str | None:
+    """Pfad zur Geräteseite dieses Clients, sofern das Gerät schon existiert."""
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, mac.lower())})
+    if device is None:
+        return None
+    return DEVICE_URL_TEMPLATE.format(device_id=device.id)
+
+
 def notification_data(
-    hass: HomeAssistant, tag: str
+    hass: HomeAssistant, tag: str, url: str | None = None
 ) -> dict[str, Any] | None:
     """
     Zusatzdaten für die Companion-App: Bild, Klickziel und Tag.
@@ -74,13 +84,14 @@ def notification_data(
     Das Bild liefert die Integration selbst aus, es gibt nichts zu
     konfigurieren. Fehlt es, entfällt der ganze Block. Der Tag steuert, welche
     Meldungen sich gegenseitig ersetzen: Purge-Meldungen überschreiben die
-    vorige, Neugeräte-Meldungen sind pro MAC eigenständig.
+    vorige, Neugeräte-Meldungen sind pro MAC eigenständig. Ohne url führt der
+    Klick auf die Integrationsseite.
     """
     image_url = hass.data.get(DATA_PUSH_IMAGE)
     if not image_url:
         return None
 
-    return {"tag": tag, "url": NOTIFICATION_URL, "icon_url": image_url}
+    return {"tag": tag, "url": url or NOTIFICATION_URL, "icon_url": image_url}
 
 
 def _purge_tag(entry: ConfigEntry) -> str:
@@ -486,6 +497,10 @@ async def async_send_new_clients_report(
             NEW_CLIENT_TITLE,
             build_new_client_message(mac, data, fields),
             notification_data(
-                hass, f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}"
+                hass,
+                f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}",
+                # Klick öffnet die Geräteseite dieses Clients. Existiert das
+                # Gerät noch nicht, bleibt es bei der Integrationsseite.
+                device_url(hass, mac),
             ),
         )

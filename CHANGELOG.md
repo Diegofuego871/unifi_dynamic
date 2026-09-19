@@ -5,6 +5,23 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.19.0] - 2026-09-16
+
+### Added
+
+- Tapping a new-device notification now opens that client's device page in
+  Home Assistant instead of the integration overview.
+
+### Changed
+
+- The notification additionally waits until the device exists in the device
+  registry, so the deep link always has a target. In the rare case where
+  everything else is already available this can delay the message by up to
+  five seconds.
+- If the device still does not exist when the wait limit is reached, the
+  notification falls back to the integration page. Purge reports and the
+  summary for more than five new clients keep pointing there as well.
+
 ## [1.18.0] - 2026-09-15
 
 ### Changed
@@ -127,6 +144,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.19.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.0
 [1.18.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.18.0
 [1.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.17.0
 [1.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.16.1

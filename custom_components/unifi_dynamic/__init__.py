@@ -198,12 +198,25 @@ def _register_new_client_handler(
     def _incomplete(
         clients: list[tuple[str, dict]]
     ) -> dict[str, list[str]]:
-        """MAC -> noch fehlende Angaben, nur für unvollständige Clients."""
+        """
+        MAC -> noch fehlende Angaben, nur für unvollständige Clients.
+
+        Neben den gewünschten Inhalten wird auch das Gerät abgewartet: Der
+        Klick auf die Meldung soll auf dessen Seite führen, und die Registry
+        kennt es erst, wenn die Plattformen die Entitäten angelegt haben.
+        """
         fields = message_fields(entry)
-        pending = {
-            mac: missing_message_fields(mac, data, fields) for mac, data in clients
-        }
-        return {mac: missing for mac, missing in pending.items() if missing}
+        dev_reg = dr.async_get(hass)
+        out: dict[str, list[str]] = {}
+
+        for mac, data in clients:
+            missing = missing_message_fields(mac, data, fields)
+            if dev_reg.async_get_device(identifiers={(DOMAIN, mac)}) is None:
+                missing.append("device")
+            if missing:
+                out[mac] = missing
+
+        return out
 
     def _refresh(clients: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
         return [

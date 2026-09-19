@@ -21,7 +21,8 @@ the client has not been reported by the UniFi controller for a while.
   content (display name, connection type, SSID, access point, IP, MAC).
 - The notification image ships with the integration, nothing to configure.
 - The new-device notification waits until every selected detail is actually
-  available, then sends immediately.
+  available, then sends immediately. Tapping it opens that client's device
+  page.
 - Persistent notification in the sidebar with the report of the last purge
   run, toggled separately from the push notification.
 - SSID and access point sensors only for clients that have been seen on
