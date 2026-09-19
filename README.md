@@ -118,8 +118,17 @@ standstill would classify all clients as overdue at once.
 
 The image shown in push notifications is served by the integration itself:
 the `brand/` folder is registered as a static path under `/unifi_dynamic/`,
-the same mechanism behind `/local/`. If a notify target rejects the extra
-data, the message is sent again without it.
+the same mechanism behind `/local/`. The image is optional: if it is missing,
+only the image is left out, the tap target and the tag stay. If a notify
+target rejects the extra data as a whole, the message is sent again without
+it — then without image, tap target and tag.
+
+The tap target is sent as `url` and as `clickAction`, because iOS reads the
+first key and Android only the second. On iOS the companion app asks "Open
+URL?" the first time a notification with a URL is tapped. That prompt belongs
+to the app, not to this integration: it is governed by "Confirm before opening
+URL" in the app's general settings and can be turned off permanently with
+"Always Open" in the prompt itself.
 
 Access point names come from `/stat/device`. That list is fetched far less
 often than the client list and kept in the cache. If the request fails, the

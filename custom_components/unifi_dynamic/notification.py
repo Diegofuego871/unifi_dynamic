@@ -77,21 +77,36 @@ def device_url(hass: HomeAssistant, mac: str) -> str | None:
 
 def notification_data(
     hass: HomeAssistant, tag: str, url: str | None = None
-) -> dict[str, Any] | None:
+) -> dict[str, Any]:
     """
-    Zusatzdaten für die Companion-App: Bild, Klickziel und Tag.
+    Zusatzdaten für die Companion-App: Klickziel, Tag und Bild.
+
+    Das Klickziel steht doppelt drin: iOS liest "url", Android ausschliesslich
+    "clickAction". Das ist der dokumentierte Weg, die jeweilige Gegenseite
+    ignoriert den fremden Schlüssel. Ohne url führt der Klick auf die
+    Integrationsseite.
+
+    Der Tag steuert, welche Meldungen sich gegenseitig ersetzen: Purge-
+    Meldungen überschreiben die vorige, Neugeräte-Meldungen sind pro MAC
+    eigenständig.
 
     Das Bild liefert die Integration selbst aus, es gibt nichts zu
-    konfigurieren. Fehlt es, entfällt der ganze Block. Der Tag steuert, welche
-    Meldungen sich gegenseitig ersetzen: Purge-Meldungen überschreiben die
-    vorige, Neugeräte-Meldungen sind pro MAC eigenständig. Ohne url führt der
-    Klick auf die Integrationsseite.
+    konfigurieren. Fehlt es, entfällt nur "icon_url" - Klickziel und Tag hängen
+    bewusst nicht daran, sonst würde mit dem Bild auch beides verschwinden.
     """
-    image_url = hass.data.get(DATA_PUSH_IMAGE)
-    if not image_url:
-        return None
+    target_url = url or NOTIFICATION_URL
 
-    return {"tag": tag, "url": url or NOTIFICATION_URL, "icon_url": image_url}
+    data: dict[str, Any] = {
+        "tag": tag,
+        "url": target_url,
+        "clickAction": target_url,
+    }
+
+    image_url = hass.data.get(DATA_PUSH_IMAGE)
+    if image_url:
+        data["icon_url"] = image_url
+
+    return data
 
 
 def _purge_tag(entry: ConfigEntry) -> str:
@@ -230,7 +245,8 @@ async def _async_push(
 
     Lehnt ein Ziel die Zusatzdaten ab, etwa Telegram oder E-Mail mit
     "extra keys not allowed", wird derselbe Aufruf einmal ohne data
-    wiederholt. Die Meldung kommt damit in jedem Fall an, nur ohne Bild.
+    wiederholt. Die Meldung kommt damit in jedem Fall an, dann aber ohne Bild,
+    Klickziel und Tag.
     """
     domain, _, object_id = target.partition(".")
     if domain != "notify" or not object_id:
@@ -250,7 +266,7 @@ async def _async_push(
             except Exception as err:  # noqa: BLE001
                 _LOGGER.debug(
                     "Ziel '%s' hat die Zusatzdaten abgelehnt (%s), erneuter "
-                    "Versuch ohne Bild",
+                    "Versuch ohne Zusatzdaten",
                     target,
                     err,
                 )

@@ -119,8 +119,17 @@ längerem Stillstand sämtliche Clients auf einmal als überfällig einstufen.
 
 Das Bild in den Push-Meldungen liefert die Integration selbst aus: Der Ordner
 `brand/` wird als statischer Pfad unter `/unifi_dynamic/` registriert, also
-über denselben Mechanismus wie `/local/`. Lehnt ein Benachrichtigungsziel die
-Zusatzdaten ab, wird die Meldung ohne sie erneut gesendet.
+über denselben Mechanismus wie `/local/`. Das Bild ist optional: Fehlt es,
+entfällt nur das Bild, Klickziel und Tag bleiben. Lehnt ein
+Benachrichtigungsziel die Zusatzdaten insgesamt ab, wird die Meldung ohne sie
+erneut gesendet — dann ohne Bild, Klickziel und Tag.
+
+Das Klickziel wird als `url` und als `clickAction` mitgeschickt, weil iOS den
+ersten Schlüssel liest und Android nur den zweiten. Unter iOS fragt die
+Companion-App beim ersten Klick auf eine Meldung mit URL „Adresse öffnen?".
+Diese Rückfrage gehört zur App, nicht zu dieser Integration: Sie hängt an
+„Adressen öffnen bestätigen" in den allgemeinen Einstellungen der App und
+lässt sich in der Rückfrage selbst mit „Immer geöffnet" dauerhaft abstellen.
 
 Die Namen der Access Points stammen aus `/stat/device`. Diese Liste wird
 deutlich seltener geholt als die Clientliste und im Cache gehalten. Schlägt

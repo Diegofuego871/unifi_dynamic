@@ -5,6 +5,31 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.19.1] - 2026-09-19
+
+### Fixed
+
+- Notifications now carry the tap target twice: as `url` for iOS and as
+  `clickAction` for Android. Only `url` was sent before, which Android does not
+  read at all — the app evaluates `clickAction` exclusively, and the push
+  bridge does not even forward `url` to Android. Tapping a notification on
+  Android therefore opened the default page instead of the device page.
+- The extra data block no longer depends on the notification image. Whenever
+  the image was unavailable, the whole block was dropped and the tap target and
+  the tag went with it, which silently disabled both the device link and the
+  replace-by-tag behavior. Only `icon_url` is omitted now.
+
+### Notes
+
+- On iOS the companion app asks "Open URL?" the first time a notification with
+  a URL is tapped. That prompt belongs to the app, not to this integration: it
+  is governed by "Confirm before opening URL" in the app's general settings and
+  can be turned off permanently with "Always Open" in the prompt itself. No
+  payload option influences it.
+- If a notify target rejects the data block, the message is still sent again
+  without it. That fallback now costs the tap target and the tag as well, not
+  just the image.
+
 ## [1.19.0] - 2026-09-16
 
 ### Added
@@ -144,6 +169,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.19.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.1
 [1.19.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.0
 [1.18.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.18.0
 [1.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.17.0
