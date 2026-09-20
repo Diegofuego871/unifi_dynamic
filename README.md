@@ -166,6 +166,14 @@ and the exclusion list. It is meant for clients that have already left the
 network: an active one is recreated by the next poll, with fresh entity ids,
 and reported as a new device again.
 
+A failure while handling either action is now always logged with the action
+kind, MAC and entry id, instead of only the confirmation step being covered.
+With debug logging enabled for `custom_components.unifi_dynamic`, a tap that
+reaches Home Assistant logs "Meldungsaktion ... empfangen" immediately; if
+that line never appears after a tap, the event is not reaching Home Assistant
+at all, which points at the phone or companion app rather than at the
+integration.
+
 Because a failed poll is not treated as a coordinator error — the cache is
 passed on so short outages do not turn every entity unavailable — an outage
 would otherwise go unnoticed until the next purge run. Consecutive failures are

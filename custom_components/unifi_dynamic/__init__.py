@@ -228,7 +228,8 @@ def _register_notification_action_handler(
     hass: HomeAssistant, entry: ConfigEntry, coordinator: UnifiDynamicCoordinator
 ) -> None:
     """
-    Nimmt den Tastendruck "Nie entfernen" aus einer Push-Meldung entgegen.
+    Nimmt die Tastendrücke "Nie entfernen" und "Jetzt entfernen" aus einer
+    Push-Meldung entgegen.
 
     Der Event-Bus ist global: es kommen auch Aktionen anderer Integrationen
     und anderer UniFi-Hosts an. Gefiltert wird deshalb über den Aktions-Key,
@@ -245,19 +246,29 @@ def _register_notification_action_handler(
         if entry_id != entry.entry_id:
             return
 
-        # Name vor dem Entfernen bestimmen, danach ist er aus dem Cache weg.
-        name = preferred_client_name(coordinator.client_data(mac), mac)
-
-        # Serialisiert, damit zwei schnell hintereinander getippte Buttons
-        # nicht beide vom selben Ausgangsstand lesen und einer davon verloren
-        # geht.
-        async with lock:
-            if kind == ACTION_EXCLUDE:
-                changed = _exclude_mac(hass, entry, mac)
-            else:
-                changed = coordinator.remove_client_now(mac) is not None
+        # Bestätigt im Log, dass die Aktion überhaupt ankommt. Ohne diese
+        # Zeile liesse sich ein Tastendruck, der gar nicht erst bei Home
+        # Assistant eintrifft (App/Telefon-Seite), nicht von einem Fehler
+        # hier im Code unterscheiden.
+        _LOGGER.debug("Meldungsaktion %s für %s empfangen", kind, mac)
 
         try:
+            # Name vor dem Entfernen bestimmen, danach ist er aus dem Cache
+            # weg. Bewusst innerhalb des try: ein Fehler beim Entfernen
+            # selbst darf nicht stillschweigend ohne jede Rückmeldung und
+            # ohne Logeintrag verschwinden, wie es vorher der Fall war, weil
+            # dieser Teil ausserhalb der Fehlerbehandlung lag.
+            name = preferred_client_name(coordinator.client_data(mac), mac)
+
+            # Serialisiert, damit zwei schnell hintereinander getippte
+            # Buttons nicht beide vom selben Ausgangsstand lesen und einer
+            # davon verloren geht.
+            async with lock:
+                if kind == ACTION_EXCLUDE:
+                    changed = _exclude_mac(hass, entry, mac)
+                else:
+                    changed = coordinator.remove_client_now(mac) is not None
+
             if kind == ACTION_EXCLUDE:
                 if changed:
                     _LOGGER.info(
@@ -279,8 +290,13 @@ def _register_notification_action_handler(
                 await async_send_removal_notice(
                     hass, entry, mac, name, removed=changed
                 )
-        except Exception:  # noqa: BLE001 - Rückmeldung darf nichts kippen
-            _LOGGER.exception("Bestätigung für %s fehlgeschlagen", mac)
+        except Exception:  # noqa: BLE001 - Meldungsaktion darf den Event-Bus nie kippen
+            _LOGGER.exception(
+                "Meldungsaktion %s für %s (Entry %s) fehlgeschlagen",
+                kind,
+                mac,
+                entry_id,
+            )
 
     entry.async_on_unload(
         hass.bus.async_listen(EVENT_NOTIFICATION_ACTION, _handle)

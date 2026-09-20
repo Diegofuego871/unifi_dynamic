@@ -5,6 +5,35 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.20.4] - 2026-09-20
+
+### Fixed
+
+- A failure while handling the "Jetzt entfernen" (or "Nie entfernen") action
+  from a push notification occurred outside the handler's error handling. The
+  removal itself, the exclusion-list update and the confirmation push all sat
+  in a single unprotected block; the actual `try`/`except` only wrapped the
+  confirmation call. An exception during removal propagated out of the event
+  handler uncaught, so the tap produced no confirmation and no clearly
+  attributable log entry — indistinguishable from the tap never reaching Home
+  Assistant at all. The whole action is now inside the `try` block, and a
+  failure is always logged with the action kind, MAC and entry ID.
+
+### Notes
+
+- A new debug log line ("Meldungsaktion ... empfangen") fires as soon as a
+  matching action reaches the handler, before anything else runs. With debug
+  logging enabled for `custom_components.unifi_dynamic`, its absence after a
+  button tap now points at the phone/companion-app side (the event never
+  reaching Home Assistant) rather than at this integration; its presence
+  followed by an error traceback points at a real failure in the removal or
+  exclusion-list logic.
+- This closes a genuine gap in the error handling, found by static review.
+  It has **not** been confirmed against a live report of "Jetzt entfernen"
+  doing nothing — no Home Assistant log from the failing run was available.
+  If the button still produces no reaction after this update, the debug log
+  line above is the next diagnostic step.
+
 ## [1.20.3] - 2026-09-20
 
 ### Removed
@@ -336,6 +365,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.20.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.4
 [1.20.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.3
 [1.20.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.2
 [1.20.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.1

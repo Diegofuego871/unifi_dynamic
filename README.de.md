@@ -169,6 +169,14 @@ auf die Ausnahmeliste. Gedacht ist der Button für Clients, die das Netz bereits
 verlassen haben: Ein noch aktiver Client wird vom nächsten Poll wieder angelegt,
 mit neuen Entity-IDs, und erneut als neues Gerät gemeldet.
 
+Ein Fehler bei der Verarbeitung einer der beiden Aktionen wird jetzt immer mit
+Art, MAC und Entry-ID geloggt, statt nur der Bestätigungsschritt abgedeckt zu
+sein. Mit aktiviertem Debug-Logging für `custom_components.unifi_dynamic`
+erscheint bei einem Tastendruck, der bei Home Assistant ankommt, sofort die
+Zeile „Meldungsaktion ... empfangen". Fehlt diese Zeile nach einem Tastendruck
+ganz, erreicht das Ereignis Home Assistant gar nicht erst — dann liegt es am
+Telefon oder an der Companion-App, nicht an der Integration.
+
 Da ein fehlgeschlagener Poll bewusst nicht als Coordinator-Fehler gilt — der
 Cache wird weitergereicht, damit kurze Aussetzer nicht alle Entitäten auf
 unavailable kippen — würde ein Ausfall sonst erst beim nächsten Purge-Lauf
