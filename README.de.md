@@ -131,10 +131,10 @@ Ausnahmeliste.
 Die Antwort nennt je Client den Entry, die MAC, den Namen, die Zahl entfernter
 Entitäten und Geräte sowie ob er zu diesem Zeitpunkt online war — dann legt ihn
 der nächste Abgleich wieder an, mit neuen Entity-IDs. Unbekannte Adressen
-kommen mit `removed: false` zurück, statt den Aufruf scheitern zu lassen. Wie
-beim Button in der Meldung wird ein entfernter Client 15 Minuten lang nicht
-erneut als neu gemeldet. Eine Bestätigungs-Push gibt es nicht, die Antwort ist
-die Rückmeldung.
+kommen mit `removed: false` zurück, statt den Aufruf scheitern zu lassen. Ein
+noch aktiver Client taucht beim nächsten Abgleich wieder auf und wird erneut
+als neu gemeldet - aus Sicht des Caches ist er das auch. Eine Bestätigungs-Push
+gibt es nicht, die Antwort ist die Rückmeldung.
 
 ## Funktionsweise
 
@@ -167,8 +167,7 @@ geladen hat.
 „Jetzt entfernen" löscht den Client sofort, ohne Rücksicht auf die Schwelle und
 auf die Ausnahmeliste. Gedacht ist der Button für Clients, die das Netz bereits
 verlassen haben: Ein noch aktiver Client wird vom nächsten Poll wieder angelegt,
-mit neuen Entity-IDs. Seine Neugeräte-Meldung bleibt 15 Minuten gesperrt, damit
-Entfernen und Wiedererkennung keine Schleife bilden.
+mit neuen Entity-IDs, und erneut als neues Gerät gemeldet.
 
 Da ein fehlgeschlagener Poll bewusst nicht als Coordinator-Fehler gilt — der
 Cache wird weitergereicht, damit kurze Aussetzer nicht alle Entitäten auf

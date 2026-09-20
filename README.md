@@ -130,9 +130,10 @@ exclusion list.
 The response lists per client the entry, MAC, name, the number of removed
 entities and devices, and whether it was online at the time — in which case the
 next poll recreates it with fresh entity ids. Unknown addresses come back with
-`removed: false` rather than failing the call. As with the notification button,
-a removed client is not reported as new again for 15 minutes. No confirmation
-push is sent; the response is the feedback.
+`removed: false` rather than failing the call. A client that is still active
+reappears on the next poll and is reported as new again, because from the
+cache's point of view it is. No confirmation push is sent; the response is the
+feedback.
 
 ## How it works
 
@@ -162,9 +163,8 @@ dialog was open, because it always writes the list it loaded on opening.
 
 "Jetzt entfernen" deletes the client on the spot, ignoring both the threshold
 and the exclusion list. It is meant for clients that have already left the
-network: an active one is recreated by the next poll, with fresh entity ids.
-Its new-device notification is held back for 15 minutes so removal and
-re-detection do not loop.
+network: an active one is recreated by the next poll, with fresh entity ids,
+and reported as a new device again.
 
 Because a failed poll is not treated as a coordinator error — the cache is
 passed on so short outages do not turn every entity unavailable — an outage

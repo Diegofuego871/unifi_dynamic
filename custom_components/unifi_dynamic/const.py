@@ -171,11 +171,6 @@ ACTION_PURGE_TITLE = "Jetzt entfernen"
 EXCLUDED_TITLE = "Gerät geschützt"
 REMOVED_TITLE = "Gerät entfernt"
 
-# Nach dem Entfernen per Meldungsaktion wird derselbe Client eine Weile nicht
-# erneut als neu gemeldet. Ist er noch online, taucht er beim nächsten Poll
-# sofort wieder auf; ohne diese Sperre käme im Sekundentakt dieselbe Meldung.
-NEW_CLIENT_SUPPRESS_SECONDS = 900
-
 # --- Überwachung der Controller-Erreichbarkeit -----------------------------
 # Gezählt werden aufeinanderfolgende fehlgeschlagene Abfragen, nicht
 # verstrichene Zeit: So hängt die Erkennung am eingestellten Abfrageintervall

@@ -697,8 +697,9 @@ async def async_send_removal_notice(
 
     Der Klick führt auf die Integrationsseite, nicht auf die Geräteseite: die
     gibt es nach dem Entfernen nicht mehr. Ist der Client noch online, legt
-    ihn der nächste Poll wieder an - darauf weist der Text hin, damit die
-    Rückkehr nicht als Fehler wirkt.
+    ihn der nächste Poll wieder an und meldet ihn erneut als neu - darauf
+    weist der Text hin, damit weder die Rückkehr noch die zweite Meldung als
+    Fehler wirkt.
     """
     target = notify_target(entry)
     if target is None:
@@ -707,7 +708,7 @@ async def async_send_removal_notice(
     if removed:
         message = (
             f"{name} wurde entfernt. Ist der Client noch aktiv, legt ihn der "
-            "nächste Abgleich wieder an."
+            "nächste Abgleich wieder an und meldet ihn erneut."
         )
     else:
         message = f"{name} war bereits entfernt."

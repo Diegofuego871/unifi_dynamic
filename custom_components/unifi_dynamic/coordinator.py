@@ -41,7 +41,6 @@ from .const import (
     DOWNTIME_GRACE_SECONDS,
     FIELD_AP_NAME,
     FIELD_SEEN_AT,
-    NEW_CLIENT_SUPPRESS_SECONDS,
     OFFLINE_AFTER_SECONDS,
     PURGE_SKIP_DISABLED,
     PURGE_SKIP_NO_CONTACT,
@@ -221,12 +220,6 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # Ankerzeitpunkt für die Downtime-Gutschrift: letzter erfolgreicher Poll
         # bzw. letzte Gutschrift. Verhindert doppeltes Gutschreiben.
         self._anchor: float | None = None
-
-        # MAC -> Zeitpunkt, bis zu dem der Client nicht erneut als neu gemeldet
-        # wird. Gefüllt beim Entfernen per Meldungsaktion, siehe
-        # remove_client_now. Absichtlich flüchtig: nach einem Neustart darf
-        # wieder gemeldet werden.
-        self._suppressed_new: dict[str, float] = {}
 
         # Aufeinanderfolgende fehlgeschlagene Abfragen. Grundlage der
         # Ausfallerkennung: siehe _register_failure.
@@ -728,26 +721,9 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             )
             return
 
-        now = time.time()
-        self._suppressed_new = {
-            mac: until for mac, until in self._suppressed_new.items() if until > now
-        }
-
         clients: list[tuple[str, dict[str, Any]]] = []
         for mac in new_macs:
             data = self.client_snapshot(mac)
-
-            if mac in self._suppressed_new:
-                # Gerade von Hand entfernt und sofort wieder aufgetaucht: der
-                # Client gehört wieder in den Cache, aber nicht in eine
-                # Meldung. Sonst entstünde eine Schleife aus Entfernen und
-                # Neumeldung.
-                _LOGGER.debug(
-                    "Client %s (%s) wieder aufgetaucht, Meldung noch gesperrt",
-                    preferred_client_name(data, mac),
-                    mac,
-                )
-                continue
 
             _LOGGER.info(
                 "Neuer Client erkannt: %s (%s)",
@@ -1036,11 +1012,12 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         """
         Entfernt einen Client sofort, ohne Rücksicht auf purge_days.
 
-        Für die Meldungsaktion "Jetzt entfernen" gedacht. Die Ausnahmeliste
-        wird bewusst übergangen: Der Befehl kommt direkt vom Nutzer und ist
-        eindeutiger als eine frühere Einstellung. Ist der Client noch online,
-        legt ihn der nächste Poll wieder an; die Meldung darüber bleibt für
-        NEW_CLIENT_SUPPRESS_SECONDS aus.
+        Für die Meldungsaktion "Jetzt entfernen" und den gleichnamigen Service
+        gedacht. Die Ausnahmeliste wird bewusst übergangen: Der Befehl kommt
+        direkt vom Nutzer und ist eindeutiger als eine frühere Einstellung.
+        Ist der Client noch online, legt ihn der nächste Poll wieder an und
+        meldet ihn regulär als neu - er ist aus Sicht des Caches dann auch
+        neu.
 
         Gibt None zurück, wenn zu der MAC nichts bekannt ist.
         """
@@ -1062,7 +1039,6 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         )
 
         removed = self._remove_client_records(mac_l, dev_reg, ent_reg, entries)
-        self._suppressed_new[mac_l] = time.time() + NEW_CLIENT_SUPPRESS_SECONDS
         self._schedule_save()
 
         _LOGGER.info(

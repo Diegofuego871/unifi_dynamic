@@ -5,6 +5,31 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.20.3] - 2026-09-20
+
+### Removed
+
+- The 15-minute hold on new-device notifications after a manual removal is
+  gone. It was meant to prevent a loop between removing a client and being told
+  about it again, but it silently swallowed the notification for a client that
+  was still active: the device came back on the next poll with no word about
+  it, which looks like a defect rather than a feature. Removing a client that
+  is still on the network now reports it as new again, which is what it is as
+  far as the cache is concerned.
+
+### Changed
+
+- The confirmation after a manual removal says so: "Ist der Client noch aktiv,
+  legt ihn der nächste Abgleich wieder an und meldet ihn erneut."
+
+### Fixed
+
+- The description of the outage notification option still described the
+  behavior of 1.20.0: an hour of silence, checked every 15 minutes, purge
+  suspended. Since 1.20.1 the threshold is the configured number of failed
+  polls, the check is event-driven, and the purge keeps its own separate
+  threshold — so the text promised something the integration no longer did.
+
 ## [1.20.2] - 2026-09-20
 
 ### Added
@@ -311,6 +336,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.20.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.3
 [1.20.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.2
 [1.20.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.1
 [1.20.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.0
