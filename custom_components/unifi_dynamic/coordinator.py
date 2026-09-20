@@ -39,7 +39,10 @@ from .const import (
     DOWNTIME_GRACE_SECONDS,
     FIELD_AP_NAME,
     FIELD_SEEN_AT,
+    NEW_CLIENT_SUPPRESS_SECONDS,
     OFFLINE_AFTER_SECONDS,
+    PURGE_SKIP_DISABLED,
+    PURGE_SKIP_NO_CONTACT,
     REQUEST_TIMEOUT_SECONDS,
     STORAGE_SAVE_DELAY,
     STORAGE_VERSION,
@@ -165,6 +168,12 @@ class PurgeResult:
     cache_size: int
     dry_run: bool = False
     skipped: bool = False
+    # Grund des Aussetzens, siehe PURGE_SKIP_* in const.py. Nur gesetzt, wenn
+    # skipped True ist.
+    skip_reason: str | None = None
+    # Sekunden seit dem letzten erfolgreichen Poll. None, wenn es noch keinen
+    # gab.
+    contact_gap: float | None = None
     clients: list[PurgedClient] = field(default_factory=list)
     removed_entities: int = 0
     removed_devices: int = 0
@@ -210,6 +219,12 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # Ankerzeitpunkt für die Downtime-Gutschrift: letzter erfolgreicher Poll
         # bzw. letzte Gutschrift. Verhindert doppeltes Gutschreiben.
         self._anchor: float | None = None
+
+        # MAC -> Zeitpunkt, bis zu dem der Client nicht erneut als neu gemeldet
+        # wird. Gefüllt beim Entfernen per Meldungsaktion, siehe
+        # remove_client_now. Absichtlich flüchtig: nach einem Neustart darf
+        # wieder gemeldet werden.
+        self._suppressed_new: dict[str, float] = {}
 
         self._migration_done = False
         self._removal_callbacks: list[Callable[[str], None]] = []
@@ -596,9 +611,27 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             )
             return
 
+        now = time.time()
+        self._suppressed_new = {
+            mac: until for mac, until in self._suppressed_new.items() if until > now
+        }
+
         clients: list[tuple[str, dict[str, Any]]] = []
         for mac in new_macs:
             data = self.client_snapshot(mac)
+
+            if mac in self._suppressed_new:
+                # Gerade von Hand entfernt und sofort wieder aufgetaucht: der
+                # Client gehört wieder in den Cache, aber nicht in eine
+                # Meldung. Sonst entstünde eine Schleife aus Entfernen und
+                # Neumeldung.
+                _LOGGER.debug(
+                    "Client %s (%s) wieder aufgetaucht, Meldung noch gesperrt",
+                    preferred_client_name(data, mac),
+                    mac,
+                )
+                continue
+
             _LOGGER.info(
                 "Neuer Client erkannt: %s (%s)",
                 preferred_client_name(data, mac),
@@ -708,9 +741,11 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         """
         Entfernt Clients, die seit purge_days nicht mehr gesehen wurden.
 
-        Grundlage ist ausschliesslich das selbst gesetzte _seen_at. Mit
-        dry_run=True wird nur ermittelt, was entfernt würde; es wird nichts
-        verändert.
+        Grundlage ist ausschliesslich das selbst gesetzte _seen_at, gemessen
+        gegen den letzten erfolgreichen Poll. Liegt dieser länger als
+        DOWNTIME_GRACE_SECONDS zurück, setzt der Lauf aus: ein nicht
+        erreichbarer Controller darf keinen Bestand löschen. Mit dry_run=True
+        wird nur ermittelt, was entfernt würde; es wird nichts verändert.
         """
         purge_days = _get_int_option(self.entry, CONF_PURGE_DAYS, DEFAULT_PURGE_DAYS)
         result = PurgeResult(
@@ -721,7 +756,31 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         if purge_days <= 0:
             result.skipped = True
+            result.skip_reason = PURGE_SKIP_DISABLED
             _LOGGER.debug("Purge deaktiviert (purge_days=%s)", purge_days)
+            return result
+
+        now = time.time()
+
+        # Referenz ist der letzte erfolgreiche Poll, nicht die Wanduhr. Sonst
+        # altern die Zeitstempel weiter, während der Controller nicht
+        # erreichbar ist, und nach purge_days wäre der gesamte Bestand fällig -
+        # obwohl kein einziger Client tatsächlich verschwunden ist. Dieselbe
+        # Referenz nutzt is_client_online.
+        reference = self._anchor
+        gap = None if reference is None else now - reference
+
+        if reference is None or gap > DOWNTIME_GRACE_SECONDS:
+            result.skipped = True
+            result.skip_reason = PURGE_SKIP_NO_CONTACT
+            result.contact_gap = gap
+            _LOGGER.warning(
+                "Purge ausgesetzt: %s. %s Clients im Cache bleiben unangetastet",
+                "noch kein erfolgreicher Poll"
+                if gap is None
+                else f"letzter erfolgreicher Poll vor {gap / 3600:.1f} Stunden",
+                len(self._client_cache),
+            )
             return result
 
         dev_reg = dr.async_get(self.hass)
@@ -730,7 +789,6 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         excluded = get_excluded_macs(self.entry)
         threshold = purge_days * 86400
-        now = time.time()
         stale: list[tuple[str, float]] = []
 
         for mac, data in list(self._client_cache.items()):
@@ -749,7 +807,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 )
                 continue
 
-            if now - seen >= threshold:
+            if reference - seen >= threshold:
                 stale.append((mac, seen))
 
         for mac, seen in stale:
@@ -759,7 +817,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 name=self._known_names.get(mac)
                 or preferred_client_name(self._client_cache.get(mac, {}), mac),
                 seen_at=seen,
-                age_seconds=now - seen,
+                age_seconds=reference - seen,
                 entities=len(client_entries),
             )
             result.clients.append(client)
@@ -781,22 +839,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                     result.removed_devices += 1
                 continue
 
-            for ent in client_entries:
-                ent_reg.async_remove(ent.entity_id)
-
-            if device is not None:
-                dev_reg.async_remove_device(device.id)
-                result.removed_devices += 1
-
-            self._client_cache.pop(mac, None)
-            self._known_names.pop(mac, None)
-
-            # Auch aus dem aktuellen Snapshot entfernen, sonst könnte die
-            # MAC vor dem nächsten Poll erneut angelegt werden.
-            if self.data:
-                self.data.pop(mac, None)
-
-            self._notify_removed(mac)
+            _, removed_devices = self._remove_client_records(
+                mac, dev_reg, ent_reg, entries
+            )
+            result.removed_devices += removed_devices
 
         if stale and not dry_run:
             self._schedule_save()
@@ -832,6 +878,96 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             )
 
         return result
+
+    @callback
+    def _remove_client_records(
+        self,
+        mac: str,
+        dev_reg: dr.DeviceRegistry,
+        ent_reg: er.EntityRegistry,
+        entries: list[er.RegistryEntry],
+    ) -> tuple[int, int]:
+        """
+        Entfernt Entitäten, Gerät und Cache-Eintrag eines Clients.
+
+        Gemeinsame Grundlage für den Purge-Lauf und das Entfernen von Hand.
+        Gibt die Zahl entfernter Entitäten und Geräte zurück.
+        """
+        client_entries = self._entity_entries_for_mac(entries, mac)
+        for ent in client_entries:
+            ent_reg.async_remove(ent.entity_id)
+
+        removed_devices = 0
+        device = dev_reg.async_get_device(identifiers={(DOMAIN, mac)})
+        if device is not None:
+            dev_reg.async_remove_device(device.id)
+            removed_devices = 1
+
+        self._client_cache.pop(mac, None)
+        self._known_names.pop(mac, None)
+
+        # Auch aus dem aktuellen Snapshot entfernen, sonst könnte die MAC vor
+        # dem nächsten Poll erneut angelegt werden.
+        if self.data:
+            self.data.pop(mac, None)
+
+        self._notify_removed(mac)
+        return len(client_entries), removed_devices
+
+    @callback
+    def remove_client_now(self, mac: str) -> tuple[int, int] | None:
+        """
+        Entfernt einen Client sofort, ohne Rücksicht auf purge_days.
+
+        Für die Meldungsaktion "Jetzt entfernen" gedacht. Die Ausnahmeliste
+        wird bewusst übergangen: Der Befehl kommt direkt vom Nutzer und ist
+        eindeutiger als eine frühere Einstellung. Ist der Client noch online,
+        legt ihn der nächste Poll wieder an; die Meldung darüber bleibt für
+        NEW_CLIENT_SUPPRESS_SECONDS aus.
+
+        Gibt None zurück, wenn zu der MAC nichts bekannt ist.
+        """
+        mac_l = mac.lower()
+        dev_reg = dr.async_get(self.hass)
+        ent_reg = er.async_get(self.hass)
+        entries = er.async_entries_for_config_entry(ent_reg, self.entry.entry_id)
+
+        known = (
+            mac_l in self._client_cache
+            or dev_reg.async_get_device(identifiers={(DOMAIN, mac_l)}) is not None
+            or bool(self._entity_entries_for_mac(entries, mac_l))
+        )
+        if not known:
+            return None
+
+        name = self._known_names.get(mac_l) or preferred_client_name(
+            self._client_cache.get(mac_l, {}), mac_l
+        )
+
+        removed = self._remove_client_records(mac_l, dev_reg, ent_reg, entries)
+        self._suppressed_new[mac_l] = time.time() + NEW_CLIENT_SUPPRESS_SECONDS
+        self._schedule_save()
+
+        _LOGGER.info(
+            "Client %s (%s) von Hand entfernt: %s Entitäten, %s Geräte",
+            name,
+            mac_l,
+            removed[0],
+            removed[1],
+        )
+        return removed
+
+    @property
+    def last_contact(self) -> float | None:
+        """Zeitpunkt des letzten erfolgreichen Polls, falls es einen gab."""
+        return self._anchor
+
+    @property
+    def contact_gap(self) -> float | None:
+        """Sekunden seit dem letzten erfolgreichen Poll, sonst None."""
+        if self._anchor is None:
+            return None
+        return time.time() - self._anchor
 
     def _entity_entries_for_mac(
         self, entries: list[er.RegistryEntry], mac: str

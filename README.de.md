@@ -22,7 +22,14 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 - Das Bild der Meldung bringt die Integration mit, nichts einzurichten.
 - Die Neugeräte-Meldung wartet, bis alle gewählten Angaben tatsächlich
   vorliegen, und sendet dann sofort. Ein Klick darauf öffnet die Geräteseite
-  des Clients.
+  des Clients. Zwei Buttons wirken direkt aus der Meldung heraus: „Nie
+  entfernen" setzt den Client auf die Ausnahmeliste, „Jetzt entfernen" löscht
+  ihn sofort.
+- Der Purge setzt aus, solange der Controller nicht erreichbar ist. Ein Ausfall
+  kann den Bestand damit nie löschen. Ein ausgesetzter Lauf wird gemeldet.
+- Die Erreichbarkeit des Controllers wird alle 15 Minuten geprüft und je
+  Störung einmal gemeldet, mit Entwarnung bei Rückkehr. Push und anhaltende
+  Benachrichtigung sind getrennt abschaltbar.
 - Anhaltende Benachrichtigung in der Seitenleiste mit dem Bericht des letzten
   Purge-Laufs, getrennt schaltbar von der Push-Meldung.
 - SSID- und Access-Point-Sensoren nur für Clients, die je im WLAN gesehen
@@ -83,6 +90,7 @@ ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind.
 | Ziel für Push-Benachrichtigung | notify-Service oder notify-Entity, etwa eine notify-Gruppe | keines |
 | Auch melden, wenn nichts entfernt wurde | Push nach jedem täglichen Lauf, auch ohne Treffer | aus |
 | Neue Geräte melden | Push, sobald ein Client zum ersten Mal auftaucht | an |
+| Melden, wenn der Controller ausfällt | Push nach einer Stunde ohne erfolgreichen Poll, samt Entwarnung | an |
 | Inhalt: … | Sechs Schalter für Anzeigename, Verbindungsart, SSID, Access Point, IP und MAC | alle an ausser MAC |
 
 ### Anhaltende Benachrichtigung
@@ -91,6 +99,7 @@ ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind.
 | --- | --- | --- |
 | Anhaltende Benachrichtigung erstellen | Bericht des Aufräumlaufs in der Seitenleiste | an |
 | Auch erstellen, wenn nichts entfernt wurde | Andernfalls erscheint sie nur bei tatsächlichen Treffern | an |
+| Auch erstellen, wenn der Controller ausfällt | Bleibt in der Seitenleiste, bis der Controller wieder antwortet | an |
 
 ## Aktion `unifi_dynamic.purge_now`
 
@@ -116,6 +125,33 @@ Controller-Uhr kein Thema.
 War Home Assistant länger als eine Stunde ohne erfolgreichen Poll, wird die
 Ausfallzeit allen Zeitstempeln gutgeschrieben. Sonst würde ein Neustart nach
 längerem Stillstand sämtliche Clients auf einmal als überfällig einstufen.
+
+Der Purge misst das Alter gegen den letzten erfolgreichen Poll, nicht gegen die
+Wanduhr, und setzt ganz aus, wenn dieser länger als eine Stunde zurückliegt.
+Bei nicht erreichbarem Controller würden die Zeitstempel sonst weiter altern,
+obwohl kein Client tatsächlich verschwunden ist, und der Lauf würde einen noch
+existierenden Bestand löschen. Ein ausgesetzter Lauf wird gemeldet, samt
+Angabe, wie lange der Controller schweigt.
+
+Der Button „Nie entfernen" in der Neugeräte-Meldung schreibt in dieselbe Option
+`purge_exclude`, die auch der Dialog bearbeitet; beide Wege bleiben damit
+konsistent. Entry-ID und MAC stecken im Aktions-Key, die Integration lauscht
+auf `mobile_app_notification_action` und ignoriert alles Fremde. Zu beachten:
+Wird der Optionsdialog gespeichert, während er offen war, überschreibt er eine
+zwischenzeitliche Ergänzung — er schreibt immer die Liste, die er beim Öffnen
+geladen hat.
+
+„Jetzt entfernen" löscht den Client sofort, ohne Rücksicht auf die Schwelle und
+auf die Ausnahmeliste. Gedacht ist der Button für Clients, die das Netz bereits
+verlassen haben: Ein noch aktiver Client wird vom nächsten Poll wieder angelegt,
+mit neuen Entity-IDs. Seine Neugeräte-Meldung bleibt 15 Minuten gesperrt, damit
+Entfernen und Wiedererkennung keine Schleife bilden.
+
+Da ein fehlgeschlagener Poll bewusst nicht als Coordinator-Fehler gilt — der
+Cache wird weitergereicht, damit kurze Aussetzer nicht alle Entitäten auf
+unavailable kippen — würde ein Ausfall sonst erst beim nächsten Purge-Lauf
+auffallen. Eine eigene Prüfung läuft alle 15 Minuten und meldet je Störung
+einmal, mit Entwarnung samt Dauer, sobald der Controller wieder antwortet.
 
 Das Bild in den Push-Meldungen liefert die Integration selbst aus: Der Ordner
 `brand/` wird als statischer Pfad unter `/unifi_dynamic/` registriert, also

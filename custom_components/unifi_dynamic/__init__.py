@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from datetime import time as dt_time
+from datetime import time as dt_time, timedelta
 from pathlib import Path
 from time import monotonic
 
@@ -24,17 +24,28 @@ from homeassistant.core import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.event import async_call_later, async_track_time_change
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_time_change,
+    async_track_time_interval,
+)
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    ACTION_EXCLUDE,
     ATTR_DRY_RUN,
     ATTR_ENTRY_ID,
     BRAND_DIR,
+    CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
+    CONF_SCAN_INTERVAL,
+    CONTACT_CHECK_INTERVAL,
     DATA_PUSH_IMAGE,
     DEFAULT_PURGE_TIME,
+    DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    DOWNTIME_GRACE_SECONDS,
+    EVENT_NOTIFICATION_ACTION,
     NEW_CLIENT_WAIT_INTERVAL,
     NEW_CLIENT_WAIT_TIMEOUT,
     PURGE_STARTUP_DELAY,
@@ -50,10 +61,15 @@ from .coordinator import (
     preferred_client_name,
 )
 from .notification import (
+    async_send_controller_offline,
+    async_send_controller_recovered,
+    async_send_exclusion_notice,
     async_send_new_clients_report,
     async_send_purge_report,
+    async_send_removal_notice,
     message_fields,
     missing_message_fields,
+    parse_client_action,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -107,9 +123,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(coordinator.async_add_listener(_handle_coordinator_update))
 
     # Options-Änderungen wirksam machen. Ohne diesen Listener ruft Home
-    # Assistant async_reload_entry NICHT auf; scan_interval und purge_days
-    # würden erst nach einem Neustart greifen.
-    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+    # Assistant async_reload_entry NICHT auf; das Abfrageintervall und die
+    # Purge-Zeit würden erst nach einem Neustart greifen. Nur diese beiden
+    # Werte werden beim Setup eingefroren, alles andere liest der Code bei
+    # jedem Lauf frisch aus dem Entry. Deshalb wird auch nur für sie neu
+    # geladen: die Ausnahmeliste per Meldungsaktion zu ergänzen würde sonst
+    # jedes Mal sämtliche Entitäten neu aufbauen.
+    signature = _reload_signature(entry)
+
+    async def _options_updated(
+        _hass: HomeAssistant, updated: ConfigEntry
+    ) -> None:
+        nonlocal signature
+
+        current = _reload_signature(updated)
+        if current == signature:
+            _LOGGER.debug(
+                "Options geändert, ohne Reload wirksam: %s", updated.options
+            )
+            return
+
+        signature = current
+        await hass.config_entries.async_reload(updated.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(_options_updated))
+
+    _register_notification_action_handler(hass, entry, coordinator)
+    _register_contact_watchdog(hass, entry, coordinator)
 
     async def _run_startup_purge(_now=None) -> None:
         # Beim Start nur melden, wenn tatsächlich etwas entfernt wurde. Sonst
@@ -161,9 +201,183 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload nach Options-Änderung. Zieht auch eine geänderte Purge-Zeit nach."""
-    await hass.config_entries.async_reload(entry.entry_id)
+def _reload_signature(entry: ConfigEntry) -> tuple[int, str]:
+    """
+    Die Options, die einen Reload erfordern.
+
+    Abfrageintervall und Purge-Zeit werden beim Setup in den Coordinator bzw.
+    in async_track_time_change übernommen und ändern sich sonst nicht mehr.
+    Alle übrigen Options - Schwelle, Ausnahmeliste, Meldungsziel und -inhalt -
+    werden bei jeder Verwendung frisch aus dem Entry gelesen und brauchen
+    keinen Reload.
+    """
+    raw = entry.options.get(
+        CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    )
+    try:
+        scan_interval = int(raw)
+    except (TypeError, ValueError):
+        scan_interval = DEFAULT_SCAN_INTERVAL
+
+    return scan_interval, _purge_time(entry).isoformat()
+
+
+@callback
+def _register_notification_action_handler(
+    hass: HomeAssistant, entry: ConfigEntry, coordinator: UnifiDynamicCoordinator
+) -> None:
+    """
+    Nimmt den Tastendruck "Nie entfernen" aus einer Push-Meldung entgegen.
+
+    Der Event-Bus ist global: es kommen auch Aktionen anderer Integrationen
+    und anderer UniFi-Hosts an. Gefiltert wird deshalb über den Aktions-Key,
+    der die Entry-ID mitführt.
+    """
+    lock = asyncio.Lock()
+
+    async def _handle(event: Event) -> None:
+        parsed = parse_client_action(str(event.data.get("action") or ""))
+        if parsed is None:
+            return
+
+        kind, entry_id, mac = parsed
+        if entry_id != entry.entry_id:
+            return
+
+        # Name vor dem Entfernen bestimmen, danach ist er aus dem Cache weg.
+        name = preferred_client_name(coordinator.client_data(mac), mac)
+
+        # Serialisiert, damit zwei schnell hintereinander getippte Buttons
+        # nicht beide vom selben Ausgangsstand lesen und einer davon verloren
+        # geht.
+        async with lock:
+            if kind == ACTION_EXCLUDE:
+                changed = _exclude_mac(hass, entry, mac)
+            else:
+                changed = coordinator.remove_client_now(mac) is not None
+
+        try:
+            if kind == ACTION_EXCLUDE:
+                if changed:
+                    _LOGGER.info(
+                        "Client %s (%s) per Meldungsaktion vom Entfernen "
+                        "ausgenommen",
+                        name,
+                        mac,
+                    )
+                else:
+                    _LOGGER.debug(
+                        "Client %s (%s) stand bereits auf der Ausnahmeliste",
+                        name,
+                        mac,
+                    )
+                # Auch beim zweiten Tippen bestätigen: der Zustand stimmt dann
+                # ja bereits.
+                await async_send_exclusion_notice(hass, entry, mac, name)
+            else:
+                await async_send_removal_notice(
+                    hass, entry, mac, name, removed=changed
+                )
+        except Exception:  # noqa: BLE001 - Rückmeldung darf nichts kippen
+            _LOGGER.exception("Bestätigung für %s fehlgeschlagen", mac)
+
+    entry.async_on_unload(
+        hass.bus.async_listen(EVENT_NOTIFICATION_ACTION, _handle)
+    )
+
+
+@callback
+def _register_contact_watchdog(
+    hass: HomeAssistant, entry: ConfigEntry, coordinator: UnifiDynamicCoordinator
+) -> None:
+    """
+    Überwacht, ob der Controller noch antwortet.
+
+    Eigener Takt, weil ein Poll-Fehler bewusst nicht als Coordinator-Fehler
+    gilt: Der Cache wird weitergereicht, damit kurze Aussetzer die Entitäten
+    nicht auf unavailable kippen. Ohne diese Prüfung fiele ein echter Ausfall
+    erst beim nächsten Purge-Lauf auf, also im ungünstigsten Fall einen Tag
+    später.
+
+    Gemeldet wird einmalig beim Überschreiten der Schwelle, nicht bei jeder
+    Prüfung. Entwarnung, sobald wieder ein Poll durchkommt.
+    """
+    reported = False
+    # Letzter erfolgreicher Poll vor der Störung. Grundlage für die Dauer in
+    # der Entwarnung: der aktuelle Abstand taugt dafür nicht, der ist nach dem
+    # ersten geglückten Poll wieder nahe null.
+    offline_from: float | None = None
+
+    async def _check(_now=None) -> None:
+        nonlocal reported, offline_from
+
+        gap = coordinator.contact_gap
+        offline = gap is None or gap > DOWNTIME_GRACE_SECONDS
+
+        if offline and not reported:
+            reported = True
+            offline_from = coordinator.last_contact
+            _LOGGER.warning(
+                "UniFi-Controller %s antwortet seit %s nicht mehr",
+                coordinator.host,
+                "dem Start" if gap is None else f"{gap / 3600:.1f} Stunden",
+            )
+            try:
+                await async_send_controller_offline(
+                    hass, entry, coordinator.host, gap
+                )
+            except Exception:  # noqa: BLE001 - Meldung darf nichts kippen
+                _LOGGER.exception("Störungsmeldung fehlgeschlagen")
+            return
+
+        if not offline and reported:
+            reported = False
+            last = coordinator.last_contact
+            outage = (
+                None
+                if offline_from is None or last is None
+                else max(last - offline_from, 0.0)
+            )
+            offline_from = None
+
+            _LOGGER.info("UniFi-Controller %s antwortet wieder", coordinator.host)
+            try:
+                await async_send_controller_recovered(
+                    hass, entry, coordinator.host, outage
+                )
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Entwarnung fehlgeschlagen")
+
+    entry.async_on_unload(
+        async_track_time_interval(
+            hass, _check, timedelta(seconds=CONTACT_CHECK_INTERVAL)
+        )
+    )
+
+
+@callback
+def _exclude_mac(hass: HomeAssistant, entry: ConfigEntry, mac: str) -> bool:
+    """
+    Ergänzt die MAC in der Ausnahmeliste der Options.
+
+    Bewusst dieselbe Liste wie im Optionsdialog, nicht ein zweiter Speicher:
+    So bleibt der Eintrag dort sichtbar und lässt sich auch wieder entfernen.
+    Gibt False zurück, wenn die MAC schon drinstand.
+    """
+    current = [
+        str(item).strip().lower()
+        for item in (entry.options.get(CONF_PURGE_EXCLUDE) or [])
+        if str(item).strip()
+    ]
+
+    if mac in current:
+        return False
+
+    hass.config_entries.async_update_entry(
+        entry,
+        options={**entry.options, CONF_PURGE_EXCLUDE: [*current, mac]},
+    )
+    return True
 
 
 @callback

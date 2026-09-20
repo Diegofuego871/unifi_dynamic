@@ -22,7 +22,13 @@ the client has not been reported by the UniFi controller for a while.
 - The notification image ships with the integration, nothing to configure.
 - The new-device notification waits until every selected detail is actually
   available, then sends immediately. Tapping it opens that client's device
-  page.
+  page. Two buttons act right from the notification: "Nie entfernen" adds the
+  client to the exclusion list, "Jetzt entfernen" deletes it immediately.
+- The purge is skipped while the controller is unreachable, so an outage can
+  never delete the inventory. A skipped run is reported.
+- The controller's reachability is watched on a 15-minute schedule and
+  reported once per outage, with an all-clear on recovery. Push and persistent
+  notification can be switched off separately.
 - Persistent notification in the sidebar with the report of the last purge
   run, toggled separately from the push notification.
 - SSID and access point sensors only for clients that have been seen on
@@ -82,6 +88,7 @@ grouped into four sections, collapsed when opened.
 | Push notification target | notify service or notify entity, for example a notify group | none |
 | Also report when nothing was removed | Push after every daily run, even with no hits | off |
 | Report new devices | Push as soon as a client appears for the first time | on |
+| Report when the controller goes down | Push after an hour without a successful poll, plus an all-clear | on |
 | Content: … | Six switches for display name, connection type, SSID, access point, IP and MAC | all on except MAC |
 
 ### Persistent notification
@@ -90,6 +97,7 @@ grouped into four sections, collapsed when opened.
 | --- | --- | --- |
 | Create persistent notification | Report of the cleanup run in the sidebar | on |
 | Also create when nothing was removed | Otherwise it only appears on actual hits | on |
+| Also create when the controller goes down | Stays in the sidebar until the controller answers again | on |
 
 ## Action `unifi_dynamic.purge_now`
 
@@ -115,6 +123,32 @@ millisecond variants, missing values and a deviating controller clock.
 If Home Assistant went more than an hour without a successful poll, the
 downtime is credited to every timestamp. Otherwise a restart after a longer
 standstill would classify all clients as overdue at once.
+
+The purge measures ages against the last successful poll, not against the wall
+clock, and is skipped entirely when that poll is more than an hour old. A
+controller that is unreachable would otherwise let every timestamp age on
+while no client had actually disappeared, and the run would delete a still
+existing inventory. A skipped run is reported and states how long the
+controller has been silent.
+
+The "Nie entfernen" button in the new-device notification writes to the same
+`purge_exclude` option the dialog edits, so both ways stay in sync. Entry id
+and MAC travel inside the action key; the integration listens for
+`mobile_app_notification_action` and ignores everything that is not its own.
+Note that saving the options dialog overwrites an addition made while the
+dialog was open, because it always writes the list it loaded on opening.
+
+"Jetzt entfernen" deletes the client on the spot, ignoring both the threshold
+and the exclusion list. It is meant for clients that have already left the
+network: an active one is recreated by the next poll, with fresh entity ids.
+Its new-device notification is held back for 15 minutes so removal and
+re-detection do not loop.
+
+Because a failed poll is not treated as a coordinator error — the cache is
+passed on so short outages do not turn every entity unavailable — an outage
+would otherwise go unnoticed until the next purge run. A separate check runs
+every 15 minutes and reports once per outage, with an all-clear and the
+duration once the controller answers again.
 
 The image shown in push notifications is served by the integration itself:
 the `brand/` folder is registered as a static path under `/unifi_dynamic/`,

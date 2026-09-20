@@ -5,6 +5,85 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.20.0] - 2026-09-20
+
+### Fixed
+
+- The purge no longer deletes the inventory while the controller is
+  unreachable. Ages were measured against the wall clock, so a controller that
+  stayed away — replaced hardware, changed address, rotated API key — let every
+  timestamp age on although not a single client had actually disappeared. After
+  `purge_days` the daily run removed all of them, devices and entities
+  included. Both the staleness check and the reported age are now measured
+  against the last successful poll, the same reference `is_client_online()`
+  already used.
+- If that poll is more than an hour old, or if there has not been one at all,
+  the run is skipped entirely instead of working from timestamps it cannot
+  trust.
+
+### Added
+
+- A skipped run of that kind is reported rather than passing unnoticed. The
+  message states how long the controller has been silent and how many clients
+  stay untouched, and it carries the title suffix "(ausgesetzt)". It is sent
+  even when "Also report when nothing was removed" is off, because a skipped
+  run is a fault, not an empty result. A run skipped because `purge_days` is 0
+  stays silent as before, and so does a skipped run with an empty cache.
+- New-device notifications now offer two buttons. "Nie entfernen" adds the
+  client to the exclusion list; it writes to the same `purge_exclude` option
+  the dialog edits, so the entry shows up there as selected and can be removed
+  again. "Jetzt entfernen" deletes the client immediately, regardless of the
+  threshold and of the exclusion list — a direct instruction outweighs an
+  earlier setting. A confirmation replaces the original notification in both
+  cases, since the tap happens outside Home Assistant and would otherwise have
+  no visible effect.
+- "Nie entfernen" is left out where it would be pointless: on the summary
+  message for more than five new clients, and for clients already on the list.
+- A client removed by hand is not reported as new again for 15 minutes. If it
+  is still active, the next poll recreates it within seconds, and without that
+  hold the pair of removal and new-device notification would loop. The
+  confirmation says so, so the return does not look like a fault.
+- The integration now watches whether the controller still answers, on its own
+  15-minute schedule. A poll failure deliberately does not count as a
+  coordinator error — the cache is passed on so short outages do not turn every
+  entity unavailable — which used to mean a real outage surfaced only at the
+  next purge run, up to a day later. It is now reported once per outage, with
+  an all-clear including the duration once the controller answers again.
+- Two new options, both on by default: "Melden, wenn der Controller ausfällt"
+  in the push section and "Auch erstellen, wenn der Controller ausfällt" in the
+  persistent section. The persistent notification stays in the sidebar for as
+  long as the outage lasts and is dismissed automatically on recovery.
+
+### Changed
+
+- An options change only reloads the integration when the polling interval or
+  the daily purge time changed. Those two are the only values frozen at setup
+  time; the threshold, the exclusion list, the notification target and the
+  message contents are read fresh on every use. Without this, every tap on the
+  new button would have rebuilt every entity.
+
+### Notes
+
+- Entry id and MAC travel inside the action key, not in `action_data`: iOS
+  reads that field from the payload key `homeassistant` and Android from
+  `action_data`, so the key is the only platform-independent carrier.
+- While the controller stays unreachable, the skipped-run message arrives once
+  a day until it answers again. Each one replaces the previous, since they
+  share a tag.
+- Action buttons only work with companion app targets. Telegram, email and
+  notify entities discard the data block anyway.
+- If the options dialog is open while someone taps "Nie entfernen", saving the
+  dialog overwrites that addition. The dialog always writes the list it loaded
+  when it was opened.
+- "Jetzt entfernen" is not permanent for an active client: it deletes the
+  device and its entities, and the next poll creates them again with fresh
+  entity ids. For a client that should stay away, the exclusion list is the
+  wrong tool as well — it only prevents removal. The button is meant for
+  clients that have already left the network.
+- The outage watchdog checks every 15 minutes, so the first notification
+  arrives at most 15 minutes after the hour-long threshold is crossed, and the
+  all-clear at most 15 minutes after recovery.
+
 ## [1.19.1] - 2026-09-19
 
 ### Fixed
@@ -169,6 +248,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.20.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.0
 [1.19.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.1
 [1.19.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.0
 [1.18.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.18.0

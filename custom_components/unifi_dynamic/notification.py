@@ -12,25 +12,38 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    ACTION_EXCLUDE,
+    ACTION_EXCLUDE_TITLE,
+    ACTION_PURGE,
+    ACTION_PURGE_TITLE,
+    ACTION_SEPARATOR,
     CONF_MSG_ACCESS_POINT,
     CONF_MSG_CONNECTION,
     CONF_MSG_IP,
     CONF_MSG_MAC,
     CONF_MSG_NAME,
     CONF_MSG_SSID,
+    CONF_NOTIFY_CONTROLLER_OFFLINE,
     CONF_NOTIFY_NEW_CLIENTS,
     CONF_NOTIFY_SERVICE,
     CONF_NOTIFY_WHEN_EMPTY,
+    CONF_PERSISTENT_CONTROLLER_OFFLINE,
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PERSISTENT_WHEN_EMPTY,
+    CONTROLLER_OFFLINE_TITLE,
+    CONTROLLER_ONLINE_TITLE,
+    CONTROLLER_TAG_PREFIX,
     DATA_PUSH_IMAGE,
+    DEFAULT_NOTIFY_CONTROLLER_OFFLINE,
     DEFAULT_NOTIFY_NEW_CLIENTS,
     DEFAULT_NOTIFY_SERVICE,
     DEFAULT_NOTIFY_WHEN_EMPTY,
+    DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
     DEFAULT_PERSISTENT_NOTIFICATION,
     DEFAULT_PERSISTENT_WHEN_EMPTY,
     DEVICE_URL_TEMPLATE,
     DOMAIN,
+    EXCLUDED_TITLE,
     FIELD_AP_NAME,
     MAX_NEW_CLIENT_MESSAGES,
     MESSAGE_FIELDS,
@@ -41,8 +54,11 @@ from .const import (
     NOTIFICATION_TITLE,
     NOTIFICATION_URL,
     NOTIFY_NONE,
+    PURGE_SKIP_DISABLED,
+    PURGE_SKIP_NO_CONTACT,
+    REMOVED_TITLE,
 )
-from .coordinator import PurgeResult, preferred_client_name
+from .coordinator import PurgeResult, get_excluded_macs, preferred_client_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,11 +91,73 @@ def device_url(hass: HomeAssistant, mac: str) -> str | None:
     return DEVICE_URL_TEMPLATE.format(device_id=device.id)
 
 
+def client_actions(
+    entry_id: str, mac: str, *, excluded: bool = False
+) -> list[dict[str, str]]:
+    """
+    Aktionsbuttons für die Meldung eines neuen Clients.
+
+    "Nie entfernen" setzt ihn auf die Ausnahmeliste, "Jetzt entfernen" löscht
+    ihn sofort. Steht er bereits auf der Ausnahmeliste, wäre der erste Button
+    wirkungslos und entfällt.
+
+    Entry-ID und MAC stecken im Aktions-Key, nicht in action_data: Den Key
+    melden beide Companion-Apps unverändert zurück, action_data liest iOS
+    dagegen aus dem Payload-Schlüssel "homeassistant" und Android aus
+    "action_data". Der Key ist damit der einzige plattformunabhängige Weg.
+    """
+    token = mac.replace(":", "").lower()
+    kinds = [ACTION_PURGE] if excluded else [ACTION_EXCLUDE, ACTION_PURGE]
+    titles = {ACTION_EXCLUDE: ACTION_EXCLUDE_TITLE, ACTION_PURGE: ACTION_PURGE_TITLE}
+
+    return [
+        {
+            "action": ACTION_SEPARATOR.join((kind, entry_id, token)),
+            "title": titles[kind],
+        }
+        for kind in kinds
+    ]
+
+
+def parse_client_action(action: str) -> tuple[str, str, str] | None:
+    """
+    Zerlegt einen Aktions-Key in Art, Entry-ID und MAC.
+
+    Gibt None zurück, wenn der Key nicht von dieser Integration stammt oder
+    nicht wohlgeformt ist. Der Event-Bus ist global, es kommen also auch
+    fremde Aktionen an.
+    """
+    parts = str(action or "").split(ACTION_SEPARATOR)
+    if len(parts) != 3:
+        return None
+
+    kind = parts[0].strip().upper()
+    if kind not in (ACTION_EXCLUDE, ACTION_PURGE):
+        return None
+
+    entry_id = parts[1].strip()
+    token = parts[2].strip().lower()
+
+    if not entry_id or len(token) != 12:
+        return None
+
+    try:
+        int(token, 16)
+    except ValueError:
+        return None
+
+    mac = ":".join(token[i : i + 2] for i in range(0, 12, 2))
+    return kind, entry_id, mac
+
+
 def notification_data(
-    hass: HomeAssistant, tag: str, url: str | None = None
+    hass: HomeAssistant,
+    tag: str,
+    url: str | None = None,
+    actions: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """
-    Zusatzdaten für die Companion-App: Klickziel, Tag und Bild.
+    Zusatzdaten für die Companion-App: Klickziel, Tag, Bild und Aktionen.
 
     Das Klickziel steht doppelt drin: iOS liest "url", Android ausschliesslich
     "clickAction". Das ist der dokumentierte Weg, die jeweilige Gegenseite
@@ -93,6 +171,9 @@ def notification_data(
     Das Bild liefert die Integration selbst aus, es gibt nichts zu
     konfigurieren. Fehlt es, entfällt nur "icon_url" - Klickziel und Tag hängen
     bewusst nicht daran, sonst würde mit dem Bild auch beides verschwinden.
+
+    Aktionen sind optional und werden nur von den Companion-Apps ausgewertet.
+    Andere Ziele ignorieren den Block ohnehin oder lehnen ihn ab.
     """
     target_url = url or NOTIFICATION_URL
 
@@ -105,6 +186,9 @@ def notification_data(
     image_url = hass.data.get(DATA_PUSH_IMAGE)
     if image_url:
         data["icon_url"] = image_url
+
+    if actions:
+        data["actions"] = actions
 
     return data
 
@@ -156,7 +240,25 @@ def _detail_counts(result: PurgeResult) -> str:
     )
 
 
+def _contact_gap_text(result: PurgeResult) -> str:
+    """Wie lange der letzte erfolgreiche Poll her ist."""
+    if result.contact_gap is None:
+        return "bisher kein erfolgreicher Kontakt zum Controller"
+
+    hours = result.contact_gap / 3600
+    if hours < 48:
+        return f"kein Kontakt zum Controller seit {hours:.1f} Stunden"
+    return f"kein Kontakt zum Controller seit {hours / 24:.1f} Tagen"
+
+
 def build_push_message(result: PurgeResult) -> str:
+    if result.skip_reason == PURGE_SKIP_NO_CONTACT:
+        return (
+            f"Purge ausgesetzt: {_contact_gap_text(result)}. "
+            f"{_plural(result.cache_size, 'Client', 'Clients')} im Cache bleiben "
+            "erhalten."
+        )
+
     if not result.changed:
         return (
             "Keine Clients entfernt. "
@@ -175,6 +277,18 @@ def build_push_message(result: PurgeResult) -> str:
 
 
 def build_persistent_message(result: PurgeResult) -> str:
+    if result.skip_reason == PURGE_SKIP_NO_CONTACT:
+        return (
+            "Purge ausgesetzt.\n\n"
+            f"Grund: {_contact_gap_text(result)}.\n\n"
+            "Ohne erfolgreichen Poll altern die Zeitstempel aller Clients "
+            "weiter, obwohl kein einziger tatsächlich verschwunden ist. Der "
+            "Lauf würde deshalb Geräte entfernen, die es noch gibt, und setzt "
+            "aus, bis der Controller wieder antwortet.\n\n"
+            f"Unangetastet: {_plural(result.cache_size, 'Client', 'Clients')} "
+            "im Cache"
+        )
+
     if not result.changed:
         protected = (
             f", davon {result.protected} geschützt" if result.protected else ""
@@ -317,14 +431,22 @@ async def async_send_purge_report(
     Wird für den Lauf direkt nach dem Start genutzt, damit nicht jeder
     Neustart eine Meldung erzeugt.
     """
-    if result.skipped:
+    # Ein deaktivierter Purge ist der gewollte Normalfall und wird nie
+    # gemeldet. Ein wegen fehlendem Controller-Kontakt ausgesetzter Lauf schon:
+    # er bedeutet, dass die Integration gerade blind ist. Ohne Clients im Cache
+    # gibt es allerdings nichts zu schützen, dann bleibt es still.
+    if result.skip_reason == PURGE_SKIP_DISABLED:
         return
-    if not result.changed and not report_empty:
+    if result.skipped and not result.cache_size:
+        return
+    if not result.skipped and not result.changed and not report_empty:
         return
 
     title = NOTIFICATION_TITLE
     if result.dry_run:
         title = f"{NOTIFICATION_TITLE} (Testlauf)"
+    elif result.skipped:
+        title = f"{NOTIFICATION_TITLE} (ausgesetzt)"
 
     # Anhaltende Benachrichtigung: eigener Schalter, eigene Leerlauf-Regel.
     # Wird sie bei einem leeren Lauf übersprungen, bleibt die vorige stehen -
@@ -350,8 +472,14 @@ async def async_send_purge_report(
     if target is None:
         return
 
-    if not result.changed and not _bool_option(
-        entry, CONF_NOTIFY_WHEN_EMPTY, DEFAULT_NOTIFY_WHEN_EMPTY
+    # Ein ausgesetzter Lauf ist kein leerer Lauf, sondern eine Störung: er
+    # geht deshalb auch dann raus, wenn leere Läufe nicht gemeldet werden.
+    # Dauert der Ausfall an, kommt die Meldung einmal pro Tag; sie ersetzt
+    # dank gleichem Tag jeweils die vorige.
+    if (
+        not result.skipped
+        and not result.changed
+        and not _bool_option(entry, CONF_NOTIFY_WHEN_EMPTY, DEFAULT_NOTIFY_WHEN_EMPTY)
     ):
         return
 
@@ -505,8 +633,13 @@ async def async_send_new_clients_report(
         return
 
     fields = message_fields(entry)
+    excluded = get_excluded_macs(entry)
 
     for mac, data in clients:
+        actions = client_actions(
+            entry.entry_id, mac, excluded=mac.lower() in excluded
+        )
+
         await _async_push(
             hass,
             target,
@@ -518,5 +651,171 @@ async def async_send_new_clients_report(
                 # Klick öffnet die Geräteseite dieses Clients. Existiert das
                 # Gerät noch nicht, bleibt es bei der Integrationsseite.
                 device_url(hass, mac),
+                actions,
             ),
         )
+
+
+async def async_send_exclusion_notice(
+    hass: HomeAssistant, entry: ConfigEntry, mac: str, name: str
+) -> None:
+    """
+    Bestätigt, dass ein Client von der Ausnahmeliste geschützt ist.
+
+    Bewusst mit dem Tag der ursprünglichen Neugeräte-Meldung: Die Bestätigung
+    ersetzt sie damit, statt eine zweite Meldung danebenzustellen. Ohne diese
+    Rückmeldung bliebe der Tastendruck auf dem Telefon ohne sichtbare Wirkung,
+    denn er passiert ausserhalb von Home Assistant.
+    """
+    target = notify_target(entry)
+    if target is None:
+        return
+
+    await _async_push(
+        hass,
+        target,
+        EXCLUDED_TITLE,
+        f"{name} wird nicht mehr automatisch entfernt.",
+        notification_data(
+            hass,
+            f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}",
+            device_url(hass, mac),
+        ),
+    )
+
+
+async def async_send_removal_notice(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    mac: str,
+    name: str,
+    *,
+    removed: bool = True,
+) -> None:
+    """
+    Bestätigt, dass ein Client von Hand entfernt wurde.
+
+    Der Klick führt auf die Integrationsseite, nicht auf die Geräteseite: die
+    gibt es nach dem Entfernen nicht mehr. Ist der Client noch online, legt
+    ihn der nächste Poll wieder an - darauf weist der Text hin, damit die
+    Rückkehr nicht als Fehler wirkt.
+    """
+    target = notify_target(entry)
+    if target is None:
+        return
+
+    if removed:
+        message = (
+            f"{name} wurde entfernt. Ist der Client noch aktiv, legt ihn der "
+            "nächste Abgleich wieder an."
+        )
+    else:
+        message = f"{name} war bereits entfernt."
+
+    await _async_push(
+        hass,
+        target,
+        REMOVED_TITLE,
+        message,
+        notification_data(hass, f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Erreichbarkeit des Controllers
+# ---------------------------------------------------------------------------
+
+
+def _controller_tag(entry: ConfigEntry) -> str:
+    return f"{CONTROLLER_TAG_PREFIX}_{entry.entry_id}"
+
+
+def _controller_notification_id(entry: ConfigEntry) -> str:
+    return f"{DOMAIN}_controller_{entry.entry_id}"
+
+
+def build_controller_offline_message(host: str, gap: float | None) -> str:
+    if gap is None:
+        return (
+            f"Seit dem Start kein erfolgreicher Abruf von {host}. Clients "
+            "werden nicht mehr aktualisiert, der Purge setzt aus."
+        )
+
+    hours = gap / 3600
+    since = f"{hours:.1f} Stunden" if hours < 48 else f"{hours / 24:.1f} Tagen"
+    return (
+        f"Seit {since} kein erfolgreicher Abruf von {host}. Clients werden "
+        "nicht mehr aktualisiert, der Purge setzt aus."
+    )
+
+
+async def async_send_controller_offline(
+    hass: HomeAssistant, entry: ConfigEntry, host: str, gap: float | None
+) -> None:
+    """Meldet, dass der Controller nicht mehr antwortet."""
+    message = build_controller_offline_message(host, gap)
+
+    if _bool_option(
+        entry,
+        CONF_PERSISTENT_CONTROLLER_OFFLINE,
+        DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
+    ):
+        persistent_notification.async_create(
+            hass,
+            message,
+            title=CONTROLLER_OFFLINE_TITLE,
+            notification_id=_controller_notification_id(entry),
+        )
+
+    target = notify_target(entry)
+    if target is None:
+        return
+
+    if not _bool_option(
+        entry, CONF_NOTIFY_CONTROLLER_OFFLINE, DEFAULT_NOTIFY_CONTROLLER_OFFLINE
+    ):
+        return
+
+    await _async_push(
+        hass,
+        target,
+        CONTROLLER_OFFLINE_TITLE,
+        message,
+        notification_data(hass, _controller_tag(entry)),
+    )
+
+
+async def async_send_controller_recovered(
+    hass: HomeAssistant, entry: ConfigEntry, host: str, outage: float | None
+) -> None:
+    """
+    Gibt Entwarnung, nachdem der Controller wieder geantwortet hat.
+
+    Die anhaltende Meldung wird dabei entfernt statt ersetzt: Die Störung ist
+    vorbei, in der Seitenleiste soll nichts stehenbleiben.
+    """
+    persistent_notification.async_dismiss(hass, _controller_notification_id(entry))
+
+    target = notify_target(entry)
+    if target is None:
+        return
+
+    if not _bool_option(
+        entry, CONF_NOTIFY_CONTROLLER_OFFLINE, DEFAULT_NOTIFY_CONTROLLER_OFFLINE
+    ):
+        return
+
+    if outage is None:
+        message = f"{host} antwortet wieder."
+    else:
+        hours = outage / 3600
+        duration = f"{hours:.1f} Stunden" if hours < 48 else f"{hours / 24:.1f} Tagen"
+        message = f"{host} antwortet wieder, nach {duration}."
+
+    await _async_push(
+        hass,
+        target,
+        CONTROLLER_ONLINE_TITLE,
+        message,
+        notification_data(hass, _controller_tag(entry)),
+    )

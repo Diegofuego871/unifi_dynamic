@@ -90,6 +90,10 @@ NOTIFY_NONE = "none"
 CONF_NOTIFY_NEW_CLIENTS = "notify_new_clients"
 DEFAULT_NOTIFY_NEW_CLIENTS = True
 
+# Push, wenn der Controller länger nicht antwortet, und Entwarnung danach.
+CONF_NOTIFY_CONTROLLER_OFFLINE = "notify_controller_offline"
+DEFAULT_NOTIFY_CONTROLLER_OFFLINE = True
+
 # Inhalt der Neugeräte-Meldung, einzeln im UI schaltbar.
 CONF_MSG_NAME = "message_name"
 CONF_MSG_CONNECTION = "message_connection"
@@ -143,6 +147,46 @@ DATA_PUSH_IMAGE = "unifi_dynamic_push_image"
 # Android ersetzt Meldungen mit gleichem Tag, statt sie zu stapeln.
 NOTIFICATION_TAG_PREFIX = "unifi_dynamic_purge"
 
+# --- Ausgesetzte Purge-Läufe ----------------------------------------------
+# Gründe, aus denen ein Lauf nichts entfernt hat. "disabled" ist der
+# Normalfall bei purge_days=0 und wird nicht gemeldet; "no_contact" heisst,
+# dass der Controller zu lange nicht erreichbar war, und wird gemeldet.
+PURGE_SKIP_DISABLED = "disabled"
+PURGE_SKIP_NO_CONTACT = "no_contact"
+
+# --- Aktionen in Push-Meldungen --------------------------------------------
+# Beide Companion-Apps melden einen getippten Aktionsbutton über dieses Event
+# zurück, mit dem Aktions-Key im Feld "action". Auf action_data wird bewusst
+# verzichtet: iOS liest es aus dem Payload-Schlüssel "homeassistant", Android
+# aus "action_data". Der Key trägt die Nutzdaten deshalb selbst.
+EVENT_NOTIFICATION_ACTION = "mobile_app_notification_action"
+
+# Aufbau: <AKTION>|<entry_id>|<mac ohne Doppelpunkte>
+ACTION_EXCLUDE = "UNIFI_DYNAMIC_EXCLUDE"
+ACTION_PURGE = "UNIFI_DYNAMIC_PURGE"
+ACTION_SEPARATOR = "|"
+ACTION_EXCLUDE_TITLE = "Nie entfernen"
+ACTION_PURGE_TITLE = "Jetzt entfernen"
+
+EXCLUDED_TITLE = "Gerät geschützt"
+REMOVED_TITLE = "Gerät entfernt"
+
+# Nach dem Entfernen per Meldungsaktion wird derselbe Client eine Weile nicht
+# erneut als neu gemeldet. Ist er noch online, taucht er beim nächsten Poll
+# sofort wieder auf; ohne diese Sperre käme im Sekundentakt dieselbe Meldung.
+NEW_CLIENT_SUPPRESS_SECONDS = 900
+
+# --- Überwachung der Controller-Erreichbarkeit -----------------------------
+# Eigener Takt, unabhängig vom täglichen Purge: Der Purge prüft nur einmal am
+# Tag, eine Störungsmeldung wäre damit bis zu einen Tag zu spät. Gemeldet wird
+# einmalig beim Überschreiten der Schwelle, Entwarnung beim ersten
+# erfolgreichen Poll danach.
+CONTACT_CHECK_INTERVAL = 900
+
+CONTROLLER_OFFLINE_TITLE = "UniFi-Controller nicht erreichbar"
+CONTROLLER_ONLINE_TITLE = "UniFi-Controller wieder erreichbar"
+CONTROLLER_TAG_PREFIX = "unifi_dynamic_controller"
+
 DEFAULT_NOTIFY_SERVICE = NOTIFY_NONE
 DEFAULT_PERSISTENT_NOTIFICATION = True
 DEFAULT_NOTIFY_WHEN_EMPTY = False
@@ -151,6 +195,11 @@ DEFAULT_NOTIFY_WHEN_EMPTY = False
 # Vorgabe True, damit sich das bisherige Verhalten nicht ändert.
 CONF_PERSISTENT_WHEN_EMPTY = "persistent_when_empty"
 DEFAULT_PERSISTENT_WHEN_EMPTY = True
+
+# Gegenstück zur Push-Meldung bei Controller-Ausfall. Die anhaltende Meldung
+# bleibt stehen, solange die Störung besteht, und wird bei Entwarnung entfernt.
+CONF_PERSISTENT_CONTROLLER_OFFLINE = "persistent_controller_offline"
+DEFAULT_PERSISTENT_CONTROLLER_OFFLINE = True
 
 NOTIFICATION_TITLE = "UniFi Dynamic Purge"
 

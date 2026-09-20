@@ -15,9 +15,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     CONF_API_KEY,
     CONF_HOST,
+    CONF_NOTIFY_CONTROLLER_OFFLINE,
     CONF_NOTIFY_NEW_CLIENTS,
     CONF_NOTIFY_SERVICE,
     CONF_NOTIFY_WHEN_EMPTY,
+    CONF_PERSISTENT_CONTROLLER_OFFLINE,
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PERSISTENT_WHEN_EMPTY,
     CONF_PURGE_DAYS,
@@ -25,9 +27,11 @@ from .const import (
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
+    DEFAULT_NOTIFY_CONTROLLER_OFFLINE,
     DEFAULT_NOTIFY_NEW_CLIENTS,
     DEFAULT_NOTIFY_SERVICE,
     DEFAULT_NOTIFY_WHEN_EMPTY,
+    DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
     DEFAULT_PERSISTENT_NOTIFICATION,
     DEFAULT_PERSISTENT_WHEN_EMPTY,
     DEFAULT_PURGE_DAYS,
@@ -331,6 +335,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     current.get(CONF_NOTIFY_NEW_CLIENTS, DEFAULT_NOTIFY_NEW_CLIENTS)
                 ),
             ): bool,
+            vol.Required(
+                CONF_NOTIFY_CONTROLLER_OFFLINE,
+                default=bool(
+                    current.get(
+                        CONF_NOTIFY_CONTROLLER_OFFLINE,
+                        DEFAULT_NOTIFY_CONTROLLER_OFFLINE,
+                    )
+                ),
+            ): bool,
         }
         push_fields.update(
             {
@@ -394,6 +407,15 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                     current.get(
                                         CONF_PERSISTENT_WHEN_EMPTY,
                                         DEFAULT_PERSISTENT_WHEN_EMPTY,
+                                    )
+                                ),
+                            ): bool,
+                            vol.Required(
+                                CONF_PERSISTENT_CONTROLLER_OFFLINE,
+                                default=bool(
+                                    current.get(
+                                        CONF_PERSISTENT_CONTROLLER_OFFLINE,
+                                        DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
                                     )
                                 ),
                             ): bool,

@@ -59,6 +59,7 @@
               "notify_service": "Ziel für Push-Benachrichtigung",
               "notify_when_empty": "Auch melden, wenn nichts entfernt wurde",
               "notify_new_clients": "Neue Geräte melden",
+              "notify_controller_offline": "Melden, wenn der Controller ausfällt",
               "message_name": "Inhalt: Anzeigename",
               "message_connection": "Inhalt: Verbindungsart",
               "message_ssid": "Inhalt: SSID",
@@ -70,6 +71,7 @@
               "notify_service": "notify-Service oder notify-Entity, zum Beispiel eine notify-Gruppe.",
               "notify_when_empty": "Aktiv bedeutet eine Push nach jedem täglichen Lauf, auch ohne Treffer. Standardmässig aus.",
               "notify_new_clients": "Push-Meldung, sobald ein Client zum ersten Mal in der UniFi-API auftaucht. Welche Angaben darin stehen, legen die Häkchen mit «Inhalt» fest. Fehlt eine davon beim ersten Auftauchen noch, etwa weil die DHCP-Lease nicht durch ist, wartet die Meldung bis zu 120 Sekunden und wird gesendet, sobald alles vorliegt. SSID und Access Point werden nur bei WLAN-Clients abgewartet. Danach geht die Meldung mit dem raus, was vorhanden ist. Bei der Erstbefüllung nach der Installation wird bewusst nichts gemeldet, sonst käme eine Meldung pro bereits vorhandenem Client. Tauchen mehr als fünf Clients gleichzeitig auf, kommt eine Sammelmeldung statt Einzelmeldungen. Erzeugt keine anhaltende Benachrichtigung. Ein Klick auf die Meldung öffnet die Geräteseite des Clients.",
+              "notify_controller_offline": "Push-Meldung, wenn der UniFi-Controller länger als eine Stunde nicht mehr antwortet, und Entwarnung, sobald er wieder erreichbar ist. Geprüft wird alle 15 Minuten, gemeldet einmalig je Störung. Solange sie besteht, aktualisiert die Integration keine Clients und der Purge setzt aus. Standardmässig an.",
               "message_name": "Name aus dem Controller, sonst DHCP-Hostname, sonst die MAC.",
               "message_connection": "Kabel oder Wireless.",
               "message_ssid": "Nur bei WLAN-Clients.",
@@ -83,11 +85,13 @@
             "description": "Meldungen in der Seitenleiste von Home Assistant. Betrifft nur den Aufräumlauf; neu erkannte Geräte erzeugen grundsätzlich keine anhaltende Benachrichtigung.",
             "data": {
               "persistent_notification": "Anhaltende Benachrichtigung erstellen",
-              "persistent_when_empty": "Auch erstellen, wenn nichts entfernt wurde"
+              "persistent_when_empty": "Auch erstellen, wenn nichts entfernt wurde",
+              "persistent_controller_offline": "Auch erstellen, wenn der Controller ausfällt"
             },
             "data_description": {
               "persistent_notification": "Bericht des Aufräumlaufs mit Details je entferntem Client.",
-              "persistent_when_empty": "Aus bedeutet: die Meldung erscheint nur, wenn tatsächlich etwas entfernt wurde. Die vorherige bleibt dann stehen und zeigt weiterhin den letzten echten Lauf samt Zeitpunkt."
+              "persistent_when_empty": "Aus bedeutet: die Meldung erscheint nur, wenn tatsächlich etwas entfernt wurde. Die vorherige bleibt dann stehen und zeigt weiterhin den letzten echten Lauf samt Zeitpunkt.",
+              "persistent_controller_offline": "Anhaltende Benachrichtigung, solange der UniFi-Controller nicht antwortet. Sie verschwindet automatisch, sobald er wieder erreichbar ist. Standardmässig an."
             }
           }
         }
