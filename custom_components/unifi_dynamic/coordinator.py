@@ -8,7 +8,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import Any
+from typing import Any, Final
 
 from aiohttp import ClientError, ClientTimeout
 from homeassistant.config_entries import ConfigEntry
@@ -87,6 +87,28 @@ def as_epoch_seconds(value: Any) -> float | None:
 def preferred_client_name(data: dict[str, Any], mac: str) -> str:
     """Anzeigename eines Clients: Name, sonst Hostname, sonst MAC."""
     return str(data.get("name") or data.get("hostname") or mac)
+
+
+# async_get_device_by_identifier existiert erst ab Home Assistant 2026.8.0
+# (Umstellung auf pro Config-Entry eindeutige Identifier). Das alte
+# async_get_device(identifiers=...) ist seither als deprecated markiert und
+# wird ab 2027.8.0 entfernt, hacs.json lässt aber Home Assistant ab 2024.1.0
+# zu. Das Flag wird einmalig zur Ladezeit geprüft, nicht bei jedem Aufruf.
+_HAS_DEVICE_BY_IDENTIFIER: Final = hasattr(dr.DeviceRegistry, "async_get_device_by_identifier")
+
+
+def get_client_device(
+    dev_reg: dr.DeviceRegistry, entry_id: str, mac: str
+) -> dr.DeviceEntry | None:
+    """
+    Gerät eines Clients nachschlagen, kompatibel mit alten und neuen Kernen.
+
+    Zentrale Stelle für alle Aufrufer, damit nicht an sechs Stellen einzeln
+    zwischen altem und neuem Lookup unterschieden werden muss.
+    """
+    if _HAS_DEVICE_BY_IDENTIFIER:
+        return dev_reg.async_get_device_by_identifier((DOMAIN, mac), entry_id)
+    return dev_reg.async_get_device(identifiers={(DOMAIN, mac)})
 
 
 def client_slug(data: dict[str, Any], mac: str) -> str:
@@ -925,7 +947,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 client.entities,
             )
 
-            device = dev_reg.async_get_device(identifiers={(DOMAIN, mac)})
+            device = get_client_device(dev_reg, self.entry.entry_id, mac)
 
             if dry_run:
                 if device is not None:
@@ -991,7 +1013,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             ent_reg.async_remove(ent.entity_id)
 
         removed_devices = 0
-        device = dev_reg.async_get_device(identifiers={(DOMAIN, mac)})
+        device = get_client_device(dev_reg, self.entry.entry_id, mac)
         if device is not None:
             dev_reg.async_remove_device(device.id)
             removed_devices = 1
@@ -1028,7 +1050,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         known = (
             mac_l in self._client_cache
-            or dev_reg.async_get_device(identifiers={(DOMAIN, mac_l)}) is not None
+            or get_client_device(dev_reg, self.entry.entry_id, mac_l) is not None
             or bool(self._entity_entries_for_mac(entries, mac_l))
         )
         if not known:

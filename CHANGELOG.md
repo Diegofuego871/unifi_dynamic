@@ -5,6 +5,27 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.20.5] - 2026-09-20
+
+### Fixed
+
+- `device_registry.async_get_device(identifiers=...)` is deprecated as of
+  Home Assistant's move to per-config-entry-unique device identifiers and
+  logs a warning on every call; it will stop working in Home Assistant
+  2027.8.0. All six call sites now go through a single helper,
+  `get_client_device()`, that uses the replacement
+  `async_get_device_by_identifier()` when it is available.
+
+### Notes
+
+- `async_get_device_by_identifier()` only exists from Home Assistant
+  2026.8.0 onward, while `hacs.json` declares 2024.1.0 as the minimum
+  supported version. Switching outright would have traded one deprecation
+  warning for a hard `AttributeError` on every older, still-supported core.
+  `get_client_device()` checks `hasattr(...)` once at import time and falls
+  back to the old, still-working `async_get_device()` on cores that lack the
+  new method — no support for pre-2026.8.0 was given up for this fix.
+
 ## [1.20.4] - 2026-09-20
 
 ### Fixed
@@ -365,6 +386,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.20.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.5
 [1.20.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.4
 [1.20.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.3
 [1.20.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.2

@@ -58,7 +58,12 @@ from .const import (
     PURGE_SKIP_NO_CONTACT,
     REMOVED_TITLE,
 )
-from .coordinator import PurgeResult, get_excluded_macs, preferred_client_name
+from .coordinator import (
+    PurgeResult,
+    get_client_device,
+    get_excluded_macs,
+    preferred_client_name,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,9 +88,9 @@ def notify_target(entry: ConfigEntry) -> str | None:
     return target
 
 
-def device_url(hass: HomeAssistant, mac: str) -> str | None:
+def device_url(hass: HomeAssistant, entry: ConfigEntry, mac: str) -> str | None:
     """Pfad zur Geräteseite dieses Clients, sofern das Gerät schon existiert."""
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, mac.lower())})
+    device = get_client_device(dr.async_get(hass), entry.entry_id, mac.lower())
     if device is None:
         return None
     return DEVICE_URL_TEMPLATE.format(device_id=device.id)
@@ -650,7 +655,7 @@ async def async_send_new_clients_report(
                 f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}",
                 # Klick öffnet die Geräteseite dieses Clients. Existiert das
                 # Gerät noch nicht, bleibt es bei der Integrationsseite.
-                device_url(hass, mac),
+                device_url(hass, entry, mac),
                 actions,
             ),
         )
@@ -679,7 +684,7 @@ async def async_send_exclusion_notice(
         notification_data(
             hass,
             f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}",
-            device_url(hass, mac),
+            device_url(hass, entry, mac),
         ),
     )
 

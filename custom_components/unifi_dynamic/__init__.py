@@ -56,6 +56,7 @@ from .coordinator import (
     PurgeResult,
     UnifiDynamicCoordinator,
     client_slug,
+    get_client_device,
     preferred_client_name,
 )
 from .notification import (
@@ -406,7 +407,7 @@ def _register_new_client_handler(
 
         for mac, data in clients:
             missing = missing_message_fields(mac, data, fields)
-            if dev_reg.async_get_device(identifiers={(DOMAIN, mac)}) is None:
+            if get_client_device(dev_reg, entry.entry_id, mac) is None:
                 missing.append("device")
             if missing:
                 out[mac] = missing
@@ -797,7 +798,7 @@ def _sync_device_names(
     dev_reg = dr.async_get(hass)
 
     for mac, data in (coordinator.data or {}).items():
-        device = dev_reg.async_get_device(identifiers={(DOMAIN, mac)})
+        device = get_client_device(dev_reg, coordinator.entry.entry_id, mac)
         if device is None or device.name_by_user:
             continue
 
