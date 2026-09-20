@@ -27,11 +27,13 @@ from .const import (
     CLIENTS_PATH,
     CONF_API_KEY,
     CONF_HOST,
+    CONF_OFFLINE_AFTER_FAILURES,
     CONF_PURGE_DAYS,
     CONF_PURGE_EXCLUDE,
     CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
     DEVICES_PATH,
+    DEFAULT_OFFLINE_AFTER_FAILURES,
     DEFAULT_PURGE_DAYS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_VERIFY_SSL,
@@ -225,6 +227,15 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # remove_client_now. Absichtlich flüchtig: nach einem Neustart darf
         # wieder gemeldet werden.
         self._suppressed_new: dict[str, float] = {}
+
+        # Aufeinanderfolgende fehlgeschlagene Abfragen. Grundlage der
+        # Ausfallerkennung: siehe _register_failure.
+        self._failures = 0
+        self._offline = False
+        self._offline_since: float | None = None
+        self._contact_callback: (
+            Callable[[bool, float | None, int], Awaitable[None]] | None
+        ) = None
 
         self._migration_done = False
         self._removal_callbacks: list[Callable[[str], None]] = []
@@ -437,6 +448,104 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._new_client_callback = target
 
     @callback
+    def async_set_contact_callback(
+        self,
+        target: Callable[[bool, float | None, int], Awaitable[None]] | None,
+    ) -> None:
+        """
+        Setzt den Handler für Ausfall und Rückkehr des Controllers.
+
+        Aufgerufen wird er nur bei einem Zustandswechsel, mit (offline,
+        Dauer/Abstand in Sekunden, Zahl der Fehlversuche). Die Meldungslogik
+        bleibt damit ausserhalb des Coordinators.
+        """
+        self._contact_callback = target
+
+    @property
+    def offline(self) -> bool:
+        """True, sobald genug Abfragen hintereinander fehlgeschlagen sind."""
+        return self._offline
+
+    @property
+    def failures(self) -> int:
+        """Aufeinanderfolgende fehlgeschlagene Abfragen."""
+        return self._failures
+
+    @callback
+    def _fire_contact_callback(
+        self, offline: bool, seconds: float | None, failures: int
+    ) -> None:
+        if self._contact_callback is None:
+            return
+        self.hass.async_create_task(
+            self._contact_callback(offline, seconds, failures)
+        )
+
+    def _register_failure(self, reason: str) -> None:
+        """
+        Zählt eine fehlgeschlagene Abfrage und meldet beim Erreichen der
+        Schwelle.
+
+        Gezählt wird nicht die Zeit, sondern die Zahl der Versuche: Bei 15
+        Sekunden Abfrageintervall bedeuten 30 Versuche 7,5 Minuten, bei 60
+        Sekunden eine halbe Stunde. Der Nutzer bestimmt die Empfindlichkeit
+        damit in der Einheit, die er auch beim Intervall sieht.
+        """
+        self._failures += 1
+
+        threshold = max(
+            1,
+            _get_int_option(
+                self.entry,
+                CONF_OFFLINE_AFTER_FAILURES,
+                DEFAULT_OFFLINE_AFTER_FAILURES,
+            ),
+        )
+
+        if self._offline or self._failures < threshold:
+            _LOGGER.debug(
+                "Abfrage fehlgeschlagen (%s), %s von %s", reason, self._failures, threshold
+            )
+            return
+
+        self._offline = True
+        self._offline_since = self._anchor
+        gap = None if self._anchor is None else time.time() - self._anchor
+
+        _LOGGER.warning(
+            "UniFi-Controller %s gilt als ausgefallen: %s Abfragen in Folge "
+            "fehlgeschlagen (%s)",
+            self.host,
+            self._failures,
+            reason,
+        )
+        self._fire_contact_callback(True, gap, self._failures)
+
+    def _register_success(self) -> None:
+        """Setzt den Zähler zurück und gibt bei Bedarf sofort Entwarnung."""
+        failures = self._failures
+        self._failures = 0
+
+        if not self._offline:
+            return
+
+        self._offline = False
+        outage = (
+            None
+            if self._offline_since is None
+            else max(time.time() - self._offline_since, 0.0)
+        )
+        self._offline_since = None
+
+        _LOGGER.info(
+            "UniFi-Controller %s antwortet wieder, nach %s fehlgeschlagenen "
+            "Abfragen",
+            self.host,
+            failures,
+        )
+        self._fire_contact_callback(False, outage, failures)
+
+    @callback
     def _notify_removed(self, mac: str) -> None:
         for target in list(self._removal_callbacks):
             try:
@@ -541,18 +650,21 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                         resp.status,
                         text[:200],
                     )
+                    self._register_failure(f"HTTP {resp.status}")
                     return dict(self._client_cache)
 
                 payload = await resp.json(content_type=None)
 
         except asyncio.TimeoutError:
             _LOGGER.warning("UniFi API Timeout, verwende bestehenden Cache weiter")
+            self._register_failure("Timeout")
             return dict(self._client_cache)
 
         except ClientError as err:
             _LOGGER.warning(
                 "UniFi API Netzwerkfehler, verwende bestehenden Cache weiter: %s", err
             )
+            self._register_failure("Netzwerkfehler")
             return dict(self._client_cache)
 
         except ValueError as err:
@@ -561,6 +673,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 "weiter: %s",
                 err,
             )
+            self._register_failure("ungültiges JSON")
             return dict(self._client_cache)
 
         # Ab hier bewusst ohne try: Fehler in der eigenen Verarbeitung sollen
@@ -580,6 +693,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             self._merge_client(mac, data, now)
 
         self._anchor = now
+
+        # Erst nach dem Merge: Die Entwarnung soll nicht rausgehen, bevor die
+        # frischen Daten im Cache stehen. Setzt den Fehlerzähler zurück.
+        self._register_success()
 
         # Vor der Meldung über neue Clients, damit dort der AP-Name steht.
         refreshed = False

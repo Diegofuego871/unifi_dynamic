@@ -32,10 +32,12 @@
             "name": "Abfrage",
             "description": "Wie oft die Integration den Controller abfragt.",
             "data": {
-              "scan_interval": "Abfrageintervall (Sekunden)"
+              "scan_interval": "Abfrageintervall (Sekunden)",
+              "offline_after_failures": "Als ausgefallen nach (Abfragen)"
             },
             "data_description": {
-              "scan_interval": "Wie oft die Clientliste vom Controller geholt wird."
+              "scan_interval": "Wie oft die Clientliste vom Controller geholt wird.",
+              "offline_after_failures": "Nach wie vielen fehlgeschlagenen Abfragen in Folge der Controller als ausgefallen gilt. Zusammen mit dem Abfrageintervall ergibt sich die Reaktionszeit: 30 Abfragen bei 15 Sekunden sind 7,5 Minuten, bei 60 Sekunden eine halbe Stunde. Niedrige Werte melden schneller, reagieren aber auch auf einzelne Aussetzer. Ob gemeldet wird, steuern die Schalter bei Push-Benachrichtigung und anhaltender Benachrichtigung. Die Entwarnung kommt mit der ersten wieder erfolgreichen Abfrage."
             }
           },
           "cleanup": {

@@ -5,6 +5,38 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.20.1] - 2026-09-20
+
+### Changed
+
+- Controller outages are now detected by counting consecutive failed polls
+  instead of waiting for an hour of silence. The fixed hour ignored the polling
+  interval: at 15 seconds it meant 240 wasted attempts before anyone was told.
+  The new option "Als ausgefallen nach (Abfragen)" sits in the polling section,
+  right below the interval it depends on, and defaults to 30 — 7.5 minutes at a
+  15-second interval, half an hour at 60 seconds.
+- Detection is now event-driven rather than scheduled. The 15-minute check is
+  gone: the outage is reported the moment the configured number of attempts has
+  failed, and the all-clear goes out with the first poll that succeeds, so both
+  arrive within one polling interval instead of up to 15 minutes late.
+- The outage message names the number of failed polls alongside the elapsed
+  time, and durations are now given in whatever unit fits — seconds, minutes,
+  hours or days — instead of always in hours.
+
+### Notes
+
+- The counter resets on every successful poll, so isolated hiccups never add
+  up to an outage.
+- Low values report faster but also react to single failures. At 1 the very
+  first timeout is an outage; the practical floor depends on how reliably the
+  controller answers.
+- The purge protection is deliberately left on its own one-hour threshold. It
+  guards against deleting an inventory the integration cannot see, which a
+  short outage does not endanger, and a sensitive reporting threshold should
+  not start suspending the daily run.
+- Both switches from 1.20.0 still decide whether anything is sent at all; the
+  new option only decides when an outage is considered one.
+
 ## [1.20.0] - 2026-09-20
 
 ### Fixed
@@ -248,6 +280,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.20.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.1
 [1.20.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.0
 [1.19.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.1
 [1.19.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.0

@@ -27,9 +27,10 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   ihn sofort.
 - Der Purge setzt aus, solange der Controller nicht erreichbar ist. Ein Ausfall
   kann den Bestand damit nie löschen. Ein ausgesetzter Lauf wird gemeldet.
-- Die Erreichbarkeit des Controllers wird alle 15 Minuten geprüft und je
-  Störung einmal gemeldet, mit Entwarnung bei Rückkehr. Push und anhaltende
-  Benachrichtigung sind getrennt abschaltbar.
+- Die Erreichbarkeit des Controllers bemisst sich an fehlgeschlagenen Abfragen
+  in Folge, die Schwelle ist einstellbar. Gemeldet wird je Störung einmal, die
+  Entwarnung kommt mit der ersten wieder erfolgreichen Abfrage. Push und
+  anhaltende Benachrichtigung sind getrennt abschaltbar.
 - Anhaltende Benachrichtigung in der Seitenleiste mit dem Bericht des letzten
   Purge-Laufs, getrennt schaltbar von der Push-Meldung.
 - SSID- und Access-Point-Sensoren nur für Clients, die je im WLAN gesehen
@@ -74,6 +75,7 @@ ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind.
 | Option | Bedeutung | Vorgabe |
 | --- | --- | --- |
 | Abfrageintervall | Wie oft die Clientliste vom Controller geholt wird | 30 s |
+| Als ausgefallen nach (Abfragen) | Fehlgeschlagene Abfragen in Folge, bis der Controller als ausgefallen gilt | 30 |
 
 ### Automatisches Entfernen
 
@@ -150,8 +152,15 @@ Entfernen und Wiedererkennung keine Schleife bilden.
 Da ein fehlgeschlagener Poll bewusst nicht als Coordinator-Fehler gilt — der
 Cache wird weitergereicht, damit kurze Aussetzer nicht alle Entitäten auf
 unavailable kippen — würde ein Ausfall sonst erst beim nächsten Purge-Lauf
-auffallen. Eine eigene Prüfung läuft alle 15 Minuten und meldet je Störung
-einmal, mit Entwarnung samt Dauer, sobald der Controller wieder antwortet.
+auffallen. Deshalb werden fehlgeschlagene Abfragen in Folge gezählt; ist die
+eingestellte Zahl erreicht, geht die Meldung sofort raus. Der Zähler wird bei
+jedem Erfolg zurückgesetzt, einzelne Aussetzer summieren sich also nie. Die
+Entwarnung samt Dauer kommt mit der ersten wieder erfolgreichen Abfrage.
+
+Diese Schwelle steuert nur die Meldung. Der Purge behält seine eigene Schwelle
+von einer Stunde, denn ein kurzer Ausfall gefährdet den Bestand nicht, und eine
+empfindlich eingestellte Meldeschwelle soll nicht den täglichen Lauf aussetzen
+lassen.
 
 Das Bild in den Push-Meldungen liefert die Integration selbst aus: Der Ordner
 `brand/` wird als statischer Pfad unter `/unifi_dynamic/` registriert, also

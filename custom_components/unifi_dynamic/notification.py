@@ -734,26 +734,44 @@ def _controller_notification_id(entry: ConfigEntry) -> str:
     return f"{DOMAIN}_controller_{entry.entry_id}"
 
 
-def build_controller_offline_message(host: str, gap: float | None) -> str:
+def _duration_text(seconds: float) -> str:
+    """Dauer in der grössten sinnvollen Einheit."""
+    if seconds < 90:
+        return f"{seconds:.0f} Sekunden"
+    if seconds < 5400:
+        return f"{seconds / 60:.0f} Minuten"
+    if seconds < 172800:
+        return f"{seconds / 3600:.1f} Stunden"
+    return f"{seconds / 86400:.1f} Tagen"
+
+
+def build_controller_offline_message(
+    host: str, gap: float | None, failures: int
+) -> str:
+    attempts = _plural(failures, "Abfrage", "Abfragen")
+
     if gap is None:
         return (
-            f"Seit dem Start kein erfolgreicher Abruf von {host}. Clients "
-            "werden nicht mehr aktualisiert, der Purge setzt aus."
+            f"Kein erfolgreicher Abruf von {host}, {attempts} in Folge "
+            "fehlgeschlagen. Clients werden nicht mehr aktualisiert."
         )
 
-    hours = gap / 3600
-    since = f"{hours:.1f} Stunden" if hours < 48 else f"{hours / 24:.1f} Tagen"
     return (
-        f"Seit {since} kein erfolgreicher Abruf von {host}. Clients werden "
-        "nicht mehr aktualisiert, der Purge setzt aus."
+        f"Kein erfolgreicher Abruf von {host} seit {_duration_text(gap)}, "
+        f"{attempts} in Folge fehlgeschlagen. Clients werden nicht mehr "
+        "aktualisiert."
     )
 
 
 async def async_send_controller_offline(
-    hass: HomeAssistant, entry: ConfigEntry, host: str, gap: float | None
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    host: str,
+    gap: float | None,
+    failures: int,
 ) -> None:
     """Meldet, dass der Controller nicht mehr antwortet."""
-    message = build_controller_offline_message(host, gap)
+    message = build_controller_offline_message(host, gap, failures)
 
     if _bool_option(
         entry,
@@ -808,9 +826,7 @@ async def async_send_controller_recovered(
     if outage is None:
         message = f"{host} antwortet wieder."
     else:
-        hours = outage / 3600
-        duration = f"{hours:.1f} Stunden" if hours < 48 else f"{hours / 24:.1f} Tagen"
-        message = f"{host} antwortet wieder, nach {duration}."
+        message = f"{host} antwortet wieder, nach {_duration_text(outage)}."
 
     await _async_push(
         hass,

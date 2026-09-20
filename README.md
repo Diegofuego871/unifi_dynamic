@@ -26,9 +26,10 @@ the client has not been reported by the UniFi controller for a while.
   client to the exclusion list, "Jetzt entfernen" deletes it immediately.
 - The purge is skipped while the controller is unreachable, so an outage can
   never delete the inventory. A skipped run is reported.
-- The controller's reachability is watched on a 15-minute schedule and
-  reported once per outage, with an all-clear on recovery. Push and persistent
-  notification can be switched off separately.
+- The controller's reachability is judged by consecutive failed polls, with
+  the threshold configurable, and reported once per outage. The all-clear goes
+  out with the first successful poll. Push and persistent notification can be
+  switched off separately.
 - Persistent notification in the sidebar with the report of the last purge
   run, toggled separately from the push notification.
 - SSID and access point sensors only for clients that have been seen on
@@ -72,6 +73,7 @@ grouped into four sections, collapsed when opened.
 | Option | Meaning | Default |
 | --- | --- | --- |
 | Polling interval | How often the client list is fetched from the controller | 30 s |
+| Considered down after (polls) | Consecutive failed polls before the controller counts as down | 30 |
 
 ### Automatic removal
 
@@ -146,9 +148,15 @@ re-detection do not loop.
 
 Because a failed poll is not treated as a coordinator error — the cache is
 passed on so short outages do not turn every entity unavailable — an outage
-would otherwise go unnoticed until the next purge run. A separate check runs
-every 15 minutes and reports once per outage, with an all-clear and the
-duration once the controller answers again.
+would otherwise go unnoticed until the next purge run. Consecutive failures are
+therefore counted, and reaching the configured number reports the outage right
+away; the counter resets on every success, so isolated hiccups never add up.
+The all-clear, including the duration, goes out with the first poll that
+succeeds.
+
+That threshold governs reporting only. The purge keeps its own one-hour
+threshold, because a short outage does not endanger the inventory and a
+sensitive reporting setting should not start suspending the daily run.
 
 The image shown in push notifications is served by the integration itself:
 the `brand/` folder is registered as a static path under `/unifi_dynamic/`,

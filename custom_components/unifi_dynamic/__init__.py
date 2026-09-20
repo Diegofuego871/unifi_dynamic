@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from datetime import time as dt_time, timedelta
+from datetime import time as dt_time
 from pathlib import Path
 from time import monotonic
 
@@ -24,11 +24,7 @@ from homeassistant.core import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.event import (
-    async_call_later,
-    async_track_time_change,
-    async_track_time_interval,
-)
+from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.util import dt as dt_util
 
 from .const import (
@@ -39,12 +35,10 @@ from .const import (
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
-    CONTACT_CHECK_INTERVAL,
     DATA_PUSH_IMAGE,
     DEFAULT_PURGE_TIME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    DOWNTIME_GRACE_SECONDS,
     EVENT_NOTIFICATION_ACTION,
     NEW_CLIENT_WAIT_INTERVAL,
     NEW_CLIENT_WAIT_TIMEOUT,
@@ -101,6 +95,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Cache laden, BEVOR die erste Abfrage läuft. Sonst verlieren gerade
     # offline Clients ihre zuletzt bekannten Werte und ihr _seen_at.
     _register_new_client_handler(hass, entry, coordinator)
+    # Vor dem ersten Refresh: Schlägt schon der fehl, soll er mitgezählt
+    # werden und eine spätere Störungsmeldung auslösen können.
+    _register_contact_handler(hass, entry, coordinator)
 
     await coordinator.async_load_cache()
     await coordinator.async_config_entry_first_refresh()
@@ -149,7 +146,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(_options_updated))
 
     _register_notification_action_handler(hass, entry, coordinator)
-    _register_contact_watchdog(hass, entry, coordinator)
 
     async def _run_startup_purge(_now=None) -> None:
         # Beim Start nur melden, wenn tatsächlich etwas entfernt wurde. Sonst
@@ -287,72 +283,36 @@ def _register_notification_action_handler(
 
 
 @callback
-def _register_contact_watchdog(
+def _register_contact_handler(
     hass: HomeAssistant, entry: ConfigEntry, coordinator: UnifiDynamicCoordinator
 ) -> None:
     """
-    Überwacht, ob der Controller noch antwortet.
+    Meldet Ausfall und Rückkehr des Controllers.
 
-    Eigener Takt, weil ein Poll-Fehler bewusst nicht als Coordinator-Fehler
-    gilt: Der Cache wird weitergereicht, damit kurze Aussetzer die Entitäten
-    nicht auf unavailable kippen. Ohne diese Prüfung fiele ein echter Ausfall
-    erst beim nächsten Purge-Lauf auf, also im ungünstigsten Fall einen Tag
-    später.
-
-    Gemeldet wird einmalig beim Überschreiten der Schwelle, nicht bei jeder
-    Prüfung. Entwarnung, sobald wieder ein Poll durchkommt.
+    Der Coordinator entscheidet anhand der fehlgeschlagenen Abfragen, wann ein
+    Zustandswechsel vorliegt, und ruft hier genau einmal je Wechsel an. Damit
+    hängt die Meldung direkt am Abfragezyklus: Die Störung kommt beim
+    Erreichen der eingestellten Zahl an Fehlversuchen, die Entwarnung mit der
+    ersten geglückten Abfrage.
     """
-    reported = False
-    # Letzter erfolgreicher Poll vor der Störung. Grundlage für die Dauer in
-    # der Entwarnung: der aktuelle Abstand taugt dafür nicht, der ist nach dem
-    # ersten geglückten Poll wieder nahe null.
-    offline_from: float | None = None
 
-    async def _check(_now=None) -> None:
-        nonlocal reported, offline_from
-
-        gap = coordinator.contact_gap
-        offline = gap is None or gap > DOWNTIME_GRACE_SECONDS
-
-        if offline and not reported:
-            reported = True
-            offline_from = coordinator.last_contact
-            _LOGGER.warning(
-                "UniFi-Controller %s antwortet seit %s nicht mehr",
-                coordinator.host,
-                "dem Start" if gap is None else f"{gap / 3600:.1f} Stunden",
-            )
-            try:
+    async def _handle(offline: bool, seconds: float | None, failures: int) -> None:
+        try:
+            if offline:
                 await async_send_controller_offline(
-                    hass, entry, coordinator.host, gap
+                    hass, entry, coordinator.host, seconds, failures
                 )
-            except Exception:  # noqa: BLE001 - Meldung darf nichts kippen
-                _LOGGER.exception("Störungsmeldung fehlgeschlagen")
-            return
-
-        if not offline and reported:
-            reported = False
-            last = coordinator.last_contact
-            outage = (
-                None
-                if offline_from is None or last is None
-                else max(last - offline_from, 0.0)
-            )
-            offline_from = None
-
-            _LOGGER.info("UniFi-Controller %s antwortet wieder", coordinator.host)
-            try:
+            else:
                 await async_send_controller_recovered(
-                    hass, entry, coordinator.host, outage
+                    hass, entry, coordinator.host, seconds
                 )
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Entwarnung fehlgeschlagen")
+        except Exception:  # noqa: BLE001 - Meldung darf den Abfragezyklus nie kippen
+            _LOGGER.exception(
+                "Meldung zur Controller-Erreichbarkeit fehlgeschlagen"
+            )
 
-    entry.async_on_unload(
-        async_track_time_interval(
-            hass, _check, timedelta(seconds=CONTACT_CHECK_INTERVAL)
-        )
-    )
+    coordinator.async_set_contact_callback(_handle)
+    entry.async_on_unload(lambda: coordinator.async_set_contact_callback(None))
 
 
 @callback

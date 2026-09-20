@@ -32,10 +32,12 @@
             "name": "Polling",
             "description": "How often the integration queries the controller.",
             "data": {
-              "scan_interval": "Polling interval (seconds)"
+              "scan_interval": "Polling interval (seconds)",
+              "offline_after_failures": "Considered down after (polls)"
             },
             "data_description": {
-              "scan_interval": "How often the client list is fetched from the controller."
+              "scan_interval": "How often the client list is fetched from the controller.",
+              "offline_after_failures": "How many consecutive failed polls mark the controller as down. Together with the polling interval this sets the reaction time: 30 polls at 15 seconds is 7.5 minutes, at 60 seconds half an hour. Low values report faster but also react to single hiccups. Whether anything is reported is controlled by the switches in the push and persistent sections. The all-clear arrives with the first successful poll."
             }
           },
           "cleanup": {

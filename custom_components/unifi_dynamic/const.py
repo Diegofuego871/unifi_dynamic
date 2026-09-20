@@ -177,11 +177,12 @@ REMOVED_TITLE = "Gerät entfernt"
 NEW_CLIENT_SUPPRESS_SECONDS = 900
 
 # --- Überwachung der Controller-Erreichbarkeit -----------------------------
-# Eigener Takt, unabhängig vom täglichen Purge: Der Purge prüft nur einmal am
-# Tag, eine Störungsmeldung wäre damit bis zu einen Tag zu spät. Gemeldet wird
-# einmalig beim Überschreiten der Schwelle, Entwarnung beim ersten
-# erfolgreichen Poll danach.
-CONTACT_CHECK_INTERVAL = 900
+# Gezählt werden aufeinanderfolgende fehlgeschlagene Abfragen, nicht
+# verstrichene Zeit: So hängt die Erkennung am eingestellten Abfrageintervall
+# und bleibt bei jeder Wahl gleich streng. Gemeldet wird beim Erreichen der
+# Schwelle, Entwarnung sofort beim nächsten erfolgreichen Poll.
+CONF_OFFLINE_AFTER_FAILURES = "offline_after_failures"
+DEFAULT_OFFLINE_AFTER_FAILURES = 30
 
 CONTROLLER_OFFLINE_TITLE = "UniFi-Controller nicht erreichbar"
 CONTROLLER_ONLINE_TITLE = "UniFi-Controller wieder erreichbar"

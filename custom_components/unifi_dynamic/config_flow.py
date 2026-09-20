@@ -19,6 +19,7 @@ from .const import (
     CONF_NOTIFY_NEW_CLIENTS,
     CONF_NOTIFY_SERVICE,
     CONF_NOTIFY_WHEN_EMPTY,
+    CONF_OFFLINE_AFTER_FAILURES,
     CONF_PERSISTENT_CONTROLLER_OFFLINE,
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PERSISTENT_WHEN_EMPTY,
@@ -31,6 +32,7 @@ from .const import (
     DEFAULT_NOTIFY_NEW_CLIENTS,
     DEFAULT_NOTIFY_SERVICE,
     DEFAULT_NOTIFY_WHEN_EMPTY,
+    DEFAULT_OFFLINE_AFTER_FAILURES,
     DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
     DEFAULT_PERSISTENT_NOTIFICATION,
     DEFAULT_PERSISTENT_WHEN_EMPTY,
@@ -279,6 +281,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             current.get(CONF_SCAN_INTERVAL),
             _int_or(data.get(CONF_SCAN_INTERVAL), DEFAULT_SCAN_INTERVAL),
         )
+        offline_after_default = _int_or(
+            current.get(CONF_OFFLINE_AFTER_FAILURES),
+            _int_or(
+                data.get(CONF_OFFLINE_AFTER_FAILURES),
+                DEFAULT_OFFLINE_AFTER_FAILURES,
+            ),
+        )
         purge_default = _int_or(
             current.get(CONF_PURGE_DAYS),
             _int_or(data.get(CONF_PURGE_DAYS), DEFAULT_PURGE_DAYS),
@@ -359,6 +368,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                             vol.Required(
                                 CONF_SCAN_INTERVAL, default=scan_default
                             ): vol.All(vol.Coerce(int), vol.Range(min=10, max=3600)),
+                            vol.Required(
+                                CONF_OFFLINE_AFTER_FAILURES,
+                                default=offline_after_default,
+                            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=2880)),
                         }
                     ),
                     {"collapsed": True},
