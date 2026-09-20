@@ -112,8 +112,6 @@ MESSAGE_FIELDS: tuple[tuple[str, bool], ...] = (
     (CONF_MSG_MAC, False),
 )
 
-NEW_CLIENT_TITLE = "Neues Gerät im Netzwerk erkannt"
-NEW_CLIENTS_TITLE = "Neue Geräte im Netzwerk erkannt"
 NEW_CLIENT_TAG_PREFIX = "unifi_dynamic_new"
 
 # Eigener Tag für die Bestätigung nach einer Meldungsaktion, bewusst nicht
@@ -172,11 +170,8 @@ EVENT_NOTIFICATION_ACTION = "mobile_app_notification_action"
 ACTION_EXCLUDE = "UNIFI_DYNAMIC_EXCLUDE"
 ACTION_PURGE = "UNIFI_DYNAMIC_PURGE"
 ACTION_SEPARATOR = "|"
-ACTION_EXCLUDE_TITLE = "Nie entfernen"
-ACTION_PURGE_TITLE = "Jetzt entfernen"
-
-EXCLUDED_TITLE = "Gerät geschützt"
-REMOVED_TITLE = "Gerät entfernt"
+# Anzeigetitel der Buttons und aller weiteren Meldungstitel: siehe msg.py,
+# zweisprachig statt fest codiert.
 
 # --- Überwachung der Controller-Erreichbarkeit -----------------------------
 # Gezählt werden aufeinanderfolgende fehlgeschlagene Abfragen, nicht
@@ -186,8 +181,6 @@ REMOVED_TITLE = "Gerät entfernt"
 CONF_OFFLINE_AFTER_FAILURES = "offline_after_failures"
 DEFAULT_OFFLINE_AFTER_FAILURES = 30
 
-CONTROLLER_OFFLINE_TITLE = "UniFi-Controller nicht erreichbar"
-CONTROLLER_ONLINE_TITLE = "UniFi-Controller wieder erreichbar"
 CONTROLLER_TAG_PREFIX = "unifi_dynamic_controller"
 
 DEFAULT_NOTIFY_SERVICE = NOTIFY_NONE
@@ -203,8 +196,6 @@ DEFAULT_PERSISTENT_WHEN_EMPTY = True
 # bleibt stehen, solange die Störung besteht, und wird bei Entwarnung entfernt.
 CONF_PERSISTENT_CONTROLLER_OFFLINE = "persistent_controller_offline"
 DEFAULT_PERSISTENT_CONTROLLER_OFFLINE = True
-
-NOTIFICATION_TITLE = "UniFi Dynamic Purge"
 
 # --- Services --------------------------------------------------------------
 

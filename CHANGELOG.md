@@ -5,6 +5,41 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.21.0] - 2026-09-20
+
+### Added
+
+- Push notifications and persistent notifications are now bilingual (German
+  and English), chosen at send time from `hass.config.language` (the
+  instance's configured language) — German for `de`/`de-*`, English as the
+  fallback for everything else, including a language Home Assistant is not
+  configured for at all. This covers every title and body text: the purge
+  report, the new-device notification, the action-button labels ("Nie
+  entfernen"/"Jetzt entfernen" become "Never remove"/"Remove now" and vice
+  versa), the exclusion and removal confirmations, and the controller
+  offline/recovered notifications.
+
+### Changed
+
+- All message text moved out of `notification.py` and `const.py` into a new
+  module, `msg.py`, that holds both language versions side by side per
+  message. Message text is no longer a Python string constant or an inline
+  f-string; every future change to wording needs both languages updated in
+  the same place, the same way `strings.json`/`translations/en.json` already
+  had to stay in sync for the options dialog.
+
+### Notes
+
+- `hass.config.language` is the Home Assistant instance's configured
+  language, not necessarily the language of the phone or app the
+  notification arrives on. For most single-household setups these match; a
+  setup where they do not will see notifications in the instance's language,
+  not the viewer's.
+- Untranslated: log messages (`_LOGGER.*` calls, meant for the add-on's own
+  maintainer, not the end user) and the options dialog, which already has
+  its own translation mechanism through `strings.json`/`translations/*.json`
+  and was unaffected by this change.
+
 ## [1.20.6] - 2026-09-20
 
 ### Changed
@@ -406,6 +441,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.21.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.21.0
 [1.20.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.6
 [1.20.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.5
 [1.20.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.4

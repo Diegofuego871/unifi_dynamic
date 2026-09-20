@@ -21,11 +21,14 @@ the client has not been reported by the UniFi controller for a while.
   a dry run without deleting anything.
 - Push notification for newly detected clients, with individually selectable
   content (display name, connection type, SSID, access point, IP, MAC).
+- All push and persistent notifications are bilingual: German or English,
+  chosen automatically from the Home Assistant instance's configured
+  language (English as the fallback for any other language).
 - The notification image ships with the integration, nothing to configure.
 - The new-device notification waits until every selected detail is actually
   available, then sends immediately. Tapping it opens that client's device
-  page. Two buttons act right from the notification: "Nie entfernen" adds the
-  client to the exclusion list, "Jetzt entfernen" deletes it immediately.
+  page. Two buttons act right from the notification: "Never remove" adds the
+  client to the exclusion list, "Remove now" deletes it immediately.
 - The purge is skipped while the controller is unreachable, so an outage can
   never delete the inventory. A skipped run is reported.
 - The controller's reachability is judged by consecutive failed polls, with
@@ -154,17 +157,18 @@ while no client had actually disappeared, and the run would delete a still
 existing inventory. A skipped run is reported and states how long the
 controller has been silent.
 
-The "Nie entfernen" button in the new-device notification writes to the same
-`purge_exclude` option the dialog edits, so both ways stay in sync. Entry id
-and MAC travel inside the action key; the integration listens for
-`mobile_app_notification_action` and ignores everything that is not its own.
-Note that saving the options dialog overwrites an addition made while the
-dialog was open, because it always writes the list it loaded on opening.
+The "Never remove" button ("Nie entfernen" in German) in the new-device
+notification writes to the same `purge_exclude` option the dialog edits, so
+both ways stay in sync. Entry id and MAC travel inside the action key; the
+integration listens for `mobile_app_notification_action` and ignores
+everything that is not its own. Note that saving the options dialog
+overwrites an addition made while the dialog was open, because it always
+writes the list it loaded on opening.
 
-"Jetzt entfernen" deletes the client on the spot, ignoring both the threshold
-and the exclusion list. It is meant for clients that have already left the
-network: an active one is recreated by the next poll, with fresh entity ids,
-and reported as a new device again.
+"Remove now" ("Jetzt entfernen") deletes the client on the spot, ignoring
+both the threshold and the exclusion list. It is meant for clients that have
+already left the network: an active one is recreated by the next poll, with
+fresh entity ids, and reported as a new device again.
 
 A failure while handling either action is now always logged with the action
 kind, MAC and entry id, instead of only the confirmation step being covered.
@@ -181,6 +185,16 @@ original new-device notification: iOS removes a notification from
 Notification Center as soon as an action on it is tapped, and a confirmation
 arriving right after with the same tag would, depending on timing, sometimes
 not show as a new banner at all.
+
+Every notification and persistent-notification text, including these two
+button labels, is bilingual. The language is picked per message from
+`hass.config.language`, the instance's configured language: German for
+`de`/`de-*`, English as the fallback for anything else. This is the
+instance's language, not necessarily the language of the phone the
+notification is read on — for most single-household setups the two match.
+All message text lives in `msg.py`, both languages side by side per message,
+separate from `strings.json`/`translations/*.json`, which only cover the
+options dialog and are rendered client-side by the Home Assistant frontend.
 
 Because a failed poll is not treated as a coordinator error — the cache is
 passed on so short outages do not turn every entity unavailable — an outage

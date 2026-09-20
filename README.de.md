@@ -21,6 +21,10 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   Testlauf („dry run") ohne Löschen.
 - Push-Benachrichtigung bei neu erkannten Clients, mit einzeln schaltbarem
   Inhalt (Anzeigename, Verbindungsart, SSID, Access Point, IP, MAC).
+- Alle Push- und anhaltenden Benachrichtigungen sind zweisprachig: Deutsch
+  oder Englisch, automatisch anhand der konfigurierten Sprache der
+  Home-Assistant-Instanz gewählt (Englisch als Fallback für jede andere
+  Sprache).
 - Das Bild der Meldung bringt die Integration mit, nichts einzurichten.
 - Die Neugeräte-Meldung wartet, bis alle gewählten Angaben tatsächlich
   vorliegen, und sendet dann sofort. Ein Klick darauf öffnet die Geräteseite
@@ -184,6 +188,17 @@ ursprünglichen Neugeräte-Meldung: iOS entfernt eine Meldung meist
 automatisch, sobald eine Aktion darauf getippt wird, und eine Bestätigung mit
 demselben Tag kurz danach kam je nach Timing manchmal nicht mehr als eigener
 Banner an.
+
+Jeder Meldungs- und Anhaltend-Benachrichtigungstext, einschliesslich dieser
+beiden Button-Labels, ist zweisprachig. Die Sprache wird pro Meldung aus
+`hass.config.language` bestimmt, der konfigurierten Instanzsprache: Deutsch
+bei `de`/`de-*`, Englisch als Fallback für alles andere. Das ist die Sprache
+der Instanz, nicht zwingend die Sprache des Telefons, auf dem die Meldung
+gelesen wird — bei den meisten Ein-Haushalt-Setups stimmt beides überein.
+Alle Meldungstexte liegen in `msg.py`, beide Sprachen nebeneinander pro
+Meldung, getrennt von `strings.json`/`translations/*.json`, die nur den
+Options-Dialog abdecken und clientseitig vom Home-Assistant-Frontend
+gerendert werden.
 
 Da ein fehlgeschlagener Poll bewusst nicht als Coordinator-Fehler gilt — der
 Cache wird weitergereicht, damit kurze Aussetzer nicht alle Entitäten auf
