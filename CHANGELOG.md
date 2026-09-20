@@ -5,7 +5,27 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.20.5] - 2026-09-20
+## [1.20.6] - 2026-09-20
+
+### Changed
+
+- The confirmation after a notification action ("Nie entfernen" / "Jetzt
+  entfernen") now gets its own notification tag instead of reusing the tag
+  of the original new-device notification. iOS removes a notification from
+  Notification Center as soon as an action on it is tapped; a confirmation
+  arriving right after with the same tag was, depending on timing,
+  effectively replacing one that had already been dismissed by the system,
+  and would then sometimes not show as a new banner at all. The confirmation
+  no longer replaces the original notification (both can briefly coexist,
+  though the original is usually gone already from the tap that triggered
+  the confirmation) — reliability of the confirmation was judged more
+  important than that visual tidiness.
+- The action buttons now set `"behavior": "background"` explicitly instead
+  of relying on it being the default with no `uri` set on the button. This
+  targets a case that could not be fully explained from the integration's
+  own code: a report of the app navigating to the (by then already deleted)
+  device page after tapping "Jetzt entfernen", although the documented
+  default for a button without its own `uri` is to not navigate at all.
 
 ### Fixed
 
@@ -386,6 +406,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.20.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.6
 [1.20.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.5
 [1.20.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.4
 [1.20.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.3

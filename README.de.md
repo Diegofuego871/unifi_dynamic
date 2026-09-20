@@ -177,6 +177,14 @@ Zeile „Meldungsaktion ... empfangen". Fehlt diese Zeile nach einem Tastendruck
 ganz, erreicht das Ereignis Home Assistant gar nicht erst — dann liegt es am
 Telefon oder an der Companion-App, nicht an der Integration.
 
+Beide Aktionsbuttons setzen explizit `"behavior": "background"`, ein
+Tastendruck löst damit nur das Event aus und navigiert die App nirgendwohin.
+Die Bestätigungs-Push bekommt einen eigenen Tag statt des Tags der
+ursprünglichen Neugeräte-Meldung: iOS entfernt eine Meldung meist
+automatisch, sobald eine Aktion darauf getippt wird, und eine Bestätigung mit
+demselben Tag kurz danach kam je nach Timing manchmal nicht mehr als eigener
+Banner an.
+
 Da ein fehlgeschlagener Poll bewusst nicht als Coordinator-Fehler gilt — der
 Cache wird weitergereicht, damit kurze Aussetzer nicht alle Entitäten auf
 unavailable kippen — würde ein Ausfall sonst erst beim nächsten Purge-Lauf

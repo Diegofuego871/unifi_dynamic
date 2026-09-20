@@ -116,6 +116,13 @@ NEW_CLIENT_TITLE = "Neues Gerät im Netzwerk erkannt"
 NEW_CLIENTS_TITLE = "Neue Geräte im Netzwerk erkannt"
 NEW_CLIENT_TAG_PREFIX = "unifi_dynamic_new"
 
+# Eigener Tag für die Bestätigung nach einer Meldungsaktion, bewusst nicht
+# NEW_CLIENT_TAG_PREFIX: iOS entfernt eine Meldung meist automatisch, sobald
+# eine Aktion darauf getippt wird. Teilt sich die Bestätigung den Tag mit der
+# schon entfernten Neugeräte-Meldung, kommt sie je nach Timing nicht mehr als
+# eigener Banner an.
+ACTION_CONFIRM_TAG_PREFIX = "unifi_dynamic_confirm"
+
 # Ab dieser Anzahl gleichzeitig neuer Clients kommt eine Sammelmeldung statt
 # einer Meldung pro Gerät.
 MAX_NEW_CLIENT_MESSAGES = 5

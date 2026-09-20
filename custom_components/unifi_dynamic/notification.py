@@ -12,6 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    ACTION_CONFIRM_TAG_PREFIX,
     ACTION_EXCLUDE,
     ACTION_EXCLUDE_TITLE,
     ACTION_PURGE,
@@ -119,6 +120,11 @@ def client_actions(
         {
             "action": ACTION_SEPARATOR.join((kind, entry_id, token)),
             "title": titles[kind],
+            # Explizit statt auf den dokumentierten Default zu vertrauen: kein
+            # eigenes "uri" auf dem Button, also soll der Tastendruck nur das
+            # Event feuern und die App nicht zur (nach "Jetzt entfernen"
+            # nicht mehr existierenden) Geräteseite navigieren.
+            "behavior": "background",
         }
         for kind in kinds
     ]
@@ -667,10 +673,13 @@ async def async_send_exclusion_notice(
     """
     Bestätigt, dass ein Client von der Ausnahmeliste geschützt ist.
 
-    Bewusst mit dem Tag der ursprünglichen Neugeräte-Meldung: Die Bestätigung
-    ersetzt sie damit, statt eine zweite Meldung danebenzustellen. Ohne diese
-    Rückmeldung bliebe der Tastendruck auf dem Telefon ohne sichtbare Wirkung,
-    denn er passiert ausserhalb von Home Assistant.
+    Eigener Tag statt des Tags der ursprünglichen Neugeräte-Meldung: iOS
+    entfernt eine Meldung meist automatisch, sobald eine Aktion darauf
+    getippt wird. Teilt sich die Bestätigung den Tag mit der so schon
+    verschwundenen Meldung, kommt sie je nach Timing nicht mehr zuverlässig
+    als eigener Banner an. Ohne diese Rückmeldung bliebe der Tastendruck auf
+    dem Telefon ohne sichtbare Wirkung, denn er passiert ausserhalb von Home
+    Assistant.
     """
     target = notify_target(entry)
     if target is None:
@@ -683,7 +692,7 @@ async def async_send_exclusion_notice(
         f"{name} wird nicht mehr automatisch entfernt.",
         notification_data(
             hass,
-            f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}",
+            f"{ACTION_CONFIRM_TAG_PREFIX}_{mac.replace(':', '')}",
             device_url(hass, entry, mac),
         ),
     )
@@ -699,6 +708,12 @@ async def async_send_removal_notice(
 ) -> None:
     """
     Bestätigt, dass ein Client von Hand entfernt wurde.
+
+    Eigener Tag statt des Tags der ursprünglichen Neugeräte-Meldung, aus
+    demselben Grund wie bei async_send_exclusion_notice: iOS entfernt eine
+    Meldung meist automatisch, sobald eine Aktion darauf getippt wird, und
+    eine Bestätigung mit demselben Tag käme dann je nach Timing nicht mehr
+    zuverlässig an.
 
     Der Klick führt auf die Integrationsseite, nicht auf die Geräteseite: die
     gibt es nach dem Entfernen nicht mehr. Ist der Client noch online, legt
@@ -723,7 +738,7 @@ async def async_send_removal_notice(
         target,
         REMOVED_TITLE,
         message,
-        notification_data(hass, f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}"),
+        notification_data(hass, f"{ACTION_CONFIRM_TAG_PREFIX}_{mac.replace(':', '')}"),
     )
 
 

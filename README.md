@@ -174,6 +174,14 @@ that line never appears after a tap, the event is not reaching Home Assistant
 at all, which points at the phone or companion app rather than at the
 integration.
 
+Both action buttons set `"behavior": "background"` explicitly, so tapping
+one only fires the event and does not navigate the app anywhere. The
+confirmation push uses its own notification tag rather than the tag of the
+original new-device notification: iOS removes a notification from
+Notification Center as soon as an action on it is tapped, and a confirmation
+arriving right after with the same tag would, depending on timing, sometimes
+not show as a new banner at all.
+
 Because a failed poll is not treated as a coordinator error — the cache is
 passed on so short outages do not turn every entity unavailable — an outage
 would otherwise go unnoticed until the next purge run. Consecutive failures are
