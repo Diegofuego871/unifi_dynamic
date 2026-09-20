@@ -5,6 +5,37 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.20.2] - 2026-09-20
+
+### Added
+
+- New action `unifi_dynamic.remove_client` removes individual clients on
+  demand, without waiting for the threshold and without regard for the
+  exclusion list. Until now that was only possible from a notification, which
+  is no help for a client whose notification is long gone or that was never
+  reported in the first place.
+- Targets can be picked as devices, so the UI offers the integration's devices
+  directly, or given as MAC addresses for clients that no longer exist in Home
+  Assistant. Both accept multiple values and can be combined in one call.
+- MAC addresses are accepted with colons, hyphens, dots or as a bare hex
+  string, so a value copied from a log or from the UniFi interface works as-is.
+- The action returns what it did per client: entry, MAC, name, number of
+  removed entities and devices, and whether the client was online at the time
+  — in which case the next poll will recreate it. Unknown addresses come back
+  with `removed: false` instead of failing the call.
+- With several UniFi hosts configured, a MAC without an explicit config entry
+  is looked up on all of them; the same address can legitimately exist in
+  separate networks.
+
+### Notes
+
+- Removal by action is subject to the same 15-minute hold on new-device
+  notifications as the notification button, so a returning client does not
+  immediately produce a fresh report.
+- Unlike the notification button, the action sends no confirmation push. The
+  caller sees the response, and an automation that removes clients in bulk
+  should not produce a notification per client.
+
 ## [1.20.1] - 2026-09-20
 
 ### Changed
@@ -280,6 +311,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[1.20.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.2
 [1.20.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.1
 [1.20.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.0
 [1.19.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.19.1

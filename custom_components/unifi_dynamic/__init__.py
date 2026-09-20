@@ -8,6 +8,7 @@ import logging
 from datetime import time as dt_time
 from pathlib import Path
 from time import monotonic
+from typing import Any
 
 import voluptuous as vol
 from homeassistant.components.http import StaticPathConfig
@@ -29,8 +30,10 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     ACTION_EXCLUDE,
+    ATTR_DEVICE_ID,
     ATTR_DRY_RUN,
     ATTR_ENTRY_ID,
+    ATTR_MAC,
     BRAND_DIR,
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
@@ -46,6 +49,7 @@ from .const import (
     PUSH_IMAGE_FILE,
     PUSH_IMAGE_URL,
     SERVICE_PURGE_NOW,
+    SERVICE_REMOVE_CLIENT,
     STATIC_URL_PATH,
 )
 from .coordinator import (
@@ -193,6 +197,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         if not hass.data.get(DOMAIN):
             hass.services.async_remove(DOMAIN, SERVICE_PURGE_NOW)
+            hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CLIENT)
 
     return unload_ok
 
@@ -577,7 +582,7 @@ def _result_to_dict(entry: ConfigEntry, result: PurgeResult) -> dict:
 
 @callback
 def _async_register_services(hass: HomeAssistant) -> None:
-    """Registriert unifi_dynamic.purge_now einmalig."""
+    """Registriert die Services der Integration einmalig."""
     if hass.services.has_service(DOMAIN, SERVICE_PURGE_NOW):
         return
 
@@ -614,6 +619,148 @@ def _async_register_services(hass: HomeAssistant) -> None:
         ),
         supports_response=SupportsResponse.OPTIONAL,
     )
+
+    async def _handle_remove_client(call: ServiceCall) -> ServiceResponse:
+        wanted_entry = call.data.get(ATTR_ENTRY_ID)
+        targets: list[tuple[str | None, str]] = []
+
+        for device_id in _as_list(call.data.get(ATTR_DEVICE_ID)):
+            resolved = _mac_from_device(hass, str(device_id))
+            if resolved is None:
+                _LOGGER.warning(
+                    "Gerät %s gehört nicht zu dieser Integration", device_id
+                )
+                continue
+            targets.append(resolved)
+
+        for raw in _as_list(call.data.get(ATTR_MAC)):
+            mac = _normalize_mac(str(raw))
+            if mac is None:
+                _LOGGER.warning("Ungültige MAC-Adresse: %s", raw)
+                continue
+            targets.append((None, mac))
+
+        results: list[dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
+
+        for entry_id, mac in targets:
+            # Ohne Entry-ID gilt der Aufruf für jeden Host, der die MAC kennt.
+            # Dieselbe MAC kann in getrennten Netzen mehrfach vorkommen.
+            candidates = (
+                [entry_id]
+                if entry_id
+                else [wanted_entry]
+                if wanted_entry
+                else list(hass.data.get(DOMAIN, {}))
+            )
+
+            hit = False
+            for candidate in candidates:
+                coordinator = hass.data.get(DOMAIN, {}).get(candidate)
+                if coordinator is None:
+                    continue
+                if (candidate, mac) in seen:
+                    hit = True
+                    continue
+
+                name = preferred_client_name(coordinator.client_data(mac), mac)
+                online = coordinator.is_client_online(mac)
+                removed = coordinator.remove_client_now(mac)
+                if removed is None:
+                    continue
+
+                seen.add((candidate, mac))
+                hit = True
+                results.append(
+                    {
+                        "entry_id": candidate,
+                        "mac": mac,
+                        "name": name,
+                        "removed_entities": removed[0],
+                        "removed_devices": removed[1],
+                        # War der Client zuletzt online, legt ihn der nächste
+                        # Abgleich wieder an - mit neuen Entity-IDs.
+                        "was_online": bool(online),
+                    }
+                )
+
+            if not hit:
+                _LOGGER.info("Zu %s ist nichts bekannt, nichts entfernt", mac)
+                results.append({"mac": mac, "removed": False, "reason": "unknown"})
+
+        return {"results": results}
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REMOVE_CLIENT,
+        _handle_remove_client,
+        schema=vol.Schema(
+            vol.All(
+                {
+                    vol.Optional(ATTR_DEVICE_ID): vol.Any(cv.string, [cv.string]),
+                    vol.Optional(ATTR_MAC): vol.Any(cv.string, [cv.string]),
+                    vol.Optional(ATTR_ENTRY_ID): cv.string,
+                },
+                cv.has_at_least_one_key(ATTR_DEVICE_ID, ATTR_MAC),
+            )
+        ),
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
+
+def _as_list(value: Any) -> list[Any]:
+    """Einzelwert oder Liste einheitlich als Liste."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple, set)):
+        return list(value)
+    return [value]
+
+
+def _normalize_mac(raw: str) -> str | None:
+    """
+    Bringt eine MAC auf das intern genutzte Format aa:bb:cc:11:22:33.
+
+    Akzeptiert Doppelpunkte, Bindestriche, Punkte und blanke Hexfolgen, damit
+    ein aus einem Log oder aus der UniFi-Oberfläche kopierter Wert direkt
+    funktioniert.
+    """
+    token = "".join(c for c in raw.strip().lower() if c not in ":-. ")
+    if len(token) != 12:
+        return None
+    try:
+        int(token, 16)
+    except ValueError:
+        return None
+    return ":".join(token[i : i + 2] for i in range(0, 12, 2))
+
+
+@callback
+def _mac_from_device(hass: HomeAssistant, device_id: str) -> tuple[str, str] | None:
+    """
+    Löst eine Geräteauswahl in (Entry-ID, MAC) auf.
+
+    Geräte dieser Integration tragen die MAC als Identifier, siehe
+    _sync_device_names. Fremde Geräte werden übersprungen.
+    """
+    device = dr.async_get(hass).async_get(device_id)
+    if device is None:
+        return None
+
+    mac = next(
+        (value for domain, value in device.identifiers if domain == DOMAIN), None
+    )
+    if mac is None:
+        return None
+
+    entry_id = next(
+        (eid for eid in device.config_entries if eid in hass.data.get(DOMAIN, {})),
+        None,
+    )
+    if entry_id is None:
+        return None
+
+    return entry_id, mac.lower()
 
 
 # ---------------------------------------------------------------------------

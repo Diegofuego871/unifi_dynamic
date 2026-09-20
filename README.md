@@ -15,6 +15,8 @@ the client has not been reported by the UniFi controller for a while.
 - Configurable automatic removal ("purge") after X days without a sighting,
   including a daily run at a configurable time.
 - Individual devices can be excluded from automatic removal.
+- Action `unifi_dynamic.remove_client` to remove individual clients on demand,
+  by device or by MAC address.
 - Action `unifi_dynamic.purge_now` to trigger the run manually, optionally as
   a dry run without deleting anything.
 - Push notification for newly detected clients, with individually selectable
@@ -113,6 +115,24 @@ time.
 
 The action returns a structured response with the number of removed clients,
 entities and devices, plus the number of excluded clients.
+
+## Action `unifi_dynamic.remove_client`
+
+Removes individual clients immediately, regardless of the threshold and of the
+exclusion list.
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `device_id` | One of the two | Devices to remove, multiple allowed. |
+| `mac` | One of the two | MAC addresses, multiple allowed. Colons, hyphens, dots or a bare hex string. |
+| `entry_id` | No | Only relevant for MAC addresses. Without it, all configured UniFi hosts are searched. |
+
+The response lists per client the entry, MAC, name, the number of removed
+entities and devices, and whether it was online at the time — in which case the
+next poll recreates it with fresh entity ids. Unknown addresses come back with
+`removed: false` rather than failing the call. As with the notification button,
+a removed client is not reported as new again for 15 minutes. No confirmation
+push is sent; the response is the feedback.
 
 ## How it works
 

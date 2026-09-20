@@ -21,3 +21,42 @@ purge_now:
       selector:
         config_entry:
           integration: unifi_dynamic
+
+remove_client:
+  name: Client entfernen
+  description: >-
+    Entfernt einzelne Clients sofort, unabhängig von der Schwelle für das
+    automatische Entfernen und von der Ausnahmeliste. Gelöscht werden die
+    Entitäten und das Gerät. Ist ein Client noch aktiv, legt ihn der nächste
+    Abgleich wieder an, dann mit neuen Entity-IDs. Das Ergebnis kommt als
+    Service-Antwort zurück.
+  fields:
+    device_id:
+      name: Geräte
+      description: >-
+        Die zu entfernenden Geräte. Mehrfachauswahl möglich.
+      required: false
+      selector:
+        device:
+          integration: unifi_dynamic
+          multiple: true
+    mac:
+      name: MAC-Adressen
+      description: >-
+        Alternative zur Geräteauswahl, etwa für Geräte, die es in Home
+        Assistant nicht mehr gibt. Doppelpunkte, Bindestriche oder eine blanke
+        Hexfolge werden alle akzeptiert.
+      required: false
+      example: "aa:bb:cc:11:22:33"
+      selector:
+        text:
+          multiple: true
+    entry_id:
+      name: Config Entry
+      description: >-
+        Optional und nur für MAC-Adressen relevant. Ohne Angabe wird auf allen
+        eingerichteten UniFi-Hosts gesucht.
+      required: false
+      selector:
+        config_entry:
+          integration: unifi_dynamic

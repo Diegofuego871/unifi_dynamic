@@ -207,5 +207,9 @@ NOTIFICATION_TITLE = "UniFi Dynamic Purge"
 # --- Services --------------------------------------------------------------
 
 SERVICE_PURGE_NOW = "purge_now"
+SERVICE_REMOVE_CLIENT = "remove_client"
+
+ATTR_MAC = "mac"
+ATTR_DEVICE_ID = "device_id"
 ATTR_DRY_RUN = "dry_run"
 ATTR_ENTRY_ID = "entry_id"

@@ -15,6 +15,8 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 - Automatisches, konfigurierbares Entfernen („Purge") nach X Tagen ohne
   Sichtung, inklusive täglichem Lauf zu einer einstellbaren Uhrzeit.
 - Einzelne Geräte lassen sich vom automatischen Entfernen ausnehmen.
+- Aktion `unifi_dynamic.remove_client` zum gezielten Entfernen einzelner
+  Clients, per Geräteauswahl oder MAC-Adresse.
 - Aktion `unifi_dynamic.purge_now` zum manuellen Auslösen, wahlweise als
   Testlauf („dry run") ohne Löschen.
 - Push-Benachrichtigung bei neu erkannten Clients, mit einzeln schaltbarem
@@ -114,6 +116,25 @@ Löst den Aufräumlauf sofort aus, statt auf die eingestellte Uhrzeit zu warten.
 
 Die Aktion liefert eine strukturierte Antwort mit Anzahl entfernter Clients,
 Entitäten und Geräte sowie der Anzahl ausgenommener Clients.
+
+## Aktion `unifi_dynamic.remove_client`
+
+Entfernt einzelne Clients sofort, unabhängig von der Schwelle und von der
+Ausnahmeliste.
+
+| Feld | Pflicht | Beschreibung |
+| --- | --- | --- |
+| `device_id` | Eines von beiden | Zu entfernende Geräte, Mehrfachauswahl möglich. |
+| `mac` | Eines von beiden | MAC-Adressen, mehrere möglich. Doppelpunkte, Bindestriche, Punkte oder blanke Hexfolge. |
+| `entry_id` | Nein | Nur für MAC-Adressen relevant. Ohne Angabe werden alle eingerichteten UniFi-Hosts durchsucht. |
+
+Die Antwort nennt je Client den Entry, die MAC, den Namen, die Zahl entfernter
+Entitäten und Geräte sowie ob er zu diesem Zeitpunkt online war — dann legt ihn
+der nächste Abgleich wieder an, mit neuen Entity-IDs. Unbekannte Adressen
+kommen mit `removed: false` zurück, statt den Aufruf scheitern zu lassen. Wie
+beim Button in der Meldung wird ein entfernter Client 15 Minuten lang nicht
+erneut als neu gemeldet. Eine Bestätigungs-Push gibt es nicht, die Antwort ist
+die Rückmeldung.
 
 ## Funktionsweise
 

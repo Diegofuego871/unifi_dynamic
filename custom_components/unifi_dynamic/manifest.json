@@ -14,5 +14,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Diegofuego871/unifi_dynamic/issues",
   "requirements": [],
-  "version": "1.20.1"
+  "version": "1.20.2"
 }
