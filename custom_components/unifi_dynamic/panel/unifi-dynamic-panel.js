@@ -104,6 +104,14 @@ function pickLang(hass) {
 
 const POLL_INTERVAL_MS = 10000;
 
+// Derselbe statische Pfad, unter dem __init__.py (_async_register_brand_path)
+// bereits brand/icon.png für die Push-Meldungen ausliefert - hier
+// wiederverwendet statt neu übergeben, da fest und ohnehin schon öffentlich
+// erreichbar. onerror im Template blendet das Bild aus, falls es fehlt
+// (z.B. wenn die Registrierung in __init__.py fehlgeschlagen ist), statt
+// ein kaputtes Bild-Icon zu zeigen.
+const BRAND_ICON_URL = "/unifi_dynamic/icon.png";
+
 // Suche, Filter und Sortierung überleben einen Browser-Neuladen und auch
 // einen HA-Neustart, weil localStorage rein clientseitig ist und nichts mit
 // dem HA-Prozess zu tun hat - kein eigener Server-Speicher nötig. Bewusst
@@ -428,6 +436,12 @@ class UnifiDynamicPanel extends HTMLElement {
           border-bottom: 1px solid var(--divider-color, #e0e0e0);
           background: var(--card-background-color, #fff);
         }
+        .brand-icon {
+          flex: 0 0 auto;
+          width: 32px;
+          height: 32px;
+          border-radius: 6px;
+        }
         .toolbar h1 {
           flex: 1 1 auto;
           margin: 0;
@@ -436,18 +450,22 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         .search-wrap {
           position: relative;
-          flex: 2 1 360px;
-          min-width: 220px;
+          /* flex-grow bewusst 0: die Suche soll nicht breiter werden als
+             nötig und nicht den restlichen Werkzeugleisten-Inhalt
+             (Filter, Reset-Button) verdrängen. Grösser wirkt hier über
+             Höhe/Schrift, nicht über Breite. */
+          flex: 0 1 280px;
+          min-width: 200px;
         }
         input[type="search"] {
           width: 100%;
           box-sizing: border-box;
-          padding: 10px 34px 10px 14px;
+          padding: 14px 34px 14px 14px;
           border-radius: 8px;
           border: 1px solid var(--divider-color, #ccc);
           background: var(--primary-background-color, #fff);
           color: var(--primary-text-color, #212121);
-          font-size: 15px;
+          font-size: 16px;
         }
         /* Eigener "×"-Button statt der nativen, browserabhängigen
            Lösung von type="search" (Chrome zeigt eine, Firefox/Safari
@@ -585,9 +603,14 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--secondary-background-color, rgba(0,0,0,0.06));
         }
         .menu {
-          position: absolute;
-          right: 8px;
-          top: 36px;
+          /* position: fixed statt absolute, und Position wird bei jedem
+             Öffnen per JS anhand der echten Bildschirmkoordinaten des
+             Buttons gesetzt (siehe _positionOpenMenu). Grund: .content
+             scrollt (overflow: auto) und schneidet ein absolut
+             positioniertes Menü nahe dem unteren Rand ab; fixed entkommt
+             dem Scroll-Container, weil sich seine Position am Viewport
+             orientiert statt an einem scrollenden Vorfahren. */
+          position: fixed;
           z-index: 10;
           min-width: 220px;
           background: var(--card-background-color, #fff);
@@ -642,6 +665,12 @@ class UnifiDynamicPanel extends HTMLElement {
       </style>
 
       <div class="toolbar">
+        <img
+          class="brand-icon"
+          src="${BRAND_ICON_URL}"
+          alt=""
+          onerror="this.style.display='none'"
+        />
         <h1>${this._escape(t("title"))}</h1>
         <div class="search-wrap">
           <input type="search" class="search" placeholder="${this._escape(
@@ -771,6 +800,16 @@ class UnifiDynamicPanel extends HTMLElement {
           this._openMenuKey = null;
           this._renderRows();
         }
+      }
+    });
+
+    // Menü schliessen beim Scrollen: es ist jetzt position: fixed (siehe
+    // CSS-Kommentar bei .menu), scrollt also nicht mehr automatisch mit
+    // seiner Zeile mit und würde sonst optisch abdriften.
+    this.shadowRoot.querySelector(".content").addEventListener("scroll", () => {
+      if (this._openMenuKey !== null) {
+        this._openMenuKey = null;
+        this._renderRows();
       }
     });
 
@@ -908,6 +947,42 @@ class UnifiDynamicPanel extends HTMLElement {
           </tr>`;
       })
       .join("");
+
+    this._positionOpenMenu();
+  }
+
+  // Setzt die Bildschirmposition des offenen Menüs anhand der echten
+  // Koordinaten seines Buttons (position: fixed, siehe CSS-Kommentar dort).
+  // Öffnet automatisch nach oben, wenn unterhalb nicht genug Platz ist -
+  // "immer nach oben" wäre für die obersten Zeilen genau dasselbe Problem
+  // andersherum. Läuft nach jedem Tabellen-Rebuild, auch nach dem
+  // Live-Polling, damit ein offenes Menü nicht an der alten Position
+  // hängen bleibt, wenn sich Zeilen verschieben.
+  _positionOpenMenu() {
+    if (this._openMenuKey === null) return;
+
+    const menuEl = this.shadowRoot.querySelector(".menu");
+    const row = this.shadowRoot.querySelector(
+      `tr[data-key="${this._openMenuKey}"]`
+    );
+    const btn = row ? row.querySelector(".menu-btn") : null;
+    if (!menuEl || !btn) return;
+
+    const btnRect = btn.getBoundingClientRect();
+    const menuHeight = menuEl.offsetHeight;
+    const margin = 4;
+    const spaceBelow = window.innerHeight - btnRect.bottom;
+    const spaceAbove = btnRect.top;
+    const openUp = spaceBelow < menuHeight + margin && spaceAbove > spaceBelow;
+
+    menuEl.style.right = `${window.innerWidth - btnRect.right}px`;
+    if (openUp) {
+      menuEl.style.top = "";
+      menuEl.style.bottom = `${window.innerHeight - btnRect.top + margin}px`;
+    } else {
+      menuEl.style.bottom = "";
+      menuEl.style.top = `${btnRect.bottom + margin}px`;
+    }
   }
 }
 

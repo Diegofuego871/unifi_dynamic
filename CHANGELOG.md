@@ -5,6 +5,29 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.4] - 2026-09-21
+
+### Fixed
+
+- The row menu (⋮) in the panel table could be cut off by the table's own
+  scroll area when opened from one of the last visible rows, because it was
+  positioned relative to the scrolling table itself. It now uses the
+  button's actual on-screen position and opens upward automatically when
+  there is not enough room below — a fixed "always upward" would have
+  caused the identical problem for the topmost rows instead. The menu also
+  closes on scroll so it cannot drift away from its row.
+- The search box became too wide in 2.0.3 — it grew to dominate the
+  toolbar and crowd out the filters and the reset button. Width is back to
+  a fixed, reasonable size; the box is taller and its text larger instead,
+  which was the actual request.
+
+### Added
+
+- The integration's icon now appears in the panel's toolbar next to the
+  title, reusing the same image already served for push notifications. If
+  it fails to load for any reason, it is hidden rather than showing a
+  broken-image icon.
+
 ## [2.0.3] - 2026-09-21
 
 ### Changed
@@ -553,6 +576,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.4
 [2.0.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.3
 [2.0.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.2
 [2.0.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.1

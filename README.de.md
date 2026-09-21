@@ -184,6 +184,14 @@ wurde. Bei mehr als einem konfigurierten UniFi-Host zeigt die Tabelle eine
 Host-Spalte und listet die Clients aller Hosts gemeinsam, statt ein Panel
 pro Host aufzuspalten.
 
+Das Menü positioniert sich anhand der tatsächlichen Bildschirmposition des
+Buttons und öffnet automatisch nach oben, wenn unten nicht genug Platz ist
+— nötig, weil die Tabelle selbst scrollt, was das Menü bei Zeilen nahe dem
+unteren Rand des sichtbaren Bereichs sonst abschneiden würde. Das Icon der
+Integration erscheint neben dem Titel in der Werkzeugleiste, dasselbe Bild,
+das schon für Push-Meldungen ausgeliefert wird; scheitert das Laden, blendet
+es sich selbst aus, statt ein kaputtes Bild-Icon zu zeigen.
+
 Das Panel ist ein eigenständiges Web Component ohne externe Bibliothek und
 ohne Build-Schritt — HACS installiert diese Integration als reine
 Dateikopie, es gibt also nichts zu bündeln. Es spricht mit dem Backend über

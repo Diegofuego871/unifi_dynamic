@@ -178,6 +178,14 @@ scanning the table. With more than one UniFi host configured, the table
 shows a host column and lists clients from all of them together rather than
 splitting into one panel per host.
 
+The menu positions itself against the button's actual on-screen location
+and opens upward automatically when there is not enough room below —
+needed because the table itself scrolls, which would otherwise clip the
+menu for rows near the bottom of the visible area. The integration's icon
+appears next to the title in the toolbar, reusing the image already served
+for push notifications; it hides itself rather than showing a broken-image
+icon if that fails to load.
+
 The panel is a self-contained Web Component with no external library and no
 build step — HACS installs this integration as a plain file copy, so there
 is nothing to bundle. It talks to the backend through three WebSocket
