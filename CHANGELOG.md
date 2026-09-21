@@ -5,28 +5,16 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [2.0.7] - 2026-09-21
-
-### Changed
-
-- The German screenshot in README.de.md is now rendered the same way as
-  the English one added in 2.0.6: real panel code, fabricated data (device
-  names, IPs, MAC addresses — not a real network), via a headless browser,
-  instead of a live instance's actual data. Since none of it is real, MAC
-  addresses no longer need to be redacted, and both screenshots are now
-  produced the same way.
-
 ## [2.0.6] - 2026-09-21
 
 ### Changed
 
-- README.md now shows an English screenshot of the panel instead of the
-  German one. It is a genuine render of the current panel code with
-  placeholder data (fabricated device names, IPs and MAC addresses, not a
-  real network), produced with a headless browser rather than edited image
-  text — so the interface language shown is real behavior, not a mockup.
-  README.de.md keeps the original German screenshot, taken from a live
-  instance with MAC addresses redacted.
+- README.md and README.de.md now show a screenshot of the panel, one per
+  language. Both are genuine renders of the current panel code with
+  fabricated data (device names, IPs and MAC addresses — not a real
+  network), produced with a headless browser rather than edited image text
+  — so the interface language shown is real behavior, not a mockup. Since
+  none of the data is real, no redaction was needed on either image.
 
 ## [2.0.5] - 2026-09-21
 
@@ -607,7 +595,6 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
-[2.0.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.7
 [2.0.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.6
 [2.0.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.5
 [2.0.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.4
