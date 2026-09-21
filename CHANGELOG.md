@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   The device page is now reachable only through the row's ⋮ menu ("Open
   device page").
 
+### Fixed
+
+- The panel's remove and exclude actions called the backend without error
+  handling. A failure (for example, a permission error) vanished as an
+  unhandled promise rejection in the browser console with nothing shown in
+  the table. Both actions now surface a failure through the same error
+  banner already used for a failed client-list load.
+
 ## [2.0.0] - 2026-09-21
 
 ### Added
