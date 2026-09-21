@@ -182,21 +182,37 @@ class UnifiDynamicPanel extends HTMLElement {
     this._renderRows();
   }
 
+  // Fehler hier abfangen statt die Promise unbehandelt durchfallen zu
+  // lassen: ohne try/catch verschwindet ein fehlgeschlagenes Entfernen
+  // (z.B. Berechtigungsfehler) sang- und klanglos in der Browser-Konsole,
+  // ohne dass in der Tabelle etwas darauf hindeutet.
   async _removeClient(entryId, mac) {
-    await this._hass.callWS({
-      type: "unifi_dynamic/remove_client",
-      entry_id: entryId,
-      mac,
-    });
+    try {
+      await this._hass.callWS({
+        type: "unifi_dynamic/remove_client",
+        entry_id: entryId,
+        mac,
+      });
+    } catch (err) {
+      this._error = (err && err.message) || String(err);
+      this._renderRows();
+      return;
+    }
     await this._fetchClients();
   }
 
   async _excludeClient(entryId, mac) {
-    await this._hass.callWS({
-      type: "unifi_dynamic/exclude_client",
-      entry_id: entryId,
-      mac,
-    });
+    try {
+      await this._hass.callWS({
+        type: "unifi_dynamic/exclude_client",
+        entry_id: entryId,
+        mac,
+      });
+    } catch (err) {
+      this._error = (err && err.message) || String(err);
+      this._renderRows();
+      return;
+    }
     await this._fetchClients();
   }
 
