@@ -421,13 +421,20 @@ class UnifiDynamicPanel extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host {
-          display: block;
+          /* display: flex (Spalte) statt block: erst damit können
+             .toolbar/.error-banner fest bleiben und .content den
+             restlichen Platz einnehmen. Bei display: block hatte .content
+             keine begrenzte Höhe, wodurch sein eigenes overflow: auto nie
+             griff - stattdessen scrollte die ganze Seite inkl. Werkzeugleiste. */
+          display: flex;
+          flex-direction: column;
           height: 100%;
           background: var(--primary-background-color, #fff);
           color: var(--primary-text-color, #212121);
           font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
         }
         .toolbar {
+          flex: 0 0 auto;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
@@ -520,6 +527,13 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--secondary-background-color, rgba(0,0,0,0.06));
         }
         .content {
+          /* flex: 1 1 auto nimmt den verbleibenden Platz unterhalb der
+             fixierten Werkzeugleiste ein; min-height: 0 ist nötig, damit
+             ein Flex-Kind sich tatsächlich auf diese Höhe begrenzen lässt
+             statt sich an seinem Inhalt (der Tabelle) aufzublähen - erst
+             dadurch greift overflow: auto und nur die Tabelle scrollt. */
+          flex: 1 1 auto;
+          min-height: 0;
           padding: 0 16px 16px;
           overflow: auto;
         }
@@ -645,6 +659,7 @@ class UnifiDynamicPanel extends HTMLElement {
           color: var(--secondary-text-color, #727272);
         }
         .error-banner {
+          flex: 0 0 auto;
           margin: 16px;
           padding: 12px 16px;
           border-radius: 8px;

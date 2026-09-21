@@ -5,6 +5,24 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.7] - 2026-09-21
+
+### Fixed
+
+- The panel's toolbar (title, search box, filters, reset button) used to
+  scroll away with the page instead of staying in view, because the panel's
+  host element only had a fixed height without an actual layout to enforce
+  it — its content area had no bounded height to scroll within, so the
+  whole panel grew past the viewport and the outer page scrolled instead.
+  The toolbar (and the error banner) now stay fixed at the top; only the
+  client table underneath scrolls.
+
+### Changed
+
+- README.md and README.de.md no longer show the caption paragraph under
+  the panel screenshot explaining that the data is fabricated — the
+  screenshots already read as clearly illustrative without it.
+
 ## [2.0.6] - 2026-09-21
 
 ### Changed
@@ -595,6 +613,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.7
 [2.0.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.6
 [2.0.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.5
 [2.0.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.4
