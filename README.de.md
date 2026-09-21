@@ -8,7 +8,10 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
 ![Panel mit der Client-Tabelle, Suche, Filtern und geöffnetem Zeilenmenü](docs/panel-screenshot.png)
 
-MAC-Adressen im Screenshot sind geschwärzt, alles andere unbearbeitet.
+Mit dem echten Panel-Code und frei erfundenen Testdaten gerendert
+(Gerätenamen, IPs und MAC-Adressen sind ausgedacht, kein echtes Netzwerk) —
+gezeigt wird damit tatsächliches Verhalten der aktuellen Version, kein
+nachbearbeitetes Bild.
 
 ## Funktionen
 
