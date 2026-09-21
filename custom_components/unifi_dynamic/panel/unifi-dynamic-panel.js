@@ -52,6 +52,7 @@ const STRINGS = {
     error: "Fehler beim Laden der Clientliste:",
     retry: "Erneut versuchen",
     resetFilters: "Filter zurücksetzen",
+    clearSearch: "Suche leeren",
     multiHost: "Host",
     seenNever: "–",
   },
@@ -90,6 +91,7 @@ const STRINGS = {
     error: "Failed to load the client list:",
     retry: "Retry",
     resetFilters: "Reset filters",
+    clearSearch: "Clear search",
     multiHost: "Host",
     seenNever: "–",
   },
@@ -432,17 +434,54 @@ class UnifiDynamicPanel extends HTMLElement {
           font-size: 20px;
           font-weight: 400;
         }
+        .search-wrap {
+          position: relative;
+          flex: 2 1 360px;
+          min-width: 220px;
+        }
         input[type="search"] {
-          flex: 1 1 260px;
-          min-width: 180px;
-          padding: 8px 12px;
+          width: 100%;
+          box-sizing: border-box;
+          padding: 10px 34px 10px 14px;
           border-radius: 8px;
           border: 1px solid var(--divider-color, #ccc);
           background: var(--primary-background-color, #fff);
           color: var(--primary-text-color, #212121);
-          font-size: 14px;
+          font-size: 15px;
+        }
+        /* Eigener "×"-Button statt der nativen, browserabhängigen
+           Lösung von type="search" (Chrome zeigt eine, Firefox/Safari
+           nicht zuverlässig) - hier ausgeblendet, um Doppelungen zu
+           vermeiden. */
+        input[type="search"]::-webkit-search-cancel-button {
+          -webkit-appearance: none;
+          appearance: none;
+        }
+        .search-clear {
+          position: absolute;
+          right: 6px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 24px;
+          height: 24px;
+          border: none;
+          border-radius: 50%;
+          background: none;
+          color: var(--secondary-text-color, #727272);
+          font-size: 16px;
+          line-height: 1;
+          cursor: pointer;
+          display: none;
+        }
+        .search-clear.visible {
+          display: block;
+        }
+        .search-clear:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.08));
+          color: var(--primary-text-color, #212121);
         }
         select {
+          flex: 0 0 auto;
           padding: 8px 10px;
           border-radius: 8px;
           border: 1px solid var(--divider-color, #ccc);
@@ -604,9 +643,16 @@ class UnifiDynamicPanel extends HTMLElement {
 
       <div class="toolbar">
         <h1>${this._escape(t("title"))}</h1>
-        <input type="search" class="search" placeholder="${this._escape(
-          t("searchPlaceholder")
-        )}" value="${this._escape(this._search)}" />
+        <div class="search-wrap">
+          <input type="search" class="search" placeholder="${this._escape(
+            t("searchPlaceholder")
+          )}" value="${this._escape(this._search)}" />
+          <button class="search-clear${
+            this._search ? " visible" : ""
+          }" title="${this._escape(t("clearSearch"))}" aria-label="${this._escape(
+            t("clearSearch")
+          )}">×</button>
+        </div>
         <select class="filter-online">
           <option value="all">${this._escape(t("filterOnlineAll"))}</option>
           <option value="online">${this._escape(t("filterOnlineOnline"))}</option>
@@ -646,9 +692,20 @@ class UnifiDynamicPanel extends HTMLElement {
     `;
 
     const search = this.shadowRoot.querySelector(".search");
+    const searchClear = this.shadowRoot.querySelector(".search-clear");
     search.addEventListener("input", () => {
       this._search = search.value;
+      searchClear.classList.toggle("visible", this._search.length > 0);
       this._openMenuKey = null;
+      this._renderRows();
+      this._savePrefs();
+    });
+
+    searchClear.addEventListener("click", () => {
+      this._search = "";
+      search.value = "";
+      searchClear.classList.remove("visible");
+      search.focus();
       this._renderRows();
       this._savePrefs();
     });
@@ -679,6 +736,7 @@ class UnifiDynamicPanel extends HTMLElement {
       this._sortKey = DEFAULT_PREFS.sortKey;
       this._sortDir = DEFAULT_PREFS.sortDir;
       search.value = this._search;
+      searchClear.classList.remove("visible");
       filterOnline.value = this._onlineFilter;
       filterConn.value = this._connFilter;
       this._openMenuKey = null;

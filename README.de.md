@@ -152,8 +152,10 @@ Ein Panel namens „UniFi Dynamic Clients" ist in der Seitenleiste angeheftet
 über alle konfigurierten UniFi-Hosts hinweg — Alias, IP, MAC, SSID, Access
 Point, Verbindungsart, zuletzt gesehen und ein Online/Offline-Badge —, die
 sich aktualisiert, indem sie alle 10 Sekunden nachfragt, solange das Panel
-offen ist. Die Suchleiste oben durchsucht alle diese Felder gleichzeitig;
-zwei zusätzliche Dropdowns filtern nach Online/Offline und Kabel/WLAN. Ein
+offen ist. Die Suchleiste oben durchsucht alle diese Felder gleichzeitig,
+mit einem „×"-Button, der erscheint, sobald Text drinsteht, und ihn mit
+einem Klick leert; zwei zusätzliche Dropdowns filtern nach Online/Offline
+und Kabel/WLAN. Ein
 Klick auf eine Spaltenüberschrift sortiert die Tabelle aufsteigend danach;
 ein erneuter Klick auf dieselbe Überschrift dreht auf absteigend um, ein
 Klick auf eine andere Überschrift wechselt die Sortierspalte. Ein kleiner

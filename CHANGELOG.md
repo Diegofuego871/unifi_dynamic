@@ -5,6 +5,21 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.3] - 2026-09-21
+
+### Changed
+
+- The search box in the panel is noticeably larger: it now takes up more of
+  the toolbar's width, and both the padding and font size are bigger.
+
+### Added
+
+- A "×" button appears inside the search box, right-aligned, once there is
+  text in it. Clicking it clears the search and refocuses the box. This is
+  a custom button rather than the native clear icon `type="search"` inputs
+  sometimes show, because that native icon's appearance is inconsistent
+  across browsers (Chrome shows one, Firefox and Safari do not reliably).
+
 ## [2.0.2] - 2026-09-21
 
 ### Added
@@ -538,6 +553,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.3
 [2.0.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.2
 [2.0.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.1
 [2.0.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.0

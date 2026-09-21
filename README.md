@@ -150,7 +150,8 @@ administrators only). It shows one table with every client across all
 configured UniFi hosts — alias, IP, MAC, SSID, access point, connection
 type, last seen and an online/offline badge — refreshed by polling every 10
 seconds while the panel is open. The search box at the top matches across
-all of those fields at once; two dropdowns additionally filter by
+all of those fields at once, with a "×" button that appears once it has
+text and clears it in one click; two dropdowns additionally filter by
 online/offline and wired/wireless. Clicking a column header sorts the table
 by that column, ascending; clicking the same header again reverses to
 descending, and clicking a different header switches to sorting by that one
