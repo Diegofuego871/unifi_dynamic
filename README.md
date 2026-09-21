@@ -8,11 +8,6 @@ the client has not been reported by the UniFi controller for a while.
 
 ![Panel showing the client table, with search, filters and the row menu open](docs/panel-screenshot-en.png)
 
-Rendered with the actual panel code and placeholder data for this
-screenshot (device names, IPs and MAC addresses are all made up, not a
-real network) — everything shown, including the interface language, is
-real behavior of the current version, not a mockup.
-
 ## Features
 
 - Creates one device per client with sensors for IP, MAC, SSID, access point,

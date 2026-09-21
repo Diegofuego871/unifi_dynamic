@@ -8,11 +8,6 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
 ![Panel mit der Client-Tabelle, Suche, Filtern und geöffnetem Zeilenmenü](docs/panel-screenshot.png)
 
-Mit dem echten Panel-Code und frei erfundenen Testdaten gerendert
-(Gerätenamen, IPs und MAC-Adressen sind ausgedacht, kein echtes Netzwerk) —
-gezeigt wird damit tatsächliches Verhalten der aktuellen Version, kein
-nachbearbeitetes Bild.
-
 ## Funktionen
 
 - Legt pro Client ein Gerät mit Sensoren an: IP, MAC, SSID, Access Point,
