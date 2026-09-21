@@ -39,6 +39,11 @@ the client has not been reported by the UniFi controller for a while.
   run, toggled separately from the push notification.
 - SSID and access point sensors only for clients that have been seen on
   wireless. Wired-only clients do not get them.
+- A panel pinned in the sidebar shows a searchable, filterable table of every
+  client across all configured UniFi hosts (alias, IP, MAC, SSID, access
+  point, connection type, last seen, online status), with a per-row menu to
+  remove a client or add it to the exclusion list, and a click to open its
+  device page.
 
 ## Installation
 
@@ -137,6 +142,43 @@ next poll recreates it with fresh entity ids. Unknown addresses come back with
 reappears on the next poll and is reported as new again, because from the
 cache's point of view it is. No confirmation push is sent; the response is the
 feedback.
+
+## Panel
+
+A panel named "UniFi Dynamic Clients" is pinned in the sidebar (visible to
+administrators only). It shows one table with every client across all
+configured UniFi hosts — alias, IP, MAC, SSID, access point, connection
+type, last seen and an online/offline badge — refreshed by polling every 10
+seconds while the panel is open. The search box at the top matches across
+all of those fields at once; two dropdowns additionally filter by
+online/offline and wired/wireless.
+
+Each row has a ⋮ menu with "Never remove" (adds the client to the exclusion
+list; disabled if it is already on it) and "Remove now" (asks for
+confirmation, then removes immediately — the same behavior as the
+notification button and the `remove_client` action: an active client is
+recreated on the next poll and reported as new again). Clicking a row
+outside the menu opens that client's device page, the same page linked from
+notifications. With more than one UniFi host configured, the table shows a
+host column and lists clients from all of them together rather than
+splitting into one panel per host.
+
+The panel is a self-contained Web Component with no external library and no
+build step — HACS installs this integration as a plain file copy, so there
+is nothing to bundle. It talks to the backend through three WebSocket
+commands (`unifi_dynamic/list_clients`, `unifi_dynamic/remove_client`,
+`unifi_dynamic/exclude_client`), thin wrappers around the same coordinator
+logic the notification actions and the `remove_client` action already use —
+no separate removal or exclusion logic exists for the panel. All three
+commands require administrator rights, matching the panel's own
+`require_admin` setting.
+
+Panel text is bilingual like the notifications, but the language source
+differs on purpose: the panel reads `hass.language`, the signed-in user's
+own frontend language, because a panel renders per browser session for
+whoever is looking at it — unlike a notification the integration sends out
+without knowing who will read it, which uses the instance's configured
+`hass.config.language` instead.
 
 ## How it works
 

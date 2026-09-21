@@ -11,6 +11,7 @@ from time import monotonic
 from typing import Any
 
 import voluptuous as vol
+from homeassistant.components import panel_custom, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
@@ -38,25 +39,39 @@ from .const import (
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
+    DATA_PANEL_REGISTERED,
     DATA_PUSH_IMAGE,
+    DATA_WS_REGISTERED,
     DEFAULT_PURGE_TIME,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     EVENT_NOTIFICATION_ACTION,
     NEW_CLIENT_WAIT_INTERVAL,
     NEW_CLIENT_WAIT_TIMEOUT,
+    PANEL_DIR,
+    PANEL_ELEMENT_NAME,
+    PANEL_ICON,
+    PANEL_JS_FILE,
+    PANEL_MODULE_URL,
+    PANEL_STATIC_URL_PATH,
+    PANEL_TITLE,
+    PANEL_URL_PATH,
     PURGE_STARTUP_DELAY,
     PUSH_IMAGE_FILE,
     PUSH_IMAGE_URL,
     SERVICE_PURGE_NOW,
     SERVICE_REMOVE_CLIENT,
     STATIC_URL_PATH,
+    WS_TYPE_EXCLUDE_CLIENT,
+    WS_TYPE_LIST_CLIENTS,
+    WS_TYPE_REMOVE_CLIENT,
 )
 from .coordinator import (
     PurgeResult,
     UnifiDynamicCoordinator,
     client_slug,
     get_client_device,
+    get_excluded_macs,
     preferred_client_name,
 )
 from .notification import (
@@ -93,6 +108,8 @@ _KIND_SUFFIX = {
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_brand_path(hass)
+    await _async_register_panel(hass)
+    _async_register_websocket_commands(hass)
 
     coordinator = UnifiDynamicCoordinator(hass, entry)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
@@ -537,6 +554,145 @@ async def _async_register_brand_path(hass: HomeAssistant) -> None:
 
     hass.data[DATA_PUSH_IMAGE] = PUSH_IMAGE_URL
     _LOGGER.debug("Bild für Push-Meldungen bereitgestellt unter %s", PUSH_IMAGE_URL)
+
+
+# ---------------------------------------------------------------------------
+# Panel: Tabelle aller Clients im Menü
+# ---------------------------------------------------------------------------
+
+
+async def _async_register_panel(hass: HomeAssistant) -> None:
+    """
+    Registriert das Panel im Menü, einmal pro Home-Assistant-Instanz.
+
+    Bei mehreren UniFi-Hosts (mehrere Config-Entries) erscheint trotzdem nur
+    ein Menüeintrag; die Tabelle im Panel zeigt Clients aller Hosts, über
+    den WebSocket-Befehl list_clients. Fehlschläge sind nicht fatal: ohne
+    Panel funktioniert die Integration wie zuvor über Entitäten, Services
+    und Push-Aktionen weiter.
+    """
+    if DATA_PANEL_REGISTERED in hass.data:
+        return
+    hass.data[DATA_PANEL_REGISTERED] = True
+
+    panel_dir = Path(__file__).parent / PANEL_DIR
+    js_path = panel_dir / PANEL_JS_FILE
+
+    exists = await hass.async_add_executor_job(js_path.is_file)
+    if not exists:
+        _LOGGER.warning("%s nicht gefunden, Panel wird nicht registriert", js_path)
+        return
+
+    try:
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(PANEL_STATIC_URL_PATH, str(panel_dir), True)]
+        )
+        await panel_custom.async_register_panel(
+            hass,
+            frontend_url_path=PANEL_URL_PATH,
+            webcomponent_name=PANEL_ELEMENT_NAME,
+            sidebar_title=PANEL_TITLE,
+            sidebar_icon=PANEL_ICON,
+            module_url=PANEL_MODULE_URL,
+            embed_iframe=False,
+            # Konsistent mit den drei WebSocket-Befehlen, die alle
+            # @websocket_api.require_admin tragen: löschen und Ausnahmeliste
+            # sind destruktive Aktionen. Ohne dieses Flag sähe ein
+            # Nicht-Admin-Nutzer das Panel im Menü, bekäme aber bei jedem
+            # Aufruf - auch nur zum Anzeigen der Liste - einen
+            # Berechtigungsfehler.
+            require_admin=True,
+        )
+    except Exception as err:  # noqa: BLE001 - Panel ist optional, Setup darf nicht kippen
+        _LOGGER.warning("Panel konnte nicht registriert werden: %s", err)
+        return
+
+    _LOGGER.debug("Panel unter /%s registriert", PANEL_URL_PATH)
+
+
+@websocket_api.websocket_command({vol.Required("type"): WS_TYPE_LIST_CLIENTS})
+@websocket_api.require_admin
+@callback
+def _ws_list_clients(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Alle Clients aller Hosts für die Panel-Tabelle."""
+    dev_reg = dr.async_get(hass)
+    clients: list[dict[str, Any]] = []
+
+    for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
+        excluded = get_excluded_macs(coordinator.entry)
+        for row in coordinator.panel_clients():
+            device = get_client_device(dev_reg, entry_id, row["mac"])
+            clients.append(
+                {
+                    **row,
+                    "entry_id": entry_id,
+                    "host": coordinator.host,
+                    "excluded": row["mac"] in excluded,
+                    "device_id": device.id if device is not None else None,
+                }
+            )
+
+    connection.send_result(msg["id"], {"clients": clients})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_REMOVE_CLIENT,
+        vol.Required("entry_id"): str,
+        vol.Required(ATTR_MAC): str,
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_remove_client(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Löscht einen Client sofort, derselbe Weg wie Meldungsaktion und Service."""
+    coordinator: UnifiDynamicCoordinator | None = hass.data.get(DOMAIN, {}).get(
+        msg["entry_id"]
+    )
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+
+    removed = coordinator.remove_client_now(msg[ATTR_MAC])
+    connection.send_result(msg["id"], {"removed": removed is not None})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_EXCLUDE_CLIENT,
+        vol.Required("entry_id"): str,
+        vol.Required(ATTR_MAC): str,
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_exclude_client(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Setzt einen Client auf die Ausnahmeliste, derselbe Weg wie die Meldungsaktion."""
+    entry = hass.config_entries.async_get_entry(msg["entry_id"])
+    if entry is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+
+    changed = _exclude_mac(hass, entry, msg[ATTR_MAC])
+    connection.send_result(msg["id"], {"changed": changed})
+
+
+@callback
+def _async_register_websocket_commands(hass: HomeAssistant) -> None:
+    """Registriert die Panel-WebSocket-Befehle einmal pro Instanz."""
+    if DATA_WS_REGISTERED in hass.data:
+        return
+    hass.data[DATA_WS_REGISTERED] = True
+
+    websocket_api.async_register_command(hass, _ws_list_clients)
+    websocket_api.async_register_command(hass, _ws_remove_client)
+    websocket_api.async_register_command(hass, _ws_exclude_client)
 
 
 # ---------------------------------------------------------------------------

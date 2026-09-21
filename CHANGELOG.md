@@ -5,6 +5,56 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-09-21
+
+### Added
+
+- A new panel, pinned in the sidebar ("UniFi Dynamic Clients"), shows a
+  searchable, filterable table of every client across all configured UniFi
+  hosts: alias, IP, MAC, SSID, access point, connection type, last seen and
+  online status. The search box matches across all of those fields at once;
+  two dropdowns additionally filter by online/offline and wired/wireless.
+- Each row has a ⋮ menu with "Never remove" (adds to the exclusion list,
+  disabled if already on it) and "Remove now" (asks for confirmation first).
+  Both call the same coordinator logic as the notification actions and the
+  `unifi_dynamic.remove_client` service — no new removal or exclusion logic,
+  just a third way to trigger it. Clicking a row (outside the menu) opens
+  that client's device page, the same one linked from notifications.
+- Three new WebSocket commands back the panel: `unifi_dynamic/list_clients`,
+  `unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`. All three
+  require administrator rights, consistent with the panel itself
+  (`require_admin=True`) — viewing the table is gated the same as the
+  destructive actions in it, so a non-admin user never sees a menu item they
+  cannot actually use.
+- With more than one UniFi host configured, the table shows all of them at
+  once (one shared panel, not one per host) with a host column, since a
+  device page and the exclusion list are per-entry but the overview is
+  naturally a single list.
+
+### Notes
+
+- The panel is a hand-written vanilla Web Component with no external
+  library and no build step: HACS installs this integration as a plain file
+  copy, so there is no bundler to produce a dist file from, and Lit is not
+  available to a registered panel as a global import the way some Lovelace
+  card tricks can reach it. A CDN import was ruled out too — it would make
+  the panel depend on the browser having internet access, on top of the
+  local Home Assistant connection it already needs.
+- The table refreshes by polling every 10 seconds while the panel is open,
+  not by push. A WebSocket subscription that pushes changes immediately was
+  considered and deliberately deferred: more server and client code, more
+  failure modes, for a table a person is actively looking at rather than a
+  notification that has to arrive unprompted.
+- Panel UI text is bilingual too, chosen from `hass.language` — the signed-in
+  user's own frontend language, not `hass.config.language` like the
+  notifications. This is deliberate: a panel renders per browser session for
+  whoever is looking at it, unlike a push notification the integration sends
+  without knowing who reads it.
+- This has been verified with a simulated WebSocket payload and the table's
+  own filter/search/date-formatting logic run directly in Node — not against
+  a live Home Assistant instance or a real browser. Sidebar registration,
+  actual rendering, and the row menu have not been visually confirmed.
+
 ## [1.21.0] - 2026-09-20
 
 ### Added
@@ -441,6 +491,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.0
 [1.21.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.21.0
 [1.20.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.6
 [1.20.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.5

@@ -41,6 +41,11 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   Purge-Laufs, getrennt schaltbar von der Push-Meldung.
 - SSID- und Access-Point-Sensoren nur für Clients, die je im WLAN gesehen
   wurden. Reine Kabel-Clients bekommen sie nicht.
+- Ein in der Seitenleiste angeheftetes Panel zeigt eine durchsuch- und
+  filterbare Tabelle aller Clients über alle konfigurierten UniFi-Hosts
+  hinweg (Alias, IP, MAC, SSID, Access Point, Verbindungsart, zuletzt
+  gesehen, Online-Status), mit Menü pro Zeile zum Entfernen oder Eintragen
+  in die Ausnahmeliste, und Klick öffnet die Geräteseite.
 
 ## Installation
 
@@ -139,6 +144,46 @@ kommen mit `removed: false` zurück, statt den Aufruf scheitern zu lassen. Ein
 noch aktiver Client taucht beim nächsten Abgleich wieder auf und wird erneut
 als neu gemeldet - aus Sicht des Caches ist er das auch. Eine Bestätigungs-Push
 gibt es nicht, die Antwort ist die Rückmeldung.
+
+## Panel
+
+Ein Panel namens „UniFi Dynamic Clients" ist in der Seitenleiste angeheftet
+(nur für Administratoren sichtbar). Es zeigt eine Tabelle mit allen Clients
+über alle konfigurierten UniFi-Hosts hinweg — Alias, IP, MAC, SSID, Access
+Point, Verbindungsart, zuletzt gesehen und ein Online/Offline-Badge —, die
+sich aktualisiert, indem sie alle 10 Sekunden nachfragt, solange das Panel
+offen ist. Die Suchleiste oben durchsucht alle diese Felder gleichzeitig;
+zwei zusätzliche Dropdowns filtern nach Online/Offline und Kabel/WLAN.
+
+Jede Zeile hat ein ⋮-Menü mit „Nie entfernen" (trägt den Client in die
+Ausnahmeliste ein; ausgegraut, wenn er schon drinsteht) und „Jetzt
+entfernen" (fragt zuerst nach, entfernt dann sofort — dasselbe Verhalten wie
+der Meldungs-Button und die Aktion `remove_client`: ein noch aktiver Client
+wird beim nächsten Abgleich neu angelegt und erneut als neu gemeldet). Ein
+Klick auf eine Zeile ausserhalb des Menüs öffnet die Geräteseite des
+Clients, dieselbe Seite, die auch aus den Meldungen verlinkt ist. Bei mehr
+als einem konfigurierten UniFi-Host zeigt die Tabelle eine Host-Spalte und
+listet die Clients aller Hosts gemeinsam, statt ein Panel pro Host
+aufzuspalten.
+
+Das Panel ist ein eigenständiges Web Component ohne externe Bibliothek und
+ohne Build-Schritt — HACS installiert diese Integration als reine
+Dateikopie, es gibt also nichts zu bündeln. Es spricht mit dem Backend über
+drei WebSocket-Befehle (`unifi_dynamic/list_clients`,
+`unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`), dünne
+Wrapper um dieselbe Coordinator-Logik, die Meldungsaktionen und die Aktion
+`remove_client` schon nutzen — für das Panel existiert keine eigene
+Entfernen- oder Ausnahmeliste-Logik. Alle drei Befehle verlangen
+Administratorrechte, passend zur `require_admin`-Einstellung des Panels
+selbst.
+
+Panel-Texte sind wie die Meldungen zweisprachig, die Sprachquelle
+unterscheidet sich aber bewusst: Das Panel liest `hass.language`, die
+Frontend-Sprache des angemeldeten Nutzers, weil ein Panel pro
+Browser-Sitzung für die Person gerendert wird, die gerade hinschaut — anders
+als eine Meldung, die die Integration verschickt, ohne zu wissen, wer sie
+liest, und die deshalb die konfigurierte Instanzsprache
+`hass.config.language` verwendet.
 
 ## Funktionsweise
 

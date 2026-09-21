@@ -614,6 +614,32 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         reference = self._anchor if self._anchor is not None else time.time()
         return (reference - seen) <= OFFLINE_AFTER_SECONDS
 
+    def panel_clients(self) -> list[dict[str, Any]]:
+        """
+        Eine Zeile pro Client dieses Hosts, für das Panel.
+
+        Absichtlich eine eigene, flache Struktur statt des rohen Cache-
+        Eintrags: das Panel soll sich nicht um interne Feldnamen kümmern
+        müssen, und ein künftig geändertes Cache-Format bricht die Tabelle
+        nicht mit.
+        """
+        rows: list[dict[str, Any]] = []
+        for mac in list(self._client_cache):
+            data = self.client_snapshot(mac)
+            rows.append(
+                {
+                    "mac": mac,
+                    "name": preferred_client_name(data, mac),
+                    "ip": data.get("ip"),
+                    "essid": data.get("essid"),
+                    "ap_name": data.get(FIELD_AP_NAME),
+                    "is_wired": data.get("is_wired"),
+                    "seen_at": data.get(FIELD_SEEN_AT),
+                    "online": self.is_client_online(mac),
+                }
+            )
+        return rows
+
     # -- Update -------------------------------------------------------------
 
     def _merge_client(self, mac: str, new: dict[str, Any], now: float) -> None:

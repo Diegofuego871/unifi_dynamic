@@ -149,6 +149,34 @@ PUSH_IMAGE_URL = f"{STATIC_URL_PATH}/{PUSH_IMAGE_FILE}"
 # entry_id -> Coordinator ab und darf keine Fremdschlüssel enthalten.
 DATA_PUSH_IMAGE = "unifi_dynamic_push_image"
 
+# --- Panel -------------------------------------------------------------
+# Eigene Seite im Menü: Tabelle aller Clients mit Suche, Filtern und
+# Aktionen (löschen, Ausnahmeliste) je Zeile. Einmal pro Home-Assistant-
+# Instanz registriert, nicht pro Config-Entry - bei mehreren UniFi-Hosts
+# erscheint trotzdem nur ein Menüeintrag, die Tabelle zeigt alle Hosts.
+PANEL_URL_PATH = "unifi-dynamic"
+PANEL_ELEMENT_NAME = "unifi-dynamic-panel"
+PANEL_TITLE = "UniFi Dynamic Clients"
+PANEL_ICON = "mdi:lan-check"
+PANEL_DIR = "panel"
+PANEL_JS_FILE = "unifi-dynamic-panel.js"
+PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
+# Versionsstempel als Cache-Buster am Modul-Pfad, damit der Browser nach
+# einem Integrations-Update nicht die alte JS-Datei aus dem Cache lädt.
+# Wird bei jeder Änderung am Panel-JS von Hand erhöht, unabhängig von der
+# Integrationsversion.
+PANEL_JS_VERSION = "1"
+PANEL_MODULE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_JS_FILE}?v={PANEL_JS_VERSION}"
+
+DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
+DATA_WS_REGISTERED = "unifi_dynamic_ws_registered"
+
+# WebSocket-Befehle für das Panel. Eigener Weg neben Service und
+# Meldungsaktion, ruft dieselbe Coordinator-Logik auf.
+WS_TYPE_LIST_CLIENTS = f"{DOMAIN}/list_clients"
+WS_TYPE_REMOVE_CLIENT = f"{DOMAIN}/remove_client"
+WS_TYPE_EXCLUDE_CLIENT = f"{DOMAIN}/exclude_client"
+
 # Android ersetzt Meldungen mit gleichem Tag, statt sie zu stapeln.
 NOTIFICATION_TAG_PREFIX = "unifi_dynamic_purge"
 
