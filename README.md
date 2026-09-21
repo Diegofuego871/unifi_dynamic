@@ -6,6 +6,10 @@ Home Assistant integration that automatically creates a device with matching
 entities for every UniFi client, wired or wireless, and removes it again once
 the client has not been reported by the UniFi controller for a while.
 
+![Panel showing the client table, with search, filters and the row menu open](docs/panel-screenshot.png)
+
+MAC addresses in the screenshot are redacted; everything else is unedited.
+
 ## Features
 
 - Creates one device per client with sensors for IP, MAC, SSID, access point,

@@ -6,6 +6,10 @@ Home-Assistant-Integration, die pro UniFi-Client (verkabelt oder WLAN)
 automatisch ein Gerät mit den passenden Entitäten anlegt und wieder entfernt,
 sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
+![Panel mit der Client-Tabelle, Suche, Filtern und geöffnetem Zeilenmenü](docs/panel-screenshot.png)
+
+MAC-Adressen im Screenshot sind geschwärzt, alles andere unbearbeitet.
+
 ## Funktionen
 
 - Legt pro Client ein Gerät mit Sensoren an: IP, MAC, SSID, Access Point,

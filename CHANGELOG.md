@@ -5,6 +5,14 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.5] - 2026-09-21
+
+### Fixed
+
+- The search box's fixed width from 2.0.4 turned out too narrow once seen
+  live. Widened it roughly threefold; it still cannot grow past that width
+  and crowd out the filters and reset button the way it did in 2.0.3.
+
 ## [2.0.4] - 2026-09-21
 
 ### Fixed
@@ -576,6 +584,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.5
 [2.0.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.4
 [2.0.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.3
 [2.0.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.2

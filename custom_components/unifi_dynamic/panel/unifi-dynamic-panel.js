@@ -450,12 +450,11 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         .search-wrap {
           position: relative;
-          /* flex-grow bewusst 0: die Suche soll nicht breiter werden als
-             nötig und nicht den restlichen Werkzeugleisten-Inhalt
-             (Filter, Reset-Button) verdrängen. Grösser wirkt hier über
-             Höhe/Schrift, nicht über Breite. */
-          flex: 0 1 280px;
-          min-width: 200px;
+          /* flex-grow bewusst 0: soll nicht unkontrolliert wachsen und die
+             Werkzeugleiste dominieren (siehe 2.0.3/2.0.4). Die Basisbreite
+             selbst ist aber grosszügig bemessen. */
+          flex: 0 1 820px;
+          min-width: 240px;
         }
         input[type="search"] {
           width: 100%;
