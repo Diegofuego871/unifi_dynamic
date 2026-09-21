@@ -5,6 +5,24 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.1] - 2026-09-21
+
+### Added
+
+- Column headers in the panel table are now sortable: click once to sort
+  ascending, click the same header again to reverse to descending, click a
+  different header to sort by that column instead (starting ascending). A
+  small arrow next to the header name shows the active column and
+  direction. Missing values (no IP, never seen) always sort to the end,
+  regardless of direction.
+
+### Changed
+
+- Clicking a table row no longer opens that client's device page. It was
+  too easy to trigger by accident while scanning or scrolling the table.
+  The device page is now reachable only through the row's ⋮ menu ("Open
+  device page").
+
 ## [2.0.0] - 2026-09-21
 
 ### Added
@@ -491,6 +509,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.1
 [2.0.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.0
 [1.21.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.21.0
 [1.20.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.20.6

@@ -151,16 +151,23 @@ configured UniFi hosts — alias, IP, MAC, SSID, access point, connection
 type, last seen and an online/offline badge — refreshed by polling every 10
 seconds while the panel is open. The search box at the top matches across
 all of those fields at once; two dropdowns additionally filter by
-online/offline and wired/wireless.
+online/offline and wired/wireless. Clicking a column header sorts the table
+by that column, ascending; clicking the same header again reverses to
+descending, and clicking a different header switches to sorting by that one
+instead. A small arrow marks the active column and direction. Rows with a
+missing value for the sorted column (no IP, never seen) always sort to the
+end, regardless of direction.
 
 Each row has a ⋮ menu with "Never remove" (adds the client to the exclusion
-list; disabled if it is already on it) and "Remove now" (asks for
+list; disabled if it is already on it), "Remove now" (asks for
 confirmation, then removes immediately — the same behavior as the
 notification button and the `remove_client` action: an active client is
-recreated on the next poll and reported as new again). Clicking a row
-outside the menu opens that client's device page, the same page linked from
-notifications. With more than one UniFi host configured, the table shows a
-host column and lists clients from all of them together rather than
+recreated on the next poll and reported as new again), and "Open device
+page". Clicking a row itself does nothing — device pages are reachable only
+through that menu item, deliberately: a row click used to open the device
+page directly, which was too easy to trigger by accident while scrolling or
+scanning the table. With more than one UniFi host configured, the table
+shows a host column and lists clients from all of them together rather than
 splitting into one panel per host.
 
 The panel is a self-contained Web Component with no external library and no

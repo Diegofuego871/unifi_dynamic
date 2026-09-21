@@ -112,6 +112,8 @@ class UnifiDynamicPanel extends HTMLElement {
     this._search = "";
     this._onlineFilter = "all";
     this._connFilter = "all";
+    this._sortKey = null;
+    this._sortDir = "asc";
     this._openMenuKey = null;
     this._pollTimer = null;
     this._built = false;
@@ -208,7 +210,7 @@ class UnifiDynamicPanel extends HTMLElement {
 
   _filteredClients() {
     const q = this._search.trim().toLowerCase();
-    return this._clients.filter((c) => {
+    const rows = this._clients.filter((c) => {
       if (this._onlineFilter === "online" && !c.online) return false;
       if (this._onlineFilter === "offline" && c.online) return false;
       if (this._connFilter === "wired" && !c.is_wired) return false;
@@ -219,6 +221,44 @@ class UnifiDynamicPanel extends HTMLElement {
         .join(" ")
         .toLowerCase();
       return haystack.includes(q);
+    });
+
+    if (!this._sortKey) return rows;
+
+    const dir = this._sortDir === "desc" ? -1 : 1;
+    const key = this._sortKey;
+    return [...rows].sort((a, b) => {
+      const va = this._sortValue(a, key);
+      const vb = this._sortValue(b, key);
+      // null/undefined sortieren immer ans Ende, unabhängig von der
+      // Richtung - ein Client ohne IP soll nicht abwechselnd oben und
+      // unten landen, nur weil die Sortierrichtung umgedreht wurde. Daher
+      // ausserhalb von dir * (...), nicht mitgedreht.
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return dir * this._compareValues(va, vb);
+    });
+  }
+
+  // "conn" und "status" sind keine eigenen Felder in den Client-Daten,
+  // sondern aus is_wired/online abgeleitet - hier auf das jeweilige
+  // Rohfeld zurückgeführt, damit sortiert werden kann.
+  _sortValue(client, key) {
+    if (key === "conn") return client.is_wired;
+    if (key === "status") return client.online;
+    return client[key];
+  }
+
+  // Vergleich zweier bereits als nicht-null bekannter Werte gleichen Typs.
+  _compareValues(a, b) {
+    if (typeof a === "boolean" || typeof b === "boolean") {
+      return a === b ? 0 : a ? -1 : 1;
+    }
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    return String(a).localeCompare(String(b), undefined, {
+      sensitivity: "base",
+      numeric: true,
     });
   }
 
@@ -237,6 +277,47 @@ class UnifiDynamicPanel extends HTMLElement {
     const div = document.createElement("div");
     div.textContent = value == null ? "" : String(value);
     return div.innerHTML;
+  }
+
+  _headerCellHtml(key, label) {
+    const active = this._sortKey === key;
+    const arrow = active ? (this._sortDir === "desc" ? "▼" : "▲") : "";
+    return `<th class="sortable" data-sort-key="${key}">${this._escape(
+      label
+    )}<span class="sort-arrow">${arrow}</span></th>`;
+  }
+
+  // Nur die Kopfzeile neu aufbauen (Pfeil-Indikator), Suchfeld und Filter
+  // bleiben unberührt.
+  _renderHeader() {
+    const row = this.shadowRoot.querySelector("thead tr");
+    if (!row) return;
+    const t = (k) => this._t(k);
+    row.innerHTML = `
+      ${this._headerCellHtml("name", t("colName"))}
+      ${this._headerCellHtml("ip", t("colIp"))}
+      ${this._headerCellHtml("mac", t("colMac"))}
+      ${this._headerCellHtml("essid", t("colSsid"))}
+      ${this._headerCellHtml("ap_name", t("colAp"))}
+      ${this._headerCellHtml("conn", t("colConn"))}
+      ${this._headerCellHtml("seen_at", t("colSeen"))}
+      ${this._headerCellHtml("status", t("colStatus"))}
+      <th>${this._escape(t("colActions"))}</th>
+    `;
+  }
+
+  _handleHeaderClick(ev) {
+    const th = ev.target.closest("th[data-sort-key]");
+    if (!th) return;
+    const key = th.dataset.sortKey;
+    if (this._sortKey === key) {
+      this._sortDir = this._sortDir === "asc" ? "desc" : "asc";
+    } else {
+      this._sortKey = key;
+      this._sortDir = "asc";
+    }
+    this._renderHeader();
+    this._renderRows();
   }
 
   // Toolbar, Tabellenkopf und Grundgerüst stehen fest; nur der <tbody>
@@ -307,8 +388,19 @@ class UnifiDynamicPanel extends HTMLElement {
           font-weight: 500;
           white-space: nowrap;
         }
-        tbody tr {
+        thead th.sortable {
           cursor: pointer;
+          user-select: none;
+        }
+        thead th.sortable:hover {
+          color: var(--primary-text-color, #212121);
+        }
+        thead th .sort-arrow {
+          display: inline-block;
+          width: 1em;
+          opacity: 0.7;
+        }
+        tbody tr {
           border-bottom: 1px solid var(--divider-color, #eee);
         }
         tbody tr:hover {
@@ -441,14 +533,14 @@ class UnifiDynamicPanel extends HTMLElement {
         <table>
           <thead>
             <tr>
-              <th>${this._escape(t("colName"))}</th>
-              <th>${this._escape(t("colIp"))}</th>
-              <th>${this._escape(t("colMac"))}</th>
-              <th>${this._escape(t("colSsid"))}</th>
-              <th>${this._escape(t("colAp"))}</th>
-              <th>${this._escape(t("colConn"))}</th>
-              <th>${this._escape(t("colSeen"))}</th>
-              <th>${this._escape(t("colStatus"))}</th>
+              ${this._headerCellHtml("name", t("colName"))}
+              ${this._headerCellHtml("ip", t("colIp"))}
+              ${this._headerCellHtml("mac", t("colMac"))}
+              ${this._headerCellHtml("essid", t("colSsid"))}
+              ${this._headerCellHtml("ap_name", t("colAp"))}
+              ${this._headerCellHtml("conn", t("colConn"))}
+              ${this._headerCellHtml("seen_at", t("colSeen"))}
+              ${this._headerCellHtml("status", t("colStatus"))}
               <th>${this._escape(t("colActions"))}</th>
             </tr>
           </thead>
@@ -487,6 +579,12 @@ class UnifiDynamicPanel extends HTMLElement {
     // jeder Aktualisierung.
     this.shadowRoot.querySelector("tbody").addEventListener("click", (ev) =>
       this._handleTableClick(ev)
+    );
+
+    // Delegiert wie beim tbody: die Kopfzeile wird bei jeder Sortierung
+    // neu aufgebaut (Pfeil-Indikator), ein einzelner Listener übersteht das.
+    this.shadowRoot.querySelector("thead").addEventListener("click", (ev) =>
+      this._handleHeaderClick(ev)
     );
 
     // Menü schliessen, wenn irgendwo ausserhalb geklickt wird.
@@ -537,9 +635,11 @@ class UnifiDynamicPanel extends HTMLElement {
       return;
     }
 
-    // Klick auf die Zeile selbst (ausserhalb von Buttons): Geräteseite
-    // öffnen, sofern das Gerät schon existiert.
-    this._openDevice(deviceId);
+    // Klick auf die Zeile ausserhalb von Menü und Aktionen: bewusst ohne
+    // Wirkung. Ein Klick auf die Zeile öffnete früher die Geräteseite,
+    // was beim schnellen Scrollen/Klicken in der Tabelle leicht ungewollt
+    // ausgelöst wurde. Die Geräteseite ist jetzt ausschliesslich über den
+    // Menüpunkt "Geräteseite öffnen" erreichbar.
   }
 
   _renderRows() {

@@ -153,18 +153,26 @@ Ein Panel namens „UniFi Dynamic Clients" ist in der Seitenleiste angeheftet
 Point, Verbindungsart, zuletzt gesehen und ein Online/Offline-Badge —, die
 sich aktualisiert, indem sie alle 10 Sekunden nachfragt, solange das Panel
 offen ist. Die Suchleiste oben durchsucht alle diese Felder gleichzeitig;
-zwei zusätzliche Dropdowns filtern nach Online/Offline und Kabel/WLAN.
+zwei zusätzliche Dropdowns filtern nach Online/Offline und Kabel/WLAN. Ein
+Klick auf eine Spaltenüberschrift sortiert die Tabelle aufsteigend danach;
+ein erneuter Klick auf dieselbe Überschrift dreht auf absteigend um, ein
+Klick auf eine andere Überschrift wechselt die Sortierspalte. Ein kleiner
+Pfeil markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der
+sortierten Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig
+von der Richtung.
 
 Jede Zeile hat ein ⋮-Menü mit „Nie entfernen" (trägt den Client in die
-Ausnahmeliste ein; ausgegraut, wenn er schon drinsteht) und „Jetzt
-entfernen" (fragt zuerst nach, entfernt dann sofort — dasselbe Verhalten wie
-der Meldungs-Button und die Aktion `remove_client`: ein noch aktiver Client
-wird beim nächsten Abgleich neu angelegt und erneut als neu gemeldet). Ein
-Klick auf eine Zeile ausserhalb des Menüs öffnet die Geräteseite des
-Clients, dieselbe Seite, die auch aus den Meldungen verlinkt ist. Bei mehr
-als einem konfigurierten UniFi-Host zeigt die Tabelle eine Host-Spalte und
-listet die Clients aller Hosts gemeinsam, statt ein Panel pro Host
-aufzuspalten.
+Ausnahmeliste ein; ausgegraut, wenn er schon drinsteht), „Jetzt entfernen"
+(fragt zuerst nach, entfernt dann sofort — dasselbe Verhalten wie der
+Meldungs-Button und die Aktion `remove_client`: ein noch aktiver Client wird
+beim nächsten Abgleich neu angelegt und erneut als neu gemeldet) und
+„Geräteseite öffnen". Ein Klick auf die Zeile selbst hat keine Wirkung mehr
+— die Geräteseite ist absichtlich nur noch über diesen Menüpunkt erreichbar:
+Ein Klick auf die Zeile öffnete früher direkt die Geräteseite, was beim
+Scrollen oder Überfliegen der Tabelle zu leicht versehentlich ausgelöst
+wurde. Bei mehr als einem konfigurierten UniFi-Host zeigt die Tabelle eine
+Host-Spalte und listet die Clients aller Hosts gemeinsam, statt ein Panel
+pro Host aufzuspalten.
 
 Das Panel ist ein eigenständiges Web Component ohne externe Bibliothek und
 ohne Build-Schritt — HACS installiert diese Integration als reine
