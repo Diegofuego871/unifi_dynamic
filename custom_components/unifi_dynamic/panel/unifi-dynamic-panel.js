@@ -51,6 +51,7 @@ const STRINGS = {
     loading: "Lädt…",
     error: "Fehler beim Laden der Clientliste:",
     retry: "Erneut versuchen",
+    resetFilters: "Filter zurücksetzen",
     multiHost: "Host",
     seenNever: "–",
   },
@@ -88,6 +89,7 @@ const STRINGS = {
     loading: "Loading…",
     error: "Failed to load the client list:",
     retry: "Retry",
+    resetFilters: "Reset filters",
     multiHost: "Host",
     seenNever: "–",
   },
@@ -100,6 +102,56 @@ function pickLang(hass) {
 
 const POLL_INTERVAL_MS = 10000;
 
+// Suche, Filter und Sortierung überleben einen Browser-Neuladen und auch
+// einen HA-Neustart, weil localStorage rein clientseitig ist und nichts mit
+// dem HA-Prozess zu tun hat - kein eigener Server-Speicher nötig. Bewusst
+// pro Browser/Gerät, nicht geräteübergreifend synchronisiert.
+const STORAGE_KEY = "unifi_dynamic_panel_prefs";
+const SORT_KEYS = ["name", "ip", "mac", "essid", "ap_name", "conn", "seen_at", "status"];
+const ONLINE_FILTERS = ["all", "online", "offline"];
+const CONN_FILTERS = ["all", "wired", "wireless"];
+
+const DEFAULT_PREFS = {
+  search: "",
+  onlineFilter: "all",
+  connFilter: "all",
+  sortKey: null,
+  sortDir: "asc",
+};
+
+// Fehler beim Lesen/Schreiben werden bewusst nur geloggt, nie geworfen:
+// private Browserfenster, blockierter Storage-Zugriff oder ein voller
+// Speicher dürfen das Panel nicht lahmlegen, nur die Persistenz entfällt.
+function loadPrefs() {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_PREFS };
+    const parsed = JSON.parse(raw);
+    return {
+      search: typeof parsed.search === "string" ? parsed.search : DEFAULT_PREFS.search,
+      onlineFilter: ONLINE_FILTERS.includes(parsed.onlineFilter)
+        ? parsed.onlineFilter
+        : DEFAULT_PREFS.onlineFilter,
+      connFilter: CONN_FILTERS.includes(parsed.connFilter)
+        ? parsed.connFilter
+        : DEFAULT_PREFS.connFilter,
+      sortKey: SORT_KEYS.includes(parsed.sortKey) ? parsed.sortKey : DEFAULT_PREFS.sortKey,
+      sortDir: parsed.sortDir === "desc" ? "desc" : DEFAULT_PREFS.sortDir,
+    };
+  } catch (err) {
+    console.warn("unifi-dynamic-panel: Einstellungen konnten nicht geladen werden", err);
+    return { ...DEFAULT_PREFS };
+  }
+}
+
+function savePrefs(prefs) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  } catch (err) {
+    console.warn("unifi-dynamic-panel: Einstellungen konnten nicht gespeichert werden", err);
+  }
+}
+
 class UnifiDynamicPanel extends HTMLElement {
   constructor() {
     super();
@@ -109,14 +161,27 @@ class UnifiDynamicPanel extends HTMLElement {
     this._hostCount = 0;
     this._loading = true;
     this._error = null;
-    this._search = "";
-    this._onlineFilter = "all";
-    this._connFilter = "all";
-    this._sortKey = null;
-    this._sortDir = "asc";
+
+    const prefs = loadPrefs();
+    this._search = prefs.search;
+    this._onlineFilter = prefs.onlineFilter;
+    this._connFilter = prefs.connFilter;
+    this._sortKey = prefs.sortKey;
+    this._sortDir = prefs.sortDir;
+
     this._openMenuKey = null;
     this._pollTimer = null;
     this._built = false;
+  }
+
+  _savePrefs() {
+    savePrefs({
+      search: this._search,
+      onlineFilter: this._onlineFilter,
+      connFilter: this._connFilter,
+      sortKey: this._sortKey,
+      sortDir: this._sortDir,
+    });
   }
 
   // Wird von Home Assistant gesetzt, bei jeder State-Änderung neu.
@@ -334,6 +399,7 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     this._renderHeader();
     this._renderRows();
+    this._savePrefs();
   }
 
   // Toolbar, Tabellenkopf und Grundgerüst stehen fest; nur der <tbody>
@@ -383,6 +449,19 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--primary-background-color, #fff);
           color: var(--primary-text-color, #212121);
           font-size: 14px;
+        }
+        .reset-btn {
+          padding: 8px 14px;
+          border-radius: 8px;
+          border: 1px solid var(--divider-color, #ccc);
+          background: none;
+          color: var(--primary-text-color, #212121);
+          font-size: 14px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .reset-btn:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
         }
         .content {
           padding: 0 16px 16px;
@@ -527,7 +606,7 @@ class UnifiDynamicPanel extends HTMLElement {
         <h1>${this._escape(t("title"))}</h1>
         <input type="search" class="search" placeholder="${this._escape(
           t("searchPlaceholder")
-        )}" />
+        )}" value="${this._escape(this._search)}" />
         <select class="filter-online">
           <option value="all">${this._escape(t("filterOnlineAll"))}</option>
           <option value="online">${this._escape(t("filterOnlineOnline"))}</option>
@@ -538,6 +617,7 @@ class UnifiDynamicPanel extends HTMLElement {
           <option value="wired">${this._escape(t("filterConnWired"))}</option>
           <option value="wireless">${this._escape(t("filterConnWireless"))}</option>
         </select>
+        <button class="reset-btn">${this._escape(t("resetFilters"))}</button>
       </div>
 
       <div class="error-banner">
@@ -570,18 +650,41 @@ class UnifiDynamicPanel extends HTMLElement {
       this._search = search.value;
       this._openMenuKey = null;
       this._renderRows();
+      this._savePrefs();
     });
 
-    this.shadowRoot
-      .querySelector(".filter-online")
-      .addEventListener("change", (ev) => {
-        this._onlineFilter = ev.target.value;
-        this._renderRows();
-      });
+    // Wert aus den wiederhergestellten Einstellungen übernehmen: <select>
+    // spiegelt kein JS-Feld automatisch, das Attribut im Template müsste
+    // sonst das passende <option> mit "selected" markieren.
+    const filterOnline = this.shadowRoot.querySelector(".filter-online");
+    filterOnline.value = this._onlineFilter;
+    filterOnline.addEventListener("change", (ev) => {
+      this._onlineFilter = ev.target.value;
+      this._renderRows();
+      this._savePrefs();
+    });
 
-    this.shadowRoot.querySelector(".filter-conn").addEventListener("change", (ev) => {
+    const filterConn = this.shadowRoot.querySelector(".filter-conn");
+    filterConn.value = this._connFilter;
+    filterConn.addEventListener("change", (ev) => {
       this._connFilter = ev.target.value;
       this._renderRows();
+      this._savePrefs();
+    });
+
+    this.shadowRoot.querySelector(".reset-btn").addEventListener("click", () => {
+      this._search = DEFAULT_PREFS.search;
+      this._onlineFilter = DEFAULT_PREFS.onlineFilter;
+      this._connFilter = DEFAULT_PREFS.connFilter;
+      this._sortKey = DEFAULT_PREFS.sortKey;
+      this._sortDir = DEFAULT_PREFS.sortDir;
+      search.value = this._search;
+      filterOnline.value = this._onlineFilter;
+      filterConn.value = this._connFilter;
+      this._openMenuKey = null;
+      this._renderHeader();
+      this._renderRows();
+      this._savePrefs();
     });
 
     this.shadowRoot.querySelector(".retry-btn").addEventListener("click", () => {

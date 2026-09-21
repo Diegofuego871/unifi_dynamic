@@ -161,6 +161,14 @@ Pfeil markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der
 sortierten Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig
 von der Richtung.
 
+Suchtext, beide Dropdown-Filter sowie Sortierspalte und -richtung werden im
+`localStorage` des Browsers gemerkt und überstehen ein Neuladen der Seite
+oder sogar einen kompletten Home-Assistant-Neustart — `localStorage` hat
+mit dem HA-Prozess nichts zu tun, bleibt also in beiden Fällen unberührt.
+Das gilt pro Browser/Gerät, nicht geräteübergreifend synchronisiert. Ein
+Button „Filter zurücksetzen" in der Werkzeugleiste setzt alles mit einem
+Klick auf die Standardansicht zurück.
+
 Jede Zeile hat ein ⋮-Menü mit „Nie entfernen" (trägt den Client in die
 Ausnahmeliste ein; ausgegraut, wenn er schon drinsteht), „Jetzt entfernen"
 (fragt zuerst nach, entfernt dann sofort — dasselbe Verhalten wie der

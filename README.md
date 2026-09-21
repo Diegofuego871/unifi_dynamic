@@ -158,6 +158,13 @@ instead. A small arrow marks the active column and direction. Rows with a
 missing value for the sorted column (no IP, never seen) always sort to the
 end, regardless of direction.
 
+The search text, both dropdown filters, and the sort column and direction
+are remembered in the browser's `localStorage` and survive a page reload or
+even a full Home Assistant restart — `localStorage` has nothing to do with
+the HA process, so it is unaffected either way. This is per browser/device,
+not synced between them. A "Reset filters" button in the toolbar clears all
+of it back to the default view in one click.
+
 Each row has a ⋮ menu with "Never remove" (adds the client to the exclusion
 list; disabled if it is already on it), "Remove now" (asks for
 confirmation, then removes immediately — the same behavior as the

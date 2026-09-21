@@ -5,6 +5,27 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.2] - 2026-09-21
+
+### Added
+
+- The panel's search text, both filter dropdowns, and the sort column and
+  direction are now remembered across reloads — including a full Home
+  Assistant restart, since this is stored in the browser's `localStorage`,
+  which has nothing to do with the HA process and survives regardless. It
+  is per browser/device, not synced across them.
+- A "Reset filters" button in the toolbar clears the search box, resets
+  both dropdowns to "All", and turns off sorting, in one click — the
+  counterpart to state that now persists silently and might otherwise be
+  hard to notice or undo.
+
+### Notes
+
+- Malformed or unrecognized stored values (an old format, a value that no
+  longer matches a real column) are rejected individually and fall back to
+  their default rather than discarding the whole saved state or breaking
+  the panel.
+
 ## [2.0.1] - 2026-09-21
 
 ### Added
@@ -517,6 +538,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.2
 [2.0.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.1
 [2.0.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.0
 [1.21.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v1.21.0
