@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UniFi Dynamic Clients</title>
+<style>
+  /* Das Dokument im iframe scrollt nie selbst - nur .content im Panel
+     (siehe unifi-dynamic-panel.js). Das iframe hat eine von Home Assistant
+     festgelegte Höhe, deshalb ist height: 100% hier verlässlich. */
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--primary-background-color, #fff);
+  }
+  /* Bewusst kein display hier: Regeln von aussen schlagen :host im
+     Shadow DOM, ein display: block würde das Flex-Layout des Panels
+     (Werkzeugleiste fest, nur die Tabelle scrollt) aushebeln. */
+  unifi-dynamic-panel {
+    height: 100%;
+  }
+  .standalone-hint {
+    padding: 24px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+</style>
+</head>
+<body>
+<unifi-dynamic-panel></unifi-dynamic-panel>
+<script type="module">
+  // Home Assistant bettet diese Seite als eingebautes iframe-Panel ein
+  // (gleiche Herkunft, Sandbox mit allow-same-origin und allow-scripts).
+  // Die Seite baut keine eigene Verbindung auf, sondern nutzt das hass-
+  // Objekt des Elternfensters: dieselbe, bereits angemeldete WebSocket-
+  // Verbindung für callWS und dieselbe Sprache wie die HA-Oberfläche.
+
+  // Farben, die das Panel per var(--...) nutzt. CSS-Variablen erben nicht
+  // über die Dokumentgrenze eines iframes; ohne diese Übernahme wäre das
+  // Panel auch im dunklen Design hell.
+  const THEME_VARS = [
+    "--primary-background-color",
+    "--secondary-background-color",
+    "--card-background-color",
+    "--primary-text-color",
+    "--secondary-text-color",
+    "--disabled-text-color",
+    "--divider-color",
+    "--error-color",
+    "--ha-font-family-body",
+    "--paper-font-body1_-_font-family",
+  ];
+
+  function parentHass() {
+    try {
+      const ha = window.parent.document.querySelector("home-assistant");
+      return (ha && ha.hass) || null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // Werte am iframe-Element im Elternfenster lesen statt am <html>: dort
+  // sind alle Variablen aufgelöst, die HA entlang des Pfads bis zum Panel
+  // setzt - genau die, die das Panel als Custom Panel geerbt hätte.
+  function syncTheme() {
+    let cs;
+    try {
+      const source = window.frameElement || window.parent.document.documentElement;
+      cs = window.parent.getComputedStyle(source);
+    } catch (err) {
+      return;
+    }
+    const style = document.documentElement.style;
+    for (const name of THEME_VARS) {
+      const value = cs.getPropertyValue(name).trim();
+      if (value) style.setProperty(name, value);
+      else style.removeProperty(name);
+    }
+    // Native Bedienelemente (Auswahllisten, Suchfeld) passend hell/dunkel.
+    style.colorScheme = cs.colorScheme || "";
+  }
+
+  syncTheme();
+
+  // Gleicher Cache-Buster wie an dieser Seite (?v=...), damit nach einem
+  // Update nie eine alte JS-Datei zur neuen Seite geladen wird. Erst nach
+  // dem Import ist das Element definiert - hass vorher zu setzen, würde
+  // den Setter der Klasse umgehen.
+  await import(`./unifi-dynamic-panel.js${location.search}`);
+
+  const el = document.querySelector("unifi-dynamic-panel");
+
+  function applyHass() {
+    const hass = parentHass();
+    if (hass) el.hass = hass;
+    return hass !== null;
+  }
+
+  if (!applyHass()) {
+    const started = Date.now();
+    const waitTimer = setInterval(() => {
+      if (applyHass()) {
+        clearInterval(waitTimer);
+      } else if (Date.now() - started > 15000) {
+        clearInterval(waitTimer);
+        el.remove();
+        // Ohne hass keine Sprache aus HA - daher die des Browsers.
+        const de = String(navigator.language || "").toLowerCase().startsWith("de");
+        const hint = document.createElement("p");
+        hint.className = "standalone-hint";
+        hint.textContent = de
+          ? "UniFi Dynamic Clients: Diese Seite funktioniert nur innerhalb von Home Assistant."
+          : "UniFi Dynamic Clients: this page only works inside Home Assistant.";
+        document.body.appendChild(hint);
+      }
+    }, 200);
+  }
+
+  // HA ersetzt sein hass-Objekt bei jeder Änderung; regelmässig nachziehen
+  // hält Sprache und Verbindung aktuell. Ein Designwechsel in HA ändert
+  // Attribute am <html> des Elternfensters - der Observer übernimmt ihn
+  // sofort, das Intervall fängt alles andere ab.
+  setInterval(() => {
+    applyHass();
+    syncTheme();
+  }, 5000);
+
+  try {
+    const themeObserver = new MutationObserver(syncTheme);
+    themeObserver.observe(window.parent.document.documentElement, {
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    });
+    window.addEventListener("pagehide", () => themeObserver.disconnect());
+  } catch (err) {
+    // Ohne Zugriff aufs Elternfenster bleibt es beim Intervall.
+  }
+</script>
+</body>
+</html>

@@ -5,6 +5,46 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.12] - 2026-09-22
+
+### Fixed
+
+- The panel's own menu (☰) button, added in 2.0.9, never opened the
+  sidebar: it fired Home Assistant's `hass-toggle-menu` event on `window`,
+  but Home Assistant listens for it on its `home-assistant-main` element,
+  and an event fired on `window` never reaches any element. The panel is
+  now registered as one of Home Assistant's built-in iframe panels (the
+  same approach Orphan Cleaner uses), so the header bar with the title and
+  the menu button — including its dot for pending notifications — is Home
+  Assistant's own, exactly as on its built-in panels. The panel's own
+  button and title are gone.
+- The toolbar still slid away sideways and the header ended up under the
+  iPhone's status bar in 2.0.11 while scrolling on a phone. As an iframe
+  panel, the page gets a fixed height from Home Assistant, which is what
+  the earlier attempts (2.0.7–2.0.11) never reliably had: search and
+  filters now stay put, and only the table scrolls — up/down, and sideways
+  where not all columns fit. Column headers stay at the top when scrolling
+  down and move with their columns when scrolling sideways. Verified with
+  real touch-drag gestures in a mobile browser emulation, checking that the
+  table actually scrolled — the tests behind 2.0.9 through 2.0.11 did not
+  check that, which is how both problems slipped through.
+- The README screenshots showed real MAC and IP addresses from a real
+  network, only with the device names changed, despite being described as
+  fabricated. Both screenshots are re-rendered with entirely made-up data
+  (locally administered MAC addresses, which are never assigned to any
+  manufacturer) and the current menu labels.
+
+### Changed
+
+- The page inside the panel uses Home Assistant's existing, already
+  signed-in connection from the surrounding window (no separate login or
+  token) and takes over the active theme's colors, so it follows light and
+  dark mode like before. The WebSocket commands are unchanged.
+- On a phone, the integration's icon now sits in the same row as the
+  search box instead of taking up a row of its own, leaving more room for
+  the table.
+- Dependency `panel_custom` replaced by `frontend` in `manifest.json`.
+
 ## [2.0.11] - 2026-09-22
 
 ### Fixed
@@ -717,6 +757,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.12]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.12
 [2.0.11]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.11
 [2.0.10]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.10
 [2.0.9]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.9

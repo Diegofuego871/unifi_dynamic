@@ -11,15 +11,19 @@
  * kommt ganz ohne das aus.
  *
  * Datenquelle: die WebSocket-Befehle unifi_dynamic/list_clients,
- * unifi_dynamic/remove_client und unifi_dynamic/exclude_client aus
- * __init__.py - dünne Wrapper um dieselbe Coordinator-Logik, die auch die
- * Push-Aktionen und der Service unifi_dynamic.remove_client nutzen.
+ * unifi_dynamic/remove_client, unifi_dynamic/exclude_client und
+ * unifi_dynamic/unexclude_client aus __init__.py - dünne Wrapper um
+ * dieselbe Coordinator-Logik, die auch die Push-Aktionen und der Service
+ * unifi_dynamic.remove_client nutzen.
+ *
+ * Läuft in panel.html, die Home Assistant als eingebautes iframe-Panel
+ * einbettet. Kopfzeile, Menü-Button und Titel rendert HA selbst um das
+ * iframe herum; dieses Element füllt das iframe und bekommt sein hass-
+ * Objekt von panel.html (aus dem Elternfenster).
  */
 
 const STRINGS = {
   de: {
-    title: "UniFi Dynamic Clients",
-    menuToggle: "Menü",
     searchPlaceholder: "Suche (Name, IP, MAC, SSID, AP)…",
     filterOnlineAll: "Alle",
     filterOnlineOnline: "Online",
@@ -58,8 +62,6 @@ const STRINGS = {
     seenNever: "–",
   },
   en: {
-    title: "UniFi Dynamic Clients",
-    menuToggle: "Menu",
     searchPlaceholder: "Search (name, IP, MAC, SSID, AP)…",
     filterOnlineAll: "All",
     filterOnlineOnline: "Online",
@@ -184,7 +186,6 @@ class UnifiDynamicPanel extends HTMLElement {
     this._openMenuKey = null;
     this._pollTimer = null;
     this._built = false;
-    this._narrow = false;
   }
 
   _savePrefs() {
@@ -197,7 +198,8 @@ class UnifiDynamicPanel extends HTMLElement {
     });
   }
 
-  // Wird von Home Assistant gesetzt, bei jeder State-Änderung neu.
+  // Wird von panel.html gesetzt: das hass-Objekt des Elternfensters, beim
+  // Start und danach regelmässig neu (HA ersetzt es bei jeder Änderung).
   set hass(hass) {
     const firstRun = !this._hass;
     this._hass = hass;
@@ -215,27 +217,6 @@ class UnifiDynamicPanel extends HTMLElement {
     return this._hass;
   }
 
-  // Wird von ha-panel-custom reaktiv gesetzt (initial und bei jeder
-  // Änderung, z.B. Bildschirmdrehung oder Fenstergrösse) - true, wenn die
-  // HA-Seitenleiste eingeklappt ist (schmaler Bildschirm, u.a. die
-  // iOS/Android-App). Steuert, ob der Menü-Button in der Werkzeugleiste
-  // sichtbar ist (siehe _updateMenuButtonVisibility).
-  set narrow(value) {
-    this._narrow = !!value;
-    this._updateMenuButtonVisibility();
-  }
-
-  get narrow() {
-    return this._narrow;
-  }
-
-  _updateMenuButtonVisibility() {
-    if (!this.shadowRoot) return;
-    const btn = this.shadowRoot.querySelector(".menu-toggle-btn");
-    if (!btn) return;
-    btn.style.display = this._narrow ? "flex" : "none";
-  }
-
   connectedCallback() {
     if (this._hass && !this._built) {
       this._buildStaticLayout();
@@ -246,10 +227,6 @@ class UnifiDynamicPanel extends HTMLElement {
 
   disconnectedCallback() {
     this._stopPolling();
-    if (this._stickyObserver) {
-      this._stickyObserver.disconnect();
-      this._stickyObserver = null;
-    }
   }
 
   _t(key) {
@@ -334,11 +311,16 @@ class UnifiDynamicPanel extends HTMLElement {
     await this._fetchClients();
   }
 
+  // Navigation gehört ins Elternfenster (Home Assistant selbst): im iframe
+  // würde history.pushState sonst nur das iframe auf eine HA-URL schicken.
+  // Gleiches Muster wie HAs eigene navigate()-Funktion: pushState plus
+  // "location-changed" am window, auf das der HA-Router hört.
   _openDevice(deviceId) {
     if (!deviceId) return;
-    history.pushState(null, "", `/config/devices/device/${deviceId}`);
-    window.dispatchEvent(
-      new CustomEvent("location-changed", { bubbles: true, composed: true })
+    const target = window.parent || window;
+    target.history.pushState(null, "", `/config/devices/device/${deviceId}`);
+    target.dispatchEvent(
+      new target.CustomEvent("location-changed", { detail: { replace: false } })
     );
   }
 
@@ -464,36 +446,30 @@ class UnifiDynamicPanel extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host {
-          display: block;
+          /* Flex-Spalte über die volle Höhe des iframes: Werkzeugleiste und
+             Fehlerbanner stehen oben fest, .content nimmt den Rest ein und
+             ist der einzige Bereich, der scrollt - in beide Richtungen, weil
+             die Tabelle mehr Spalten hat, als auf ein Handy passen. Im
+             iframe ist height: 100% verlässlich, weil HA die Höhe des
+             iframes selbst festlegt (hass-subpage). Als Custom Panel (bis
+             2.0.11) fehlte genau diese feste Höhe; alle Varianten mit
+             position: sticky auf Seitenebene scheiterten am horizontalen
+             Scrollen oder am Safe-Area-Bereich des iPhones. */
+          display: flex;
+          flex-direction: column;
           height: 100%;
           background: var(--primary-background-color, #fff);
           color: var(--primary-text-color, #212121);
-          font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
+          font-family: var(
+            --ha-font-family-body,
+            var(
+              --paper-font-body1_-_font-family,
+              -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+            )
+          );
         }
-        /* Fixierung per position: sticky statt flex+begrenzter Höhe (siehe
-           2.0.7): der 2.0.7-Ansatz brauchte eine durchgängige Kette
-           definierter Höhen von ha-panel-custom bis :host, damit .content
-           eine eigene, tatsächlich begrenzte Scrollfläche bekommt - in der
-           echten Oberfläche kommt diese Kette aber nicht zustande, :host
-           bleibt "auto" hoch, und die ganze Seite wächst wieder über den
-           Viewport hinaus statt nur .content. position: sticky braucht das
-           nicht: es findet selbst den tatsächlich scrollenden Vorfahren,
-           welcher Container das auch sein mag. --ud-toolbar-h/--ud-sticky-
-           offset werden per ResizeObserver in _observeStickyOffsets()
-           gesetzt, weil die Werkzeugleiste umbricht (Sprache, Fensterbreite)
-           und das Fehlerbanner ein-/ausgeblendet wird - die Kopfzeile muss
-           exakt darunter anschliessen, nicht an einem festen Pixelwert.
-           left/right: 0 zusätzlich zu top (seit 2.0.11): die Tabelle hat
-           mehr Spalten, als auf ein Handy passen, wodurch auch die Seite
-           selbst horizontal scrollt - position: sticky ohne left/right hält
-           nur die Y-Achse, die Werkzeugleiste rutschte beim horizontalen
-           Scrollen seitlich weg statt die volle Breite zu behalten. */
         .toolbar {
-          position: sticky;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 3;
+          flex: 0 0 auto;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
@@ -508,46 +484,16 @@ class UnifiDynamicPanel extends HTMLElement {
           height: 32px;
           border-radius: 6px;
         }
-        /* Standardmässig versteckt (display: none), sichtbar nur wenn die
-           HA-Seitenleiste eingeklappt ist (schmaler Bildschirm, u.a. die
-           iOS/Android-App - siehe _updateMenuButtonVisibility). Ein Custom
-           Panel bekommt von Home Assistant kein eigenes Menü-Icon, das muss
-           das Panel selbst bereitstellen; ohne dieses Icon gibt es auf
-           schmalen Bildschirmen keinen Weg zurück zur Seitenleiste. */
-        .menu-toggle-btn {
-          display: none;
-          flex: 0 0 auto;
-          align-items: center;
-          justify-content: center;
-          width: 40px;
-          height: 40px;
-          border: none;
-          border-radius: 50%;
-          background: none;
-          color: var(--primary-text-color, #212121);
-          cursor: pointer;
-        }
-        .menu-toggle-btn:hover {
-          background: var(--secondary-background-color, rgba(0,0,0,0.06));
-        }
-        .menu-toggle-btn svg {
-          width: 24px;
-          height: 24px;
-          fill: currentColor;
-        }
-        .toolbar h1 {
-          flex: 1 1 auto;
-          margin: 0;
-          font-size: 20px;
-          font-weight: 400;
-        }
         .search-wrap {
           position: relative;
-          /* flex-grow bewusst 0: soll nicht unkontrolliert wachsen und die
-             Werkzeugleiste dominieren (siehe 2.0.3/2.0.4). Die Basisbreite
-             selbst ist aber grosszügig bemessen. */
-          flex: 0 1 820px;
-          min-width: 240px;
+          /* Kleine Basisbreite, damit das Suchfeld auf dem Handy in derselben
+             Zeile wie das Icon Platz findet (eine Basis von 820px liess es
+             immer in eine eigene Zeile umbrechen, das Icon stand dann allein
+             da). Wachsen darf es, aber nie über 820px - sonst dominiert es
+             die Werkzeugleiste und verdrängt die Filter (siehe 2.0.3/2.0.4). */
+          flex: 1 1 240px;
+          max-width: 820px;
+          min-width: 200px;
         }
         input[type="search"] {
           width: 100%;
@@ -613,6 +559,15 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--secondary-background-color, rgba(0,0,0,0.06));
         }
         .content {
+          /* min-height: 0 ist nötig, damit sich das Flex-Kind auf den
+             Restplatz begrenzen lässt statt auf die volle Tabellenhöhe
+             anzuwachsen - erst dann greift overflow: auto. overscroll-
+             behavior verhindert, dass iOS am Rand das ganze iframe
+             mitzieht. */
+          flex: 1 1 auto;
+          min-height: 0;
+          overflow: auto;
+          overscroll-behavior: contain;
           padding: 0 16px 16px;
         }
         table {
@@ -621,8 +576,13 @@ class UnifiDynamicPanel extends HTMLElement {
           font-size: 14px;
         }
         thead th {
+          /* sticky relativ zu .content (dem einzigen Scroll-Container):
+             bleibt beim vertikalen Scrollen oben, läuft beim horizontalen
+             mit seiner Spalte mit. z-index, damit Zellen mit eigener
+             Positionierung (.actions-cell) beim Durchscrollen darunter und
+             nicht darüber gezeichnet werden. */
           position: sticky;
-          top: var(--ud-sticky-offset, 0px);
+          top: 0;
           z-index: 1;
           background: var(--primary-background-color, #fff);
           text-align: left;
@@ -738,19 +698,7 @@ class UnifiDynamicPanel extends HTMLElement {
           color: var(--secondary-text-color, #727272);
         }
         .error-banner {
-          /* position: sticky statt einfach im normalen Fluss: sitzt sonst
-             zwischen der jetzt fixierten Werkzeugleiste und dem scrollenden
-             Inhalt und würde beim Scrollen unter der Werkzeugleiste
-             verschwinden, während sie sichtbar ist. background als deckende
-             Basis + box-shadow inset für den Rot-Ton statt direkt
-             transparent: sonst schimmern beim Scrollen Tabellenzeilen durch
-             die sonst leicht transparente Fläche. left/right: 0 aus
-             demselben Grund wie bei .toolbar (siehe dortiger Kommentar). */
-          position: sticky;
-          top: var(--ud-toolbar-h, 0px);
-          left: 0;
-          right: 0;
-          z-index: 2;
+          flex: 0 0 auto;
           margin: 16px;
           padding: 12px 16px;
           border-radius: 8px;
@@ -771,18 +719,12 @@ class UnifiDynamicPanel extends HTMLElement {
       </style>
 
       <div class="toolbar">
-        <button class="menu-toggle-btn" title="${this._escape(t("menuToggle"))}" aria-label="${this._escape(
-          t("menuToggle")
-        )}">
-          <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
-        </button>
         <img
           class="brand-icon"
           src="${BRAND_ICON_URL}"
           alt=""
           onerror="this.style.display='none'"
         />
-        <h1>${this._escape(t("title"))}</h1>
         <div class="search-wrap">
           <input type="search" class="search" placeholder="${this._escape(
             t("searchPlaceholder")
@@ -830,20 +772,6 @@ class UnifiDynamicPanel extends HTMLElement {
         </table>
       </div>
     `;
-
-    // Standard-HA-Mechanismus, um die Seitenleiste ein-/auszuklappen -
-    // derselbe, den auch die eingebauten Panels nutzen. composed: true ist
-    // nötig, damit das Event den Shadow-DOM-Rand dieses Panels verlässt und
-    // die HA-App-Ebene (die den Listener dafür hält) es überhaupt sieht.
-    this.shadowRoot.querySelector(".menu-toggle-btn").addEventListener("click", () => {
-      window.dispatchEvent(
-        new CustomEvent("hass-toggle-menu", {
-          bubbles: true,
-          composed: true,
-          cancelable: false,
-        })
-      );
-    });
 
     const search = this.shadowRoot.querySelector(".search");
     const searchClear = this.shadowRoot.querySelector(".search-clear");
@@ -928,58 +856,18 @@ class UnifiDynamicPanel extends HTMLElement {
       }
     });
 
-    // Menü schliessen beim Scrollen: es ist jetzt position: fixed (siehe
-    // CSS-Kommentar bei .menu), scrollt also nicht mehr automatisch mit
-    // seiner Zeile mit und würde sonst optisch abdriften. Listener am
-    // window mit capture: true statt an .content, weil .content selbst
-    // nicht mehr scrollt (siehe Kommentar bei :host) - scroll-Events
-    // bubblen nicht, capture an einem Vorfahren ist der einzige Weg, das
-    // Scrollen eines beliebigen scrollenden Nachfahren zu bemerken, welcher
-    // das im Einzelfall auch sein mag.
-    window.addEventListener(
-      "scroll",
-      () => {
-        if (this._openMenuKey !== null) {
-          this._openMenuKey = null;
-          this._renderRows();
-        }
-      },
-      true
-    );
+    // Menü schliessen beim Scrollen: es ist position: fixed (siehe
+    // CSS-Kommentar bei .menu), scrollt also nicht mit seiner Zeile mit und
+    // würde sonst optisch abdriften. .content ist der einzige Bereich, der
+    // scrollt (siehe Kommentar bei :host).
+    this.shadowRoot.querySelector(".content").addEventListener("scroll", () => {
+      if (this._openMenuKey !== null) {
+        this._openMenuKey = null;
+        this._renderRows();
+      }
+    });
 
-    this._observeStickyOffsets();
-    this._updateMenuButtonVisibility();
     this._renderRows();
-  }
-
-  // Misst die Höhe von Werkzeugleiste und Fehlerbanner und legt sie als
-  // CSS-Variablen ab, an denen sich Fehlerbanner und Tabellenkopf per
-  // position: sticky ausrichten (siehe Kommentar bei :host). Ein
-  // ResizeObserver statt einmaliger Messung, weil sich die Werkzeugleiste
-  // je nach Sprache/Fensterbreite umbricht und das Fehlerbanner ein-/
-  // ausgeblendet wird - beides ändert die nötigen Offsets zur Laufzeit.
-  _observeStickyOffsets() {
-    const root = this.shadowRoot;
-    const toolbar = root.querySelector(".toolbar");
-    const errorBanner = root.querySelector(".error-banner");
-    if (!toolbar || !errorBanner) return;
-
-    const update = () => {
-      const toolbarH = toolbar.offsetHeight;
-      const bannerH =
-        getComputedStyle(errorBanner).display === "none"
-          ? 0
-          : errorBanner.offsetHeight;
-      this.style.setProperty("--ud-toolbar-h", `${toolbarH}px`);
-      this.style.setProperty("--ud-sticky-offset", `${toolbarH + bannerH}px`);
-    };
-
-    update();
-    if (typeof ResizeObserver !== "undefined") {
-      this._stickyObserver = new ResizeObserver(update);
-      this._stickyObserver.observe(toolbar);
-      this._stickyObserver.observe(errorBanner);
-    }
   }
 
   _handleTableClick(ev) {

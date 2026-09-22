@@ -192,23 +192,32 @@ Das Menü positioniert sich anhand der tatsächlichen Bildschirmposition des
 Buttons und öffnet automatisch nach oben, wenn unten nicht genug Platz ist
 — nötig, weil die Tabelle selbst scrollt, was das Menü bei Zeilen nahe dem
 unteren Rand des sichtbaren Bereichs sonst abschneiden würde. Das Icon der
-Integration erscheint neben dem Titel in der Werkzeugleiste, dasselbe Bild,
-das schon für Push-Meldungen ausgeliefert wird; scheitert das Laden, blendet
-es sich selbst aus, statt ein kaputtes Bild-Icon zu zeigen.
+Integration erscheint am Anfang der Werkzeugleiste neben dem Suchfeld,
+dasselbe Bild, das schon für Push-Meldungen ausgeliefert wird; scheitert
+das Laden, blendet es sich selbst aus, statt ein kaputtes Bild-Icon zu
+zeigen.
 
-Auf einem schmalen Bildschirm — den iOS-/Android-Begleit-Apps oder im
-Handy-Browser — zeigt die Werkzeugleiste links einen Menü-Button (☰), der
-die Seitenleiste von Home Assistant öffnet. Ein Custom Panel bekommt von
-Home Assistant selbst keinen solchen Button; ohne ihn gäbe es auf einem so
-schmalen Bildschirm sonst keinen Weg zurück zur Seitenleiste, da Wischen
-nur die Tabelle horizontal scrollt. Der Button ist auf breiteren
-Bildschirmen ausgeblendet, wo die Seitenleiste ohnehin sichtbar ist, und
-reagiert live auf Drehen des Geräts oder Grössenänderung des Fensters.
+Die Kopfzeile über dem Panel — Titel und, auf einem schmalen Bildschirm wie
+den iOS-/Android-Begleit-Apps, der Menü-Button zum Öffnen der Seitenleiste
+samt Punkt für offene Mitteilungen — ist die von Home Assistant selbst,
+dieselbe wie bei den eingebauten Panels. Darunter bleiben Suchfeld und
+Filter stehen; nur die Tabelle scrollt, nach oben/unten und auf dem Handy,
+wo nicht alle Spalten Platz haben, auch seitwärts. Die Spaltenüberschriften
+bleiben beim Scrollen nach unten oben stehen und laufen beim seitlichen
+Scrollen mit ihren Spalten mit.
 
-Das Panel ist ein eigenständiges Web Component ohne externe Bibliothek und
-ohne Build-Schritt — HACS installiert diese Integration als reine
-Dateikopie, es gibt also nichts zu bündeln. Es spricht mit dem Backend über
-vier WebSocket-Befehle (`unifi_dynamic/list_clients`,
+Technisch ist das Panel als eines der eingebauten iframe-Panels von Home
+Assistant registriert, das auf `panel/panel.html` in dieser Integration
+zeigt — derselbe Ansatz wie z.B. bei Orphan Cleaner. Home Assistant zeichnet
+die Kopfzeile um das iframe herum und gibt ihm eine feste Höhe, wodurch der
+Tabellenbereich überhaupt erst eigenständig scrollen kann. Die Seite darin
+nutzt die bestehende, bereits angemeldete Verbindung von Home Assistant aus
+dem umgebenden Fenster (kein eigenes Login, kein Token) und übernimmt die
+Farben des aktiven Designs, passt sich also hellem und dunklem Modus an.
+Die Tabelle selbst ist ein eigenständiges Web Component ohne externe
+Bibliothek und ohne Build-Schritt — HACS installiert diese Integration als
+reine Dateikopie, es gibt also nichts zu bündeln. Sie spricht mit dem
+Backend über vier WebSocket-Befehle (`unifi_dynamic/list_clients`,
 `unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`,
 `unifi_dynamic/unexclude_client`), dünne Wrapper um dieselbe
 Coordinator-Logik, die Meldungsaktionen und die Aktion `remove_client` schon

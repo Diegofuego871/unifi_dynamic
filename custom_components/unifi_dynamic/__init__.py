@@ -11,7 +11,7 @@ from time import monotonic
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.components import panel_custom, websocket_api
+from homeassistant.components import frontend, websocket_api
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED, Platform
@@ -49,10 +49,9 @@ from .const import (
     NEW_CLIENT_WAIT_INTERVAL,
     NEW_CLIENT_WAIT_TIMEOUT,
     PANEL_DIR,
-    PANEL_ELEMENT_NAME,
+    PANEL_HTML_FILE,
     PANEL_ICON,
-    PANEL_JS_FILE,
-    PANEL_MODULE_URL,
+    PANEL_PAGE_URL,
     PANEL_STATIC_URL_PATH,
     PANEL_TITLE,
     PANEL_URL_PATH,
@@ -604,26 +603,32 @@ async def _async_register_panel(hass: HomeAssistant) -> None:
     hass.data[DATA_PANEL_REGISTERED] = True
 
     panel_dir = Path(__file__).parent / PANEL_DIR
-    js_path = panel_dir / PANEL_JS_FILE
+    html_path = panel_dir / PANEL_HTML_FILE
 
-    exists = await hass.async_add_executor_job(js_path.is_file)
+    exists = await hass.async_add_executor_job(html_path.is_file)
     if not exists:
-        _LOGGER.warning("%s nicht gefunden, Panel wird nicht registriert", js_path)
+        _LOGGER.warning("%s nicht gefunden, Panel wird nicht registriert", html_path)
         return
 
     try:
         await hass.http.async_register_static_paths(
             [StaticPathConfig(PANEL_STATIC_URL_PATH, str(panel_dir), True)]
         )
-        await panel_custom.async_register_panel(
+        # Eingebautes iframe-Panel statt Custom Panel: HA rendert darum
+        # herum seine eigene Kopfzeile (hass-subpage) mit dem echten
+        # Menü-Button inkl. Mitteilungs-Punkt und Safe-Area-Abstand, und
+        # das iframe füllt genau den Platz darunter. Ein Custom Panel
+        # bekommt beides nicht und musste es nachbauen - der eigene
+        # Menü-Button erreichte HA nie, und eine begrenzte Höhe für die
+        # Scrollfläche ergab sich nicht zuverlässig.
+        frontend.async_register_built_in_panel(
             hass,
-            frontend_url_path=PANEL_URL_PATH,
-            webcomponent_name=PANEL_ELEMENT_NAME,
+            component_name="iframe",
             sidebar_title=PANEL_TITLE,
             sidebar_icon=PANEL_ICON,
-            module_url=PANEL_MODULE_URL,
-            embed_iframe=False,
-            # Konsistent mit den drei WebSocket-Befehlen, die alle
+            frontend_url_path=PANEL_URL_PATH,
+            config={"url": PANEL_PAGE_URL},
+            # Konsistent mit den WebSocket-Befehlen, die alle
             # @websocket_api.require_admin tragen: löschen und Ausnahmeliste
             # sind destruktive Aktionen. Ohne dieses Flag sähe ein
             # Nicht-Admin-Nutzer das Panel im Menü, bekäme aber bei jedem

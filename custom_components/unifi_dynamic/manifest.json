@@ -6,8 +6,8 @@
   ],
   "config_flow": true,
   "dependencies": [
+    "frontend",
     "http",
-    "panel_custom",
     "persistent_notification",
     "websocket_api"
   ],
@@ -16,5 +16,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Diegofuego871/unifi_dynamic/issues",
   "requirements": [],
-  "version": "2.0.11"
+  "version": "2.0.12"
 }

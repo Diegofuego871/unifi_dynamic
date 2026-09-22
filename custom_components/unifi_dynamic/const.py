@@ -154,19 +154,21 @@ DATA_PUSH_IMAGE = "unifi_dynamic_push_image"
 # Aktionen (löschen, Ausnahmeliste) je Zeile. Einmal pro Home-Assistant-
 # Instanz registriert, nicht pro Config-Entry - bei mehreren UniFi-Hosts
 # erscheint trotzdem nur ein Menüeintrag, die Tabelle zeigt alle Hosts.
+# Als eingebautes iframe-Panel von Home Assistant, nicht als Custom Panel:
+# HA rendert dann selbst die Kopfzeile mit Menü-Button (inkl. Punkt für
+# Mitteilungen) und Safe-Area-Abstand, und die Seite im iframe hat eine
+# feste, von HA vorgegebene Höhe - siehe panel/panel.html.
 PANEL_URL_PATH = "unifi-dynamic"
-PANEL_ELEMENT_NAME = "unifi-dynamic-panel"
 PANEL_TITLE = "UniFi Dynamic Clients"
 PANEL_ICON = "mdi:lan-check"
 PANEL_DIR = "panel"
-PANEL_JS_FILE = "unifi-dynamic-panel.js"
+PANEL_HTML_FILE = "panel.html"
 PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
-# Versionsstempel als Cache-Buster am Modul-Pfad, damit der Browser nach
-# einem Integrations-Update nicht die alte JS-Datei aus dem Cache lädt.
-# Wird bei jeder Änderung am Panel-JS von Hand erhöht, unabhängig von der
-# Integrationsversion.
-PANEL_JS_VERSION = "11"
-PANEL_MODULE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_JS_FILE}?v={PANEL_JS_VERSION}"
+# Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
+# an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
+# oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
+PANEL_VERSION = "12"
+PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
 DATA_WS_REGISTERED = "unifi_dynamic_ws_registered"

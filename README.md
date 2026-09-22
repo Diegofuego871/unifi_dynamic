@@ -186,27 +186,35 @@ The menu positions itself against the button's actual on-screen location
 and opens upward automatically when there is not enough room below —
 needed because the table itself scrolls, which would otherwise clip the
 menu for rows near the bottom of the visible area. The integration's icon
-appears next to the title in the toolbar, reusing the image already served
-for push notifications; it hides itself rather than showing a broken-image
-icon if that fails to load.
+appears at the start of the toolbar, next to the search box, reusing the
+image already served for push notifications; it hides itself rather than
+showing a broken-image icon if that fails to load.
 
-On a narrow screen — the iOS/Android companion apps, or a phone browser —
-the toolbar shows a menu (☰) button on the left that opens Home Assistant's
-sidebar. A custom panel gets no such button from Home Assistant itself;
-without it there is otherwise no way back to the sidebar on a screen this
-narrow, since swiping only scrolls the table horizontally. The button is
-hidden on wider screens where the sidebar is already visible, and reacts
-live to rotating the device or resizing the window.
+The header bar above the panel — title and, on a narrow screen such as the
+iOS/Android companion apps, the menu button that opens the sidebar,
+including its dot for pending notifications — is Home Assistant's own, the
+same one its built-in panels use. Below it, the search box and filters stay
+in place; only the table scrolls, up/down and, on a phone where not all
+columns fit, sideways. The column headers stay at the top while scrolling
+down and move along with their columns when scrolling sideways.
 
-The panel is a self-contained Web Component with no external library and no
-build step — HACS installs this integration as a plain file copy, so there
-is nothing to bundle. It talks to the backend through four WebSocket
-commands (`unifi_dynamic/list_clients`, `unifi_dynamic/remove_client`,
-`unifi_dynamic/exclude_client`, `unifi_dynamic/unexclude_client`), thin
-wrappers around the same coordinator logic the notification actions and the
-`remove_client` action already use — no separate removal or exclusion logic
-exists for the panel. All four commands require administrator rights,
-matching the panel's own `require_admin` setting.
+Technically the panel is registered as one of Home Assistant's built-in
+iframe panels, pointing at `panel/panel.html` inside this integration — the
+same approach as e.g. Orphan Cleaner. Home Assistant draws the header bar
+around the iframe and gives it a fixed height, which is what lets the table
+area scroll on its own. The page inside uses Home Assistant's existing,
+already signed-in connection from the surrounding window (no separate login
+or token), and takes over the active theme's colors so it matches light and
+dark mode. The table itself is a self-contained Web Component with no
+external library and no build step — HACS installs this integration as a
+plain file copy, so there is nothing to bundle. It talks to the backend
+through four WebSocket commands (`unifi_dynamic/list_clients`,
+`unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`,
+`unifi_dynamic/unexclude_client`), thin wrappers around the same
+coordinator logic the notification actions and the `remove_client` action
+already use — no separate removal or exclusion logic exists for the panel.
+All four commands require administrator rights, matching the panel's own
+`require_admin` setting.
 
 Panel text is bilingual like the notifications, but the language source
 differs on purpose: the panel reads `hass.language`, the signed-in user's
