@@ -173,12 +173,14 @@ Das gilt pro Browser/Gerät, nicht geräteübergreifend synchronisiert. Ein
 Button „Filter zurücksetzen" in der Werkzeugleiste setzt alles mit einem
 Klick auf die Standardansicht zurück.
 
-Jede Zeile hat ein ⋮-Menü mit „Nie entfernen" (trägt den Client in die
-Ausnahmeliste ein; ausgegraut, wenn er schon drinsteht), „Jetzt entfernen"
-(fragt zuerst nach, entfernt dann sofort — dasselbe Verhalten wie der
-Meldungs-Button und die Aktion `remove_client`: ein noch aktiver Client wird
-beim nächsten Abgleich neu angelegt und erneut als neu gemeldet) und
-„Geräteseite öffnen". Ein Klick auf die Zeile selbst hat keine Wirkung mehr
+Jede Zeile hat ein ⋮-Menü mit „Vor automatischem Löschen schützen" (trägt
+den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt
+dann sofort — dasselbe Verhalten wie der Meldungs-Button und die Aktion
+`remove_client`: ein noch aktiver Client wird beim nächsten Abgleich neu
+angelegt und erneut als neu gemeldet) und „Geräteseite öffnen". Steht ein
+Client schon auf der Ausnahmeliste, zeigt das Menü stattdessen „Nicht mehr
+schützen", um ihn wieder davon zu entfernen. Ein Klick auf die Zeile selbst
+hat keine Wirkung mehr
 — die Geräteseite ist absichtlich nur noch über diesen Menüpunkt erreichbar:
 Ein Klick auf die Zeile öffnete früher direkt die Geräteseite, was beim
 Scrollen oder Überfliegen der Tabelle zu leicht versehentlich ausgelöst
@@ -197,13 +199,13 @@ es sich selbst aus, statt ein kaputtes Bild-Icon zu zeigen.
 Das Panel ist ein eigenständiges Web Component ohne externe Bibliothek und
 ohne Build-Schritt — HACS installiert diese Integration als reine
 Dateikopie, es gibt also nichts zu bündeln. Es spricht mit dem Backend über
-drei WebSocket-Befehle (`unifi_dynamic/list_clients`,
-`unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`), dünne
-Wrapper um dieselbe Coordinator-Logik, die Meldungsaktionen und die Aktion
-`remove_client` schon nutzen — für das Panel existiert keine eigene
-Entfernen- oder Ausnahmeliste-Logik. Alle drei Befehle verlangen
-Administratorrechte, passend zur `require_admin`-Einstellung des Panels
-selbst.
+vier WebSocket-Befehle (`unifi_dynamic/list_clients`,
+`unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`,
+`unifi_dynamic/unexclude_client`), dünne Wrapper um dieselbe
+Coordinator-Logik, die Meldungsaktionen und die Aktion `remove_client` schon
+nutzen — für das Panel existiert keine eigene Entfernen- oder
+Ausnahmeliste-Logik. Alle vier Befehle verlangen Administratorrechte,
+passend zur `require_admin`-Einstellung des Panels selbst.
 
 Panel-Texte sind wie die Meldungen zweisprachig, die Sprachquelle
 unterscheidet sich aber bewusst: Das Panel liest `hass.language`, die

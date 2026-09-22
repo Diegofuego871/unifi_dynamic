@@ -65,6 +65,7 @@ from .const import (
     WS_TYPE_EXCLUDE_CLIENT,
     WS_TYPE_LIST_CLIENTS,
     WS_TYPE_REMOVE_CLIENT,
+    WS_TYPE_UNEXCLUDE_CLIENT,
 )
 from .coordinator import (
     PurgeResult,
@@ -380,6 +381,33 @@ def _exclude_mac(hass: HomeAssistant, entry: ConfigEntry, mac: str) -> bool:
 
 
 @callback
+def _unexclude_mac(hass: HomeAssistant, entry: ConfigEntry, mac: str) -> bool:
+    """
+    Entfernt die MAC wieder aus der Ausnahmeliste der Options.
+
+    Gegenstück zu _exclude_mac, dieselbe Liste. Gibt False zurück, wenn die
+    MAC gar nicht drinstand.
+    """
+    current = [
+        str(item).strip().lower()
+        for item in (entry.options.get(CONF_PURGE_EXCLUDE) or [])
+        if str(item).strip()
+    ]
+
+    if mac not in current:
+        return False
+
+    hass.config_entries.async_update_entry(
+        entry,
+        options={
+            **entry.options,
+            CONF_PURGE_EXCLUDE: [item for item in current if item != mac],
+        },
+    )
+    return True
+
+
+@callback
 def _register_new_client_handler(
     hass: HomeAssistant, entry: ConfigEntry, coordinator: UnifiDynamicCoordinator
 ) -> None:
@@ -683,6 +711,28 @@ def _ws_exclude_client(
     connection.send_result(msg["id"], {"changed": changed})
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_UNEXCLUDE_CLIENT,
+        vol.Required("entry_id"): str,
+        vol.Required(ATTR_MAC): str,
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_unexclude_client(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Entfernt einen Client wieder von der Ausnahmeliste."""
+    entry = hass.config_entries.async_get_entry(msg["entry_id"])
+    if entry is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+
+    changed = _unexclude_mac(hass, entry, msg[ATTR_MAC])
+    connection.send_result(msg["id"], {"changed": changed})
+
+
 @callback
 def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Registriert die Panel-WebSocket-Befehle einmal pro Instanz."""
@@ -693,6 +743,7 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_list_clients)
     websocket_api.async_register_command(hass, _ws_remove_client)
     websocket_api.async_register_command(hass, _ws_exclude_client)
+    websocket_api.async_register_command(hass, _ws_unexclude_client)
 
 
 # ---------------------------------------------------------------------------

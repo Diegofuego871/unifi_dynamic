@@ -165,7 +165,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # einem Integrations-Update nicht die alte JS-Datei aus dem Cache lädt.
 # Wird bei jeder Änderung am Panel-JS von Hand erhöht, unabhängig von der
 # Integrationsversion.
-PANEL_JS_VERSION = "7"
+PANEL_JS_VERSION = "8"
 PANEL_MODULE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_JS_FILE}?v={PANEL_JS_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
@@ -176,6 +176,7 @@ DATA_WS_REGISTERED = "unifi_dynamic_ws_registered"
 WS_TYPE_LIST_CLIENTS = f"{DOMAIN}/list_clients"
 WS_TYPE_REMOVE_CLIENT = f"{DOMAIN}/remove_client"
 WS_TYPE_EXCLUDE_CLIENT = f"{DOMAIN}/exclude_client"
+WS_TYPE_UNEXCLUDE_CLIENT = f"{DOMAIN}/unexclude_client"
 
 # Android ersetzt Meldungen mit gleichem Tag, statt sie zu stapeln.
 NOTIFICATION_TAG_PREFIX = "unifi_dynamic_purge"

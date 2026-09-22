@@ -42,9 +42,9 @@ const STRINGS = {
     connUnknown: "unbekannt",
     excludedBadge: "geschützt",
     menuOpenDevice: "Geräteseite öffnen",
-    menuExclude: "Nie entfernen",
-    menuExcluded: "Bereits auf Ausnahmeliste",
-    menuRemove: "Jetzt entfernen",
+    menuExclude: "Vor automatischem Löschen schützen",
+    menuUnexclude: "Nicht mehr schützen",
+    menuRemove: "Löschen",
     confirmRemove: (name) =>
       `${name} jetzt entfernen? Ist der Client noch aktiv, wird er beim nächsten Abgleich neu angelegt.`,
     empty: "Keine Clients gefunden.",
@@ -81,9 +81,9 @@ const STRINGS = {
     connUnknown: "unknown",
     excludedBadge: "protected",
     menuOpenDevice: "Open device page",
-    menuExclude: "Never remove",
-    menuExcluded: "Already on exclusion list",
-    menuRemove: "Remove now",
+    menuExclude: "Protect from automatic removal",
+    menuUnexclude: "Stop protecting",
+    menuRemove: "Remove",
     confirmRemove: (name) =>
       `Remove ${name} now? If the client is still active, it will be recreated on the next sync.`,
     empty: "No clients found.",
@@ -222,6 +222,10 @@ class UnifiDynamicPanel extends HTMLElement {
 
   disconnectedCallback() {
     this._stopPolling();
+    if (this._stickyObserver) {
+      this._stickyObserver.disconnect();
+      this._stickyObserver = null;
+    }
   }
 
   _t(key) {
@@ -280,6 +284,21 @@ class UnifiDynamicPanel extends HTMLElement {
     try {
       await this._hass.callWS({
         type: "unifi_dynamic/exclude_client",
+        entry_id: entryId,
+        mac,
+      });
+    } catch (err) {
+      this._error = (err && err.message) || String(err);
+      this._renderRows();
+      return;
+    }
+    await this._fetchClients();
+  }
+
+  async _unexcludeClient(entryId, mac) {
+    try {
+      await this._hass.callWS({
+        type: "unifi_dynamic/unexclude_client",
         entry_id: entryId,
         mac,
       });
@@ -421,20 +440,29 @@ class UnifiDynamicPanel extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host {
-          /* display: flex (Spalte) statt block: erst damit können
-             .toolbar/.error-banner fest bleiben und .content den
-             restlichen Platz einnehmen. Bei display: block hatte .content
-             keine begrenzte Höhe, wodurch sein eigenes overflow: auto nie
-             griff - stattdessen scrollte die ganze Seite inkl. Werkzeugleiste. */
-          display: flex;
-          flex-direction: column;
+          display: block;
           height: 100%;
           background: var(--primary-background-color, #fff);
           color: var(--primary-text-color, #212121);
           font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
         }
+        /* Fixierung per position: sticky statt flex+begrenzter Höhe (siehe
+           2.0.7): der 2.0.7-Ansatz brauchte eine durchgängige Kette
+           definierter Höhen von ha-panel-custom bis :host, damit .content
+           eine eigene, tatsächlich begrenzte Scrollfläche bekommt - in der
+           echten Oberfläche kommt diese Kette aber nicht zustande, :host
+           bleibt "auto" hoch, und die ganze Seite wächst wieder über den
+           Viewport hinaus statt nur .content. position: sticky braucht das
+           nicht: es findet selbst den tatsächlich scrollenden Vorfahren,
+           welcher Container das auch sein mag. --ud-toolbar-h/--ud-sticky-
+           offset werden per ResizeObserver in _observeStickyOffsets()
+           gesetzt, weil die Werkzeugleiste umbricht (Sprache, Fensterbreite)
+           und das Fehlerbanner ein-/ausgeblendet wird - die Kopfzeile muss
+           exakt darunter anschliessen, nicht an einem festen Pixelwert. */
         .toolbar {
-          flex: 0 0 auto;
+          position: sticky;
+          top: 0;
+          z-index: 3;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
@@ -527,15 +555,7 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--secondary-background-color, rgba(0,0,0,0.06));
         }
         .content {
-          /* flex: 1 1 auto nimmt den verbleibenden Platz unterhalb der
-             fixierten Werkzeugleiste ein; min-height: 0 ist nötig, damit
-             ein Flex-Kind sich tatsächlich auf diese Höhe begrenzen lässt
-             statt sich an seinem Inhalt (der Tabelle) aufzublähen - erst
-             dadurch greift overflow: auto und nur die Tabelle scrollt. */
-          flex: 1 1 auto;
-          min-height: 0;
           padding: 0 16px 16px;
-          overflow: auto;
         }
         table {
           width: 100%;
@@ -544,7 +564,8 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         thead th {
           position: sticky;
-          top: 0;
+          top: var(--ud-sticky-offset, 0px);
+          z-index: 1;
           background: var(--primary-background-color, #fff);
           text-align: left;
           padding: 10px 12px;
@@ -659,11 +680,21 @@ class UnifiDynamicPanel extends HTMLElement {
           color: var(--secondary-text-color, #727272);
         }
         .error-banner {
-          flex: 0 0 auto;
+          /* position: sticky statt einfach im normalen Fluss: sitzt sonst
+             zwischen der jetzt fixierten Werkzeugleiste und dem scrollenden
+             Inhalt und würde beim Scrollen unter der Werkzeugleiste
+             verschwinden, während sie sichtbar ist. background als deckende
+             Basis + box-shadow inset für den Rot-Ton statt direkt
+             transparent: sonst schimmern beim Scrollen Tabellenzeilen durch
+             die sonst leicht transparente Fläche. */
+          position: sticky;
+          top: var(--ud-toolbar-h, 0px);
+          z-index: 2;
           margin: 16px;
           padding: 12px 16px;
           border-radius: 8px;
-          background: rgba(176, 0, 32, 0.08);
+          background: var(--card-background-color, #fff);
+          box-shadow: inset 0 0 0 999px rgba(176, 0, 32, 0.08);
           color: var(--error-color, #b00020);
           display: none;
         }
@@ -819,15 +850,55 @@ class UnifiDynamicPanel extends HTMLElement {
 
     // Menü schliessen beim Scrollen: es ist jetzt position: fixed (siehe
     // CSS-Kommentar bei .menu), scrollt also nicht mehr automatisch mit
-    // seiner Zeile mit und würde sonst optisch abdriften.
-    this.shadowRoot.querySelector(".content").addEventListener("scroll", () => {
-      if (this._openMenuKey !== null) {
-        this._openMenuKey = null;
-        this._renderRows();
-      }
-    });
+    // seiner Zeile mit und würde sonst optisch abdriften. Listener am
+    // window mit capture: true statt an .content, weil .content selbst
+    // nicht mehr scrollt (siehe Kommentar bei :host) - scroll-Events
+    // bubblen nicht, capture an einem Vorfahren ist der einzige Weg, das
+    // Scrollen eines beliebigen scrollenden Nachfahren zu bemerken, welcher
+    // das im Einzelfall auch sein mag.
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (this._openMenuKey !== null) {
+          this._openMenuKey = null;
+          this._renderRows();
+        }
+      },
+      true
+    );
 
+    this._observeStickyOffsets();
     this._renderRows();
+  }
+
+  // Misst die Höhe von Werkzeugleiste und Fehlerbanner und legt sie als
+  // CSS-Variablen ab, an denen sich Fehlerbanner und Tabellenkopf per
+  // position: sticky ausrichten (siehe Kommentar bei :host). Ein
+  // ResizeObserver statt einmaliger Messung, weil sich die Werkzeugleiste
+  // je nach Sprache/Fensterbreite umbricht und das Fehlerbanner ein-/
+  // ausgeblendet wird - beides ändert die nötigen Offsets zur Laufzeit.
+  _observeStickyOffsets() {
+    const root = this.shadowRoot;
+    const toolbar = root.querySelector(".toolbar");
+    const errorBanner = root.querySelector(".error-banner");
+    if (!toolbar || !errorBanner) return;
+
+    const update = () => {
+      const toolbarH = toolbar.offsetHeight;
+      const bannerH =
+        getComputedStyle(errorBanner).display === "none"
+          ? 0
+          : errorBanner.offsetHeight;
+      this.style.setProperty("--ud-toolbar-h", `${toolbarH}px`);
+      this.style.setProperty("--ud-sticky-offset", `${toolbarH + bannerH}px`);
+    };
+
+    update();
+    if (typeof ResizeObserver !== "undefined") {
+      this._stickyObserver = new ResizeObserver(update);
+      this._stickyObserver.observe(toolbar);
+      this._stickyObserver.observe(errorBanner);
+    }
   }
 
   _handleTableClick(ev) {
@@ -856,6 +927,8 @@ class UnifiDynamicPanel extends HTMLElement {
         this._openDevice(deviceId);
       } else if (action === "exclude") {
         this._excludeClient(entryId, mac);
+      } else if (action === "unexclude") {
+        this._unexcludeClient(entryId, mac);
       } else if (action === "remove") {
         if (window.confirm(this._t("confirmRemove")(name))) {
           this._removeClient(entryId, mac);
@@ -931,8 +1004,8 @@ class UnifiDynamicPanel extends HTMLElement {
             <button data-action="open-device" ${c.device_id ? "" : "disabled"}>
               ${this._escape(this._t("menuOpenDevice"))}
             </button>
-            <button data-action="exclude" ${c.excluded ? "disabled" : ""}>
-              ${this._escape(c.excluded ? this._t("menuExcluded") : this._t("menuExclude"))}
+            <button data-action="${c.excluded ? "unexclude" : "exclude"}">
+              ${this._escape(c.excluded ? this._t("menuUnexclude") : this._t("menuExclude"))}
             </button>
             <button data-action="remove" class="destructive">
               ${this._escape(this._t("menuRemove"))}

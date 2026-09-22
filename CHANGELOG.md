@@ -5,6 +5,41 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.8] - 2026-09-22
+
+### Fixed
+
+- The 2.0.7 fix for the scrolling toolbar didn't hold up in the real
+  frontend: it relied on an unbroken chain of definite heights from
+  `ha-panel-custom` down to the panel's own host element so that the table
+  area alone could scroll internally, but `ha-panel-custom` doesn't set a
+  definite height on itself, so that chain never resolves and the whole
+  panel — including the column headers, which the 2.0.7 notes didn't call
+  out — kept scrolling away with the page. Replaced with `position: sticky`
+  directly on the toolbar, the error banner and the column headers instead,
+  which doesn't depend on any ancestor's height being definite — it simply
+  sticks to whichever ancestor actually ends up scrolling. The offset the
+  column headers and error banner stick below is measured from the
+  toolbar's real rendered height via `ResizeObserver`, so it stays correct
+  when the toolbar wraps onto two lines on narrow windows or its text
+  changes with the interface language.
+
+### Added
+
+- The panel's row menu has a new "Stop protecting" action, shown instead of
+  "Protect from automatic removal" once a client is already on the
+  exclusion list, to take it back off — until now that list could only be
+  edited from the integration's options dialog. New WebSocket command
+  `unifi_dynamic/unexclude_client` backing it.
+
+### Changed
+
+- Renamed two of the panel's row-menu actions for clarity: "Never remove"
+  is now "Protect from automatic removal" (matching the "protected" badge
+  already used for excluded clients elsewhere in the table), and
+  "Remove now" is now just "Remove". Push/persistent notification button
+  text is unchanged.
+
 ## [2.0.7] - 2026-09-21
 
 ### Fixed
@@ -613,6 +648,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.8
 [2.0.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.7
 [2.0.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.6
 [2.0.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.5

@@ -168,12 +168,14 @@ the HA process, so it is unaffected either way. This is per browser/device,
 not synced between them. A "Reset filters" button in the toolbar clears all
 of it back to the default view in one click.
 
-Each row has a ⋮ menu with "Never remove" (adds the client to the exclusion
-list; disabled if it is already on it), "Remove now" (asks for
-confirmation, then removes immediately — the same behavior as the
-notification button and the `remove_client` action: an active client is
-recreated on the next poll and reported as new again), and "Open device
-page". Clicking a row itself does nothing — device pages are reachable only
+Each row has a ⋮ menu with "Protect from automatic removal" (adds the
+client to the exclusion list), "Remove" (asks for confirmation, then
+removes immediately — the same behavior as the notification button and the
+`remove_client` action: an active client is recreated on the next poll and
+reported as new again), and "Open device page". A client already on the
+exclusion list shows "Stop protecting" instead of "Protect from automatic
+removal", to take it back off the list. Clicking a row itself does nothing
+— device pages are reachable only
 through that menu item, deliberately: a row click used to open the device
 page directly, which was too easy to trigger by accident while scrolling or
 scanning the table. With more than one UniFi host configured, the table
@@ -190,13 +192,13 @@ icon if that fails to load.
 
 The panel is a self-contained Web Component with no external library and no
 build step — HACS installs this integration as a plain file copy, so there
-is nothing to bundle. It talks to the backend through three WebSocket
+is nothing to bundle. It talks to the backend through four WebSocket
 commands (`unifi_dynamic/list_clients`, `unifi_dynamic/remove_client`,
-`unifi_dynamic/exclude_client`), thin wrappers around the same coordinator
-logic the notification actions and the `remove_client` action already use —
-no separate removal or exclusion logic exists for the panel. All three
-commands require administrator rights, matching the panel's own
-`require_admin` setting.
+`unifi_dynamic/exclude_client`, `unifi_dynamic/unexclude_client`), thin
+wrappers around the same coordinator logic the notification actions and the
+`remove_client` action already use — no separate removal or exclusion logic
+exists for the panel. All four commands require administrator rights,
+matching the panel's own `require_admin` setting.
 
 Panel text is bilingual like the notifications, but the language source
 differs on purpose: the panel reads `hass.language`, the signed-in user's
