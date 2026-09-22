@@ -165,7 +165,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # einem Integrations-Update nicht die alte JS-Datei aus dem Cache lädt.
 # Wird bei jeder Änderung am Panel-JS von Hand erhöht, unabhängig von der
 # Integrationsversion.
-PANEL_JS_VERSION = "10"
+PANEL_JS_VERSION = "11"
 PANEL_MODULE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_JS_FILE}?v={PANEL_JS_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"

@@ -5,6 +5,35 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.11] - 2026-09-22
+
+### Fixed
+
+- 2.0.10 replaced the sticky toolbar/header with a single scroll container
+  (`.content`, sized from JavaScript) to fix the column headers ending up
+  mid-list instead of at the top. On a real phone this traded one bug for
+  another: without a `<meta name="viewport">` tag of its own — which this
+  panel never had and doesn't need, since the surrounding Home Assistant
+  document already provides one — a page with any element wider than the
+  screen falls back to a browser's default 980px layout viewport and
+  render everything zoomed out to fit, which is what made the whole panel
+  render tiny. Reproducing that behavior needs actual mobile emulation
+  (a touch-enabled, non-desktop browser context); the desktop-sized
+  headless window used for testing 2.0.7 through 2.0.10 never exercised
+  this path, which is how it went unnoticed until now.
+  2.0.11 goes back to the 2.0.9 approach (`position: sticky` on the
+  toolbar, error banner and column headers, the whole page scrolling
+  underneath) — this renders at the expected size, and the underlying
+  table still scrolls sideways on a phone exactly as before, which is
+  expected given how many columns it has. The one real defect in that
+  approach is fixed directly instead: `position: sticky` only pins the
+  axis it's given a value for, and without `left`/`right` the toolbar and
+  error banner had no horizontal anchor, so they slid off screen along
+  with the page during horizontal scrolling instead of spanning the full
+  width. They now pin `left: 0; right: 0` too. The column headers are left
+  exactly as they were — they're meant to move sideways with their column,
+  just not vertically.
+
 ## [2.0.10] - 2026-09-22
 
 ### Fixed
@@ -688,6 +717,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.11]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.11
 [2.0.10]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.10
 [2.0.9]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.9
 [2.0.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.8
