@@ -5,6 +5,28 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.13] - 2026-09-22
+
+### Added
+
+- The panel's toolbar shows a status bar counting all devices and how many
+  of them are online and offline ("40 devices · ● 34 online · ○ 6
+  offline"), across all hosts and regardless of the search or the other
+  filter. It doubles as the online/offline filter: tapping "online" or
+  "offline" shows only those devices, tapping the active part again goes
+  back to all, and the active part is highlighted in the theme's accent
+  color. The choice is remembered like the other filters.
+
+### Changed
+
+- The status bar replaces the former "All/Online/Offline" dropdown, so the
+  counter takes no extra room. On a phone it gets its own full-width row,
+  the connection filter and the reset button share the next one, and the
+  toolbar's spacing is a little tighter — 12px less height than before
+  despite the counter, leaving that much more room for the table.
+- README screenshots re-rendered with the status bar, again with entirely
+  made-up data.
+
 ## [2.0.12] - 2026-09-22
 
 ### Fixed
@@ -757,6 +779,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.13]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.13
 [2.0.12]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.12
 [2.0.11]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.11
 [2.0.10]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.10

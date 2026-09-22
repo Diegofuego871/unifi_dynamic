@@ -25,9 +25,13 @@
 const STRINGS = {
   de: {
     searchPlaceholder: "Suche (Name, IP, MAC, SSID, AP)…",
-    filterOnlineAll: "Alle",
-    filterOnlineOnline: "Online",
-    filterOnlineOffline: "Offline",
+    statsGroup: "Status-Filter",
+    statTotal: (n) => (n === 1 ? "Gerät" : "Geräte"),
+    statOnline: "online",
+    statOffline: "offline",
+    statShowAll: "Alle anzeigen",
+    statShowOnline: "Nur Online-Geräte anzeigen",
+    statShowOffline: "Nur Offline-Geräte anzeigen",
     filterConnAll: "Alle Verbindungen",
     filterConnWired: "Kabel",
     filterConnWireless: "WLAN",
@@ -63,9 +67,13 @@ const STRINGS = {
   },
   en: {
     searchPlaceholder: "Search (name, IP, MAC, SSID, AP)…",
-    filterOnlineAll: "All",
-    filterOnlineOnline: "Online",
-    filterOnlineOffline: "Offline",
+    statsGroup: "Status filter",
+    statTotal: (n) => (n === 1 ? "device" : "devices"),
+    statOnline: "online",
+    statOffline: "offline",
+    statShowAll: "Show all",
+    statShowOnline: "Show online devices only",
+    statShowOffline: "Show offline devices only",
     filterConnAll: "All connections",
     filterConnWired: "Wired",
     filterConnWireless: "Wireless",
@@ -545,6 +553,78 @@ class UnifiDynamicPanel extends HTMLElement {
           color: var(--primary-text-color, #212121);
           font-size: 14px;
         }
+        /* Zähler und Online/Offline-Filter in einem: ersetzt das frühere
+           Auswahlfeld "Alle/Online/Offline", damit die Werkzeugleiste mit
+           dem Zähler nicht höher wird. Die Zahlen gelten immer für alle
+           Geräte, unabhängig von Suche und Verbindungsfilter. */
+        .stats {
+          flex: 0 0 auto;
+          display: inline-flex;
+          border: 1px solid var(--divider-color, #ccc);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .stat {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 7px 12px;
+          border: none;
+          border-left: 1px solid var(--divider-color, #ccc);
+          background: var(--primary-background-color, #fff);
+          color: var(--secondary-text-color, #727272);
+          font: inherit;
+          font-size: 14px;
+          line-height: 20px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .stat:first-child {
+          border-left: none;
+        }
+        .stat:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        }
+        .stat.active {
+          background: var(--secondary-background-color, rgba(0,0,0,0.08));
+          color: var(--primary-text-color, #212121);
+          box-shadow: inset 0 -2px 0 var(--primary-color, #03a9f4);
+        }
+        .stat-num {
+          font-weight: 600;
+          font-variant-numeric: tabular-nums;
+          color: var(--primary-text-color, #212121);
+        }
+        .dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          flex: 0 0 auto;
+        }
+        .dot.online {
+          background: var(--success-color, #43a047);
+        }
+        .dot.offline {
+          background: var(--disabled-text-color, #9e9e9e);
+        }
+        /* Schmaler Bildschirm: Statusleiste über die ganze Breite, Teile
+           gleich breit - wirkt als eigene Zeile ruhiger als eine halb
+           gefüllte. Etwas knappere Abstände in der Werkzeugleiste lassen
+           der Tabelle trotz Zähler mehr Platz als vorher. */
+        @media (max-width: 600px) {
+          .toolbar {
+            padding: 12px 16px;
+            gap: 10px;
+          }
+          .stats {
+            flex: 1 1 100%;
+          }
+          .stat {
+            flex: 1 1 0;
+            padding: 6px;
+          }
+        }
         .reset-btn {
           padding: 8px 14px;
           border-radius: 8px;
@@ -735,11 +815,22 @@ class UnifiDynamicPanel extends HTMLElement {
             t("clearSearch")
           )}">×</button>
         </div>
-        <select class="filter-online">
-          <option value="all">${this._escape(t("filterOnlineAll"))}</option>
-          <option value="online">${this._escape(t("filterOnlineOnline"))}</option>
-          <option value="offline">${this._escape(t("filterOnlineOffline"))}</option>
-        </select>
+        <div class="stats" role="group" aria-label="${this._escape(t("statsGroup"))}">
+          <button class="stat" data-filter="all" title="${this._escape(t("statShowAll"))}">
+            <span class="stat-num" data-count="all">–</span>
+            <span class="stat-label" data-label="all">${this._escape(t("statTotal")(0))}</span>
+          </button>
+          <button class="stat" data-filter="online" title="${this._escape(t("statShowOnline"))}">
+            <span class="dot online"></span>
+            <span class="stat-num" data-count="online">–</span>
+            <span class="stat-label">${this._escape(t("statOnline"))}</span>
+          </button>
+          <button class="stat" data-filter="offline" title="${this._escape(t("statShowOffline"))}">
+            <span class="dot offline"></span>
+            <span class="stat-num" data-count="offline">–</span>
+            <span class="stat-label">${this._escape(t("statOffline"))}</span>
+          </button>
+        </div>
         <select class="filter-conn">
           <option value="all">${this._escape(t("filterConnAll"))}</option>
           <option value="wired">${this._escape(t("filterConnWired"))}</option>
@@ -792,17 +883,22 @@ class UnifiDynamicPanel extends HTMLElement {
       this._savePrefs();
     });
 
-    // Wert aus den wiederhergestellten Einstellungen übernehmen: <select>
-    // spiegelt kein JS-Feld automatisch, das Attribut im Template müsste
-    // sonst das passende <option> mit "selected" markieren.
-    const filterOnline = this.shadowRoot.querySelector(".filter-online");
-    filterOnline.value = this._onlineFilter;
-    filterOnline.addEventListener("change", (ev) => {
-      this._onlineFilter = ev.target.value;
+    // Statusleiste als Filter: erneuter Tipp auf den bereits aktiven Teil
+    // (online/offline) schaltet zurück auf alle.
+    this.shadowRoot.querySelector(".stats").addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".stat");
+      if (!btn) return;
+      const filter = btn.dataset.filter;
+      this._onlineFilter =
+        filter !== "all" && filter === this._onlineFilter ? "all" : filter;
+      this._openMenuKey = null;
       this._renderRows();
       this._savePrefs();
     });
 
+    // Wert aus den wiederhergestellten Einstellungen übernehmen: <select>
+    // spiegelt kein JS-Feld automatisch, das Attribut im Template müsste
+    // sonst das passende <option> mit "selected" markieren.
     const filterConn = this.shadowRoot.querySelector(".filter-conn");
     filterConn.value = this._connFilter;
     filterConn.addEventListener("change", (ev) => {
@@ -819,7 +915,6 @@ class UnifiDynamicPanel extends HTMLElement {
       this._sortDir = DEFAULT_PREFS.sortDir;
       search.value = this._search;
       searchClear.classList.remove("visible");
-      filterOnline.value = this._onlineFilter;
       filterConn.value = this._connFilter;
       this._openMenuKey = null;
       this._renderHeader();
@@ -914,10 +1009,37 @@ class UnifiDynamicPanel extends HTMLElement {
     // Menüpunkt "Geräteseite öffnen" erreichbar.
   }
 
+  // Zählt immer über alle Geräte (alle Hosts), unabhängig von Suche und
+  // Verbindungsfilter - "wie viele sind gerade online", nicht "wie viele
+  // Zeilen sehe ich". Vor dem ersten Laden und wenn es noch nie geklappt
+  // hat ein Strich statt einer falschen 0.
+  _renderStats() {
+    const root = this.shadowRoot;
+    const stats = root && root.querySelector(".stats");
+    if (!stats) return;
+    const total = this._clients.length;
+    const known = total > 0 || (!this._loading && !this._error);
+    const online = this._clients.filter((c) => c.online).length;
+    const counts = { all: total, online, offline: total - online };
+    for (const key of Object.keys(counts)) {
+      stats.querySelector(`[data-count="${key}"]`).textContent = known
+        ? String(counts[key])
+        : "–";
+    }
+    stats.querySelector('[data-label="all"]').textContent = this._t("statTotal")(total);
+    for (const btn of stats.querySelectorAll(".stat")) {
+      const active = btn.dataset.filter === this._onlineFilter;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    }
+  }
+
   _renderRows() {
     if (!this.shadowRoot) return;
     const tbody = this.shadowRoot.querySelector("tbody");
     if (!tbody) return;
+
+    this._renderStats();
 
     const errorBanner = this.shadowRoot.querySelector(".error-banner");
     if (this._error) {

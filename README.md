@@ -153,15 +153,20 @@ configured UniFi hosts — alias, IP, MAC, SSID, access point, connection
 type, last seen and an online/offline badge — refreshed by polling every 10
 seconds while the panel is open. The search box at the top matches across
 all of those fields at once, with a "×" button that appears once it has
-text and clears it in one click; two dropdowns additionally filter by
-online/offline and wired/wireless. Clicking a column header sorts the table
+text and clears it in one click. Next to it, a status bar counts all
+devices and how many of them are online and offline — "40 devices · ● 34
+online · ○ 6 offline" — across all hosts, regardless of the search or the
+other filter. It doubles as the online/offline filter: tapping "online" or
+"offline" shows only those devices, tapping the active part again goes back
+to all, and the active part is highlighted. A dropdown filters by
+wired/wireless. Clicking a column header sorts the table
 by that column, ascending; clicking the same header again reverses to
 descending, and clicking a different header switches to sorting by that one
 instead. A small arrow marks the active column and direction. Rows with a
 missing value for the sorted column (no IP, never seen) always sort to the
 end, regardless of direction.
 
-The search text, both dropdown filters, and the sort column and direction
+The search text, both filters, and the sort column and direction
 are remembered in the browser's `localStorage` and survive a page reload or
 even a full Home Assistant restart — `localStorage` has nothing to do with
 the HA process, so it is unaffected either way. This is per browser/device,

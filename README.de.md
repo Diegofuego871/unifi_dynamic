@@ -156,16 +156,21 @@ Point, Verbindungsart, zuletzt gesehen und ein Online/Offline-Badge —, die
 sich aktualisiert, indem sie alle 10 Sekunden nachfragt, solange das Panel
 offen ist. Die Suchleiste oben durchsucht alle diese Felder gleichzeitig,
 mit einem „×"-Button, der erscheint, sobald Text drinsteht, und ihn mit
-einem Klick leert; zwei zusätzliche Dropdowns filtern nach Online/Offline
-und Kabel/WLAN. Ein
-Klick auf eine Spaltenüberschrift sortiert die Tabelle aufsteigend danach;
+einem Klick leert. Daneben zählt eine Statusleiste alle Geräte und wie viele
+davon online und offline sind — „40 Geräte · ● 34 online · ○ 6 offline" —
+über alle Hosts hinweg, unabhängig von der Suche und dem anderen Filter. Sie
+dient zugleich als Online/Offline-Filter: ein Tipp auf „online" oder
+„offline" zeigt nur diese Geräte, ein erneuter Tipp auf den aktiven Teil
+wieder alle, und der aktive Teil ist hervorgehoben. Ein Dropdown filtert
+nach Kabel/WLAN. Ein Klick auf eine Spaltenüberschrift sortiert die Tabelle
+aufsteigend danach;
 ein erneuter Klick auf dieselbe Überschrift dreht auf absteigend um, ein
 Klick auf eine andere Überschrift wechselt die Sortierspalte. Ein kleiner
 Pfeil markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der
 sortierten Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig
 von der Richtung.
 
-Suchtext, beide Dropdown-Filter sowie Sortierspalte und -richtung werden im
+Suchtext, beide Filter sowie Sortierspalte und -richtung werden im
 `localStorage` des Browsers gemerkt und überstehen ein Neuladen der Seite
 oder sogar einen kompletten Home-Assistant-Neustart — `localStorage` hat
 mit dem HA-Prozess nichts zu tun, bleibt also in beiden Fällen unberührt.
