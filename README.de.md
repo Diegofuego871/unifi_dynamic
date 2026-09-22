@@ -196,6 +196,15 @@ Integration erscheint neben dem Titel in der Werkzeugleiste, dasselbe Bild,
 das schon für Push-Meldungen ausgeliefert wird; scheitert das Laden, blendet
 es sich selbst aus, statt ein kaputtes Bild-Icon zu zeigen.
 
+Auf einem schmalen Bildschirm — den iOS-/Android-Begleit-Apps oder im
+Handy-Browser — zeigt die Werkzeugleiste links einen Menü-Button (☰), der
+die Seitenleiste von Home Assistant öffnet. Ein Custom Panel bekommt von
+Home Assistant selbst keinen solchen Button; ohne ihn gäbe es auf einem so
+schmalen Bildschirm sonst keinen Weg zurück zur Seitenleiste, da Wischen
+nur die Tabelle horizontal scrollt. Der Button ist auf breiteren
+Bildschirmen ausgeblendet, wo die Seitenleiste ohnehin sichtbar ist, und
+reagiert live auf Drehen des Geräts oder Grössenänderung des Fensters.
+
 Das Panel ist ein eigenständiges Web Component ohne externe Bibliothek und
 ohne Build-Schritt — HACS installiert diese Integration als reine
 Dateikopie, es gibt also nichts zu bündeln. Es spricht mit dem Backend über

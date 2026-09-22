@@ -190,6 +190,14 @@ appears next to the title in the toolbar, reusing the image already served
 for push notifications; it hides itself rather than showing a broken-image
 icon if that fails to load.
 
+On a narrow screen — the iOS/Android companion apps, or a phone browser —
+the toolbar shows a menu (☰) button on the left that opens Home Assistant's
+sidebar. A custom panel gets no such button from Home Assistant itself;
+without it there is otherwise no way back to the sidebar on a screen this
+narrow, since swiping only scrolls the table horizontally. The button is
+hidden on wider screens where the sidebar is already visible, and reacts
+live to rotating the device or resizing the window.
+
 The panel is a self-contained Web Component with no external library and no
 build step — HACS installs this integration as a plain file copy, so there
 is nothing to bundle. It talks to the backend through four WebSocket

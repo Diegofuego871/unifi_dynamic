@@ -19,6 +19,7 @@
 const STRINGS = {
   de: {
     title: "UniFi Dynamic Clients",
+    menuToggle: "Menü",
     searchPlaceholder: "Suche (Name, IP, MAC, SSID, AP)…",
     filterOnlineAll: "Alle",
     filterOnlineOnline: "Online",
@@ -58,6 +59,7 @@ const STRINGS = {
   },
   en: {
     title: "UniFi Dynamic Clients",
+    menuToggle: "Menu",
     searchPlaceholder: "Search (name, IP, MAC, SSID, AP)…",
     filterOnlineAll: "All",
     filterOnlineOnline: "Online",
@@ -182,6 +184,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._openMenuKey = null;
     this._pollTimer = null;
     this._built = false;
+    this._narrow = false;
   }
 
   _savePrefs() {
@@ -210,6 +213,27 @@ class UnifiDynamicPanel extends HTMLElement {
 
   get hass() {
     return this._hass;
+  }
+
+  // Wird von ha-panel-custom reaktiv gesetzt (initial und bei jeder
+  // Änderung, z.B. Bildschirmdrehung oder Fenstergrösse) - true, wenn die
+  // HA-Seitenleiste eingeklappt ist (schmaler Bildschirm, u.a. die
+  // iOS/Android-App). Steuert, ob der Menü-Button in der Werkzeugleiste
+  // sichtbar ist (siehe _updateMenuButtonVisibility).
+  set narrow(value) {
+    this._narrow = !!value;
+    this._updateMenuButtonVisibility();
+  }
+
+  get narrow() {
+    return this._narrow;
+  }
+
+  _updateMenuButtonVisibility() {
+    if (!this.shadowRoot) return;
+    const btn = this.shadowRoot.querySelector(".menu-toggle-btn");
+    if (!btn) return;
+    btn.style.display = this._narrow ? "flex" : "none";
   }
 
   connectedCallback() {
@@ -477,6 +501,33 @@ class UnifiDynamicPanel extends HTMLElement {
           height: 32px;
           border-radius: 6px;
         }
+        /* Standardmässig versteckt (display: none), sichtbar nur wenn die
+           HA-Seitenleiste eingeklappt ist (schmaler Bildschirm, u.a. die
+           iOS/Android-App - siehe _updateMenuButtonVisibility). Ein Custom
+           Panel bekommt von Home Assistant kein eigenes Menü-Icon, das muss
+           das Panel selbst bereitstellen; ohne dieses Icon gibt es auf
+           schmalen Bildschirmen keinen Weg zurück zur Seitenleiste. */
+        .menu-toggle-btn {
+          display: none;
+          flex: 0 0 auto;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border: none;
+          border-radius: 50%;
+          background: none;
+          color: var(--primary-text-color, #212121);
+          cursor: pointer;
+        }
+        .menu-toggle-btn:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        }
+        .menu-toggle-btn svg {
+          width: 24px;
+          height: 24px;
+          fill: currentColor;
+        }
         .toolbar h1 {
           flex: 1 1 auto;
           margin: 0;
@@ -710,6 +761,11 @@ class UnifiDynamicPanel extends HTMLElement {
       </style>
 
       <div class="toolbar">
+        <button class="menu-toggle-btn" title="${this._escape(t("menuToggle"))}" aria-label="${this._escape(
+          t("menuToggle")
+        )}">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+        </button>
         <img
           class="brand-icon"
           src="${BRAND_ICON_URL}"
@@ -764,6 +820,20 @@ class UnifiDynamicPanel extends HTMLElement {
         </table>
       </div>
     `;
+
+    // Standard-HA-Mechanismus, um die Seitenleiste ein-/auszuklappen -
+    // derselbe, den auch die eingebauten Panels nutzen. composed: true ist
+    // nötig, damit das Event den Shadow-DOM-Rand dieses Panels verlässt und
+    // die HA-App-Ebene (die den Listener dafür hält) es überhaupt sieht.
+    this.shadowRoot.querySelector(".menu-toggle-btn").addEventListener("click", () => {
+      window.dispatchEvent(
+        new CustomEvent("hass-toggle-menu", {
+          bubbles: true,
+          composed: true,
+          cancelable: false,
+        })
+      );
+    });
 
     const search = this.shadowRoot.querySelector(".search");
     const searchClear = this.shadowRoot.querySelector(".search-clear");
@@ -868,6 +938,7 @@ class UnifiDynamicPanel extends HTMLElement {
     );
 
     this._observeStickyOffsets();
+    this._updateMenuButtonVisibility();
     this._renderRows();
   }
 

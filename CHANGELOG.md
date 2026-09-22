@@ -5,6 +5,21 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.9] - 2026-09-22
+
+### Fixed
+
+- On a narrow screen — the iOS/Android companion apps, or a phone browser —
+  there was no way back from the panel to Home Assistant's sidebar: a
+  custom panel receives no menu button from Home Assistant itself, and
+  swiping only scrolled the table horizontally instead of navigating away.
+  The toolbar now shows a menu (☰) button on the left, dispatching the
+  same `hass-toggle-menu` event the built-in panels use to open the
+  sidebar. It stays hidden on wider screens where the sidebar is already
+  visible, tracking the `narrow` property Home Assistant already passes to
+  the panel, live, so it reacts to rotating the device or resizing the
+  window without a reload.
+
 ## [2.0.8] - 2026-09-22
 
 ### Fixed
@@ -648,6 +663,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.9]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.9
 [2.0.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.8
 [2.0.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.7
 [2.0.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.6
