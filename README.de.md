@@ -158,7 +158,10 @@ offen ist. Die Suchleiste oben durchsucht alle diese Felder gleichzeitig,
 mit einem „×"-Button, der erscheint, sobald Text drinsteht, und ihn mit
 einem Klick leert. Daneben zählt eine Statusleiste alle Geräte und wie viele
 davon online und offline sind — „40 Geräte · ● 34 online · ○ 6 offline" —
-über alle Hosts hinweg, unabhängig von der Suche und dem anderen Filter. Sie
+über alle Hosts hinweg. Die Zahlen folgen dem Kabel/WLAN-Filter, beschreiben
+also immer die Gruppe, die man gerade anschaut – nicht aber der Suche oder
+der Online/Offline-Auswahl selbst (sonst stünde bei „online" 0, während man
+die Offline-Geräte ansieht). Sie
 dient zugleich als Online/Offline-Filter: ein Tipp auf „online" oder
 „offline" zeigt nur diese Geräte, ein erneuter Tipp auf den aktiven Teil
 wieder alle, und der aktive Teil ist hervorgehoben. Ein Dropdown filtert

@@ -337,8 +337,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const rows = this._clients.filter((c) => {
       if (this._onlineFilter === "online" && !c.online) return false;
       if (this._onlineFilter === "offline" && c.online) return false;
-      if (this._connFilter === "wired" && !c.is_wired) return false;
-      if (this._connFilter === "wireless" && c.is_wired) return false;
+      if (!this._matchesConn(c)) return false;
       if (!q) return true;
       const haystack = [c.name, c.ip, c.mac, c.essid, c.ap_name]
         .filter(Boolean)
@@ -1009,17 +1008,27 @@ class UnifiDynamicPanel extends HTMLElement {
     // Menüpunkt "Geräteseite öffnen" erreichbar.
   }
 
-  // Zählt immer über alle Geräte (alle Hosts), unabhängig von Suche und
-  // Verbindungsfilter - "wie viele sind gerade online", nicht "wie viele
-  // Zeilen sehe ich". Vor dem ersten Laden und wenn es noch nie geklappt
-  // hat ein Strich statt einer falschen 0.
+  // Gemeinsame Regel für Tabelle und Zähler, damit beide nie auseinander-
+  // laufen können.
+  _matchesConn(c) {
+    if (this._connFilter === "wired") return !!c.is_wired;
+    if (this._connFilter === "wireless") return !c.is_wired;
+    return true;
+  }
+
+  // Zählt über alle Hosts innerhalb des gewählten Verbindungsfilters
+  // (Kabel/WLAN bestimmt, welche Gerätegruppe man anschaut), aber bewusst
+  // ohne Suche und ohne Online/Offline-Filter: sonst stünde beim Tipp auf
+  // "offline" bei "online" immer 0. Vor dem ersten Laden und wenn es noch
+  // nie geklappt hat ein Strich statt einer falschen 0.
   _renderStats() {
     const root = this.shadowRoot;
     const stats = root && root.querySelector(".stats");
     if (!stats) return;
-    const total = this._clients.length;
-    const known = total > 0 || (!this._loading && !this._error);
-    const online = this._clients.filter((c) => c.online).length;
+    const base = this._clients.filter((c) => this._matchesConn(c));
+    const total = base.length;
+    const known = this._clients.length > 0 || (!this._loading && !this._error);
+    const online = base.filter((c) => c.online).length;
     const counts = { all: total, online, offline: total - online };
     for (const key of Object.keys(counts)) {
       stats.querySelector(`[data-count="${key}"]`).textContent = known

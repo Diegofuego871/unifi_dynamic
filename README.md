@@ -155,8 +155,10 @@ seconds while the panel is open. The search box at the top matches across
 all of those fields at once, with a "×" button that appears once it has
 text and clears it in one click. Next to it, a status bar counts all
 devices and how many of them are online and offline — "40 devices · ● 34
-online · ○ 6 offline" — across all hosts, regardless of the search or the
-other filter. It doubles as the online/offline filter: tapping "online" or
+online · ○ 6 offline" — across all hosts. The numbers follow the
+wired/wireless filter, so they always describe the group you are looking
+at, but not the search or the online/offline choice itself (otherwise
+"online" would read 0 while showing offline devices). It doubles as the online/offline filter: tapping "online" or
 "offline" shows only those devices, tapping the active part again goes back
 to all, and the active part is highlighted. A dropdown filters by
 wired/wireless. Clicking a column header sorts the table

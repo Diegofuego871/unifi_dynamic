@@ -5,6 +5,17 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.14] - 2026-09-22
+
+### Changed
+
+- The status bar's counts now follow the wired/wireless filter: with
+  "Wired" selected it shows how many wired devices there are and how many
+  of them are online and offline, likewise for "Wireless". The search and
+  the online/offline choice still don't affect the numbers — otherwise
+  "online" would read 0 while showing only offline devices. Table and
+  counter share the same filter rule, so they can't drift apart.
+
 ## [2.0.13] - 2026-09-22
 
 ### Added
@@ -779,6 +790,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.14]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.14
 [2.0.13]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.13
 [2.0.12]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.12
 [2.0.11]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.11
