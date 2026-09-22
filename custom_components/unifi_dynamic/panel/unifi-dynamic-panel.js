@@ -246,9 +246,13 @@ class UnifiDynamicPanel extends HTMLElement {
 
   disconnectedCallback() {
     this._stopPolling();
-    if (this._stickyObserver) {
-      this._stickyObserver.disconnect();
-      this._stickyObserver = null;
+    if (this._contentSizeObserver) {
+      this._contentSizeObserver.disconnect();
+      this._contentSizeObserver = null;
+    }
+    if (this._onWindowResize) {
+      window.removeEventListener("resize", this._onWindowResize);
+      this._onWindowResize = null;
     }
   }
 
@@ -465,28 +469,28 @@ class UnifiDynamicPanel extends HTMLElement {
       <style>
         :host {
           display: block;
-          height: 100%;
           background: var(--primary-background-color, #fff);
           color: var(--primary-text-color, #212121);
           font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif);
         }
-        /* Fixierung per position: sticky statt flex+begrenzter Höhe (siehe
-           2.0.7): der 2.0.7-Ansatz brauchte eine durchgängige Kette
-           definierter Höhen von ha-panel-custom bis :host, damit .content
-           eine eigene, tatsächlich begrenzte Scrollfläche bekommt - in der
-           echten Oberfläche kommt diese Kette aber nicht zustande, :host
-           bleibt "auto" hoch, und die ganze Seite wächst wieder über den
-           Viewport hinaus statt nur .content. position: sticky braucht das
-           nicht: es findet selbst den tatsächlich scrollenden Vorfahren,
-           welcher Container das auch sein mag. --ud-toolbar-h/--ud-sticky-
-           offset werden per ResizeObserver in _observeStickyOffsets()
-           gesetzt, weil die Werkzeugleiste umbricht (Sprache, Fensterbreite)
-           und das Fehlerbanner ein-/ausgeblendet wird - die Kopfzeile muss
-           exakt darunter anschliessen, nicht an einem festen Pixelwert. */
+        /* .content bekommt seine Höhe per JS in _syncContentHeight(), nicht
+           per CSS-Prozentkette (siehe 2.0.7-Kommentar in der Historie: eine
+           Kette definierter Höhen von ha-panel-custom bis :host kommt in
+           der echten Oberfläche nie zustande). Erst eine echte, begrenzte
+           Höhe macht .content zu einem eigenen Scroll-Container statt die
+           ganze Seite wachsen zu lassen.
+           .content scrollt bewusst in BEIDEN Richtungen (overflow: auto
+           ohne -x/-y-Einschränkung): die Tabelle hat mehr Spalten, als auf
+           ein Handy passen. position: sticky auf .toolbar (2.0.8/2.0.9)
+           hält zwar die Y-Position, aber nicht die X-Position - beim
+           horizontalen Scrollen der Tabelle rutschte die Werkzeugleiste
+           seitlich weg, und Tabellenkopf/-inhalt gerieten durcheinander,
+           weil dieselbe horizontale Bewegung auch die ganze Seite betraf.
+           Mit .content als alleinigem, in sich geschlossenem Scroll-
+           Container für Tabelle UND Kopfzeile bleibt die Werkzeugleiste
+           ausserhalb davon unangetastet - sie ist ja gar nicht breiter als
+           der Bildschirm und muss nicht scrollen. */
         .toolbar {
-          position: sticky;
-          top: 0;
-          z-index: 3;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
@@ -606,6 +610,7 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--secondary-background-color, rgba(0,0,0,0.06));
         }
         .content {
+          overflow: auto;
           padding: 0 16px 16px;
         }
         table {
@@ -615,8 +620,7 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         thead th {
           position: sticky;
-          top: var(--ud-sticky-offset, 0px);
-          z-index: 1;
+          top: 0;
           background: var(--primary-background-color, #fff);
           text-align: left;
           padding: 10px 12px;
@@ -731,16 +735,6 @@ class UnifiDynamicPanel extends HTMLElement {
           color: var(--secondary-text-color, #727272);
         }
         .error-banner {
-          /* position: sticky statt einfach im normalen Fluss: sitzt sonst
-             zwischen der jetzt fixierten Werkzeugleiste und dem scrollenden
-             Inhalt und würde beim Scrollen unter der Werkzeugleiste
-             verschwinden, während sie sichtbar ist. background als deckende
-             Basis + box-shadow inset für den Rot-Ton statt direkt
-             transparent: sonst schimmern beim Scrollen Tabellenzeilen durch
-             die sonst leicht transparente Fläche. */
-          position: sticky;
-          top: var(--ud-toolbar-h, 0px);
-          z-index: 2;
           margin: 16px;
           padding: 12px 16px;
           border-radius: 8px;
@@ -918,58 +912,53 @@ class UnifiDynamicPanel extends HTMLElement {
       }
     });
 
-    // Menü schliessen beim Scrollen: es ist jetzt position: fixed (siehe
-    // CSS-Kommentar bei .menu), scrollt also nicht mehr automatisch mit
-    // seiner Zeile mit und würde sonst optisch abdriften. Listener am
-    // window mit capture: true statt an .content, weil .content selbst
-    // nicht mehr scrollt (siehe Kommentar bei :host) - scroll-Events
-    // bubblen nicht, capture an einem Vorfahren ist der einzige Weg, das
-    // Scrollen eines beliebigen scrollenden Nachfahren zu bemerken, welcher
-    // das im Einzelfall auch sein mag.
-    window.addEventListener(
-      "scroll",
-      () => {
-        if (this._openMenuKey !== null) {
-          this._openMenuKey = null;
-          this._renderRows();
-        }
-      },
-      true
-    );
+    // Menü schliessen beim Scrollen: es ist position: fixed (siehe
+    // CSS-Kommentar bei .menu), scrollt also nicht automatisch mit seiner
+    // Zeile mit und würde sonst optisch abdriften. .content ist der
+    // tatsächlich scrollende Container (siehe Kommentar bei :host).
+    this.shadowRoot.querySelector(".content").addEventListener("scroll", () => {
+      if (this._openMenuKey !== null) {
+        this._openMenuKey = null;
+        this._renderRows();
+      }
+    });
 
-    this._observeStickyOffsets();
+    this._syncContentHeight();
+    if (typeof ResizeObserver !== "undefined") {
+      this._contentSizeObserver = new ResizeObserver(() => this._syncContentHeight());
+      this._contentSizeObserver.observe(this.shadowRoot.querySelector(".toolbar"));
+      this._contentSizeObserver.observe(this.shadowRoot.querySelector(".error-banner"));
+    }
+    this._onWindowResize = () => this._syncContentHeight();
+    window.addEventListener("resize", this._onWindowResize);
+
     this._updateMenuButtonVisibility();
     this._renderRows();
   }
 
-  // Misst die Höhe von Werkzeugleiste und Fehlerbanner und legt sie als
-  // CSS-Variablen ab, an denen sich Fehlerbanner und Tabellenkopf per
-  // position: sticky ausrichten (siehe Kommentar bei :host). Ein
-  // ResizeObserver statt einmaliger Messung, weil sich die Werkzeugleiste
-  // je nach Sprache/Fensterbreite umbricht und das Fehlerbanner ein-/
-  // ausgeblendet wird - beides ändert die nötigen Offsets zur Laufzeit.
-  _observeStickyOffsets() {
+  // Setzt .content auf eine feste Pixelhöhe statt sich auf eine CSS-
+  // Prozentkette zu verlassen (siehe Kommentar bei :host) - erst dadurch
+  // wird .content zu einem echten, begrenzten Scroll-Container für Tabelle
+  // UND Kopfzeile zusammen. window.innerHeight abzüglich der Position des
+  // Panels selbst (this.getBoundingClientRect().top, deckt z.B. den
+  // Safe-Area-Abstand ab, den ha-panel-custom oben aufschlägt) und der
+  // aktuellen Höhe von Werkzeugleiste/Fehlerbanner. Läuft erneut bei
+  // Grössenänderung von Werkzeugleiste/Banner (ResizeObserver, siehe
+  // _buildStaticLayout) und bei Fenstergrösse/Bildschirmdrehung (resize).
+  _syncContentHeight() {
     const root = this.shadowRoot;
+    if (!root) return;
     const toolbar = root.querySelector(".toolbar");
     const errorBanner = root.querySelector(".error-banner");
-    if (!toolbar || !errorBanner) return;
+    const content = root.querySelector(".content");
+    if (!toolbar || !errorBanner || !content) return;
 
-    const update = () => {
-      const toolbarH = toolbar.offsetHeight;
-      const bannerH =
-        getComputedStyle(errorBanner).display === "none"
-          ? 0
-          : errorBanner.offsetHeight;
-      this.style.setProperty("--ud-toolbar-h", `${toolbarH}px`);
-      this.style.setProperty("--ud-sticky-offset", `${toolbarH + bannerH}px`);
-    };
-
-    update();
-    if (typeof ResizeObserver !== "undefined") {
-      this._stickyObserver = new ResizeObserver(update);
-      this._stickyObserver.observe(toolbar);
-      this._stickyObserver.observe(errorBanner);
-    }
+    const toolbarH = toolbar.offsetHeight;
+    const bannerH =
+      getComputedStyle(errorBanner).display === "none" ? 0 : errorBanner.offsetHeight;
+    const hostTop = this.getBoundingClientRect().top;
+    const available = window.innerHeight - hostTop - toolbarH - bannerH;
+    content.style.height = `${Math.max(available, 100)}px`;
   }
 
   _handleTableClick(ev) {

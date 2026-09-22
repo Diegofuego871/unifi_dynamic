@@ -5,6 +5,31 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.0.10] - 2026-09-22
+
+### Fixed
+
+- The 2.0.8/2.0.9 approach (`position: sticky` on the toolbar, error banner
+  and column headers, with the whole page scrolling underneath) held up
+  fine for pure vertical scrolling, but the table has more columns than
+  fit on a phone screen, and nothing constrained that horizontal overflow
+  either — so the whole page became scrollable sideways too. `position:
+  sticky` only pins the axis it's given a value for; with no `left`, the
+  toolbar and column headers slid off screen horizontally along with
+  everything else once the page scrolled sideways, which is what showed as
+  the toolbar not spanning the full width and the column headers ending up
+  in the middle of the row list instead of staying at the top.
+  `.content` (the table's wrapper) is now the sole scroll container again,
+  in both directions at once, with its height set from JavaScript
+  (`window.innerHeight` minus the toolbar's and error banner's real
+  rendered height) rather than relying on a CSS percentage-height chain
+  through Home Assistant's panel host, which is what made the original
+  2.0.6-and-earlier version of this same approach unreliable in the first
+  place. The toolbar and error banner are back in normal document flow,
+  outside that scroll container, so they can no longer be affected by the
+  table's horizontal scrolling — one self-contained scroll area for the
+  table, nothing scrolls outside it.
+
 ## [2.0.9] - 2026-09-22
 
 ### Fixed
@@ -663,6 +688,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.0.10]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.10
 [2.0.9]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.9
 [2.0.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.8
 [2.0.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.7
