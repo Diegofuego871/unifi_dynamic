@@ -207,6 +207,14 @@ Nach erfolgreichem Löschen schliesst sich der Dialog von selbst; schlägt eine
 Aktion fehl, steht der Fehler im Dialog. Esc, der ×-Button oder ein Klick
 neben den Dialog schliessen ihn. Kabel-Clients zeigen die WLAN-Felder nicht.
 
+Neben IP, MAC, Hostname, SSID, Access Point und jeder Entity-ID steht ein
+kleiner Kopieren-Button, der genau diesen Wert in die Zwischenablage legt —
+bei einer Entität nur ihre ID, etwa `sensor.unifi_dynamic_…_connection`. Das
+Symbol wird kurz zum Häkchen, und Home Assistant zeigt unten kurz „Kopiert:
+…". Das Kopieren klappt auch, wenn Home Assistant über reines `http://`
+erreichbar ist, wo Browser die Zwischenablage-Schnittstelle nicht anbieten:
+Das Panel weicht dann auf den älteren Kopierbefehl des Browsers aus.
+
 „Zuerst gesehen" stammt aus dem Feld `first_seen` des Controllers und reicht
 damit auch vor die Installation zurück. Liefert der Controller es nicht,
 nimmt die Integration den Zeitpunkt, zu dem sie den Client selbst zum ersten

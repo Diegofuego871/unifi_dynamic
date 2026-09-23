@@ -88,6 +88,9 @@ const STRINGS = {
     entitiesNoDevice: "Home Assistant hat für diesen Client noch kein Gerät angelegt.",
     notFound: "Dieser Client ist nicht (mehr) vorhanden.",
     actionFailed: "Aktion fehlgeschlagen:",
+    copy: (what) => `${what} kopieren`,
+    copied: (value) => `Kopiert: ${value}`,
+    copyFailed: "Kopieren nicht möglich - der Browser erlaubt keinen Zugriff auf die Zwischenablage.",
   },
   en: {
     searchPlaceholder: "Search (name, IP, MAC, SSID, AP)…",
@@ -150,6 +153,9 @@ const STRINGS = {
     entitiesNoDevice: "Home Assistant has not created a device for this client yet.",
     notFound: "This client does not exist (anymore).",
     actionFailed: "Action failed:",
+    copy: (what) => `Copy ${what}`,
+    copied: (value) => `Copied: ${value}`,
+    copyFailed: "Could not copy - the browser does not allow access to the clipboard.",
   },
 };
 
@@ -164,6 +170,15 @@ const POLL_INTERVAL_MS = 10000;
 // Zeile: Auf dem Handy stoppt ein Tipp in eine laufende Schwungbewegung nur
 // das Scrollen, er soll nicht zusätzlich die Geräteansicht öffnen.
 const SCROLL_CLICK_GUARD_MS = 300;
+
+// Wie lange ein Kopieren-Button nach dem Kopieren das Häkchen zeigt.
+const COPIED_FEEDBACK_MS = 1500;
+
+// Material Design Icons (mdi:content-copy, mdi:check), inline statt über
+// ha-icon, weil das iframe HAs Komponenten nicht kennt.
+const ICON_COPY =
+  "M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z";
+const ICON_CHECK = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
 
 // Derselbe statische Pfad, unter dem __init__.py (_async_register_brand_path)
 // bereits brand/icon.png für die Push-Meldungen ausliefert - hier
@@ -252,6 +267,9 @@ class UnifiDynamicPanel extends HTMLElement {
     this._dialogHtml = "";
     this._dialogError = null;
     this._lastScrollAt = 0;
+    // Wert, dessen Kopieren-Button gerade das Häkchen zeigt.
+    this._copiedValue = null;
+    this._copiedTimer = null;
     this._onParentLocation = () => this._checkDeepLink();
   }
 
@@ -546,6 +564,100 @@ class UnifiDynamicPanel extends HTMLElement {
     }
   }
 
+  _copyButtonHtml(value, label) {
+    const done = this._copiedValue === value;
+    const title = this._escape(this._t("copy")(label));
+    return `<button class="copy-btn${done ? " done" : ""}" data-dlg="copy" data-copy="${this._escape(
+      value
+    )}" title="${title}" aria-label="${title}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="${
+      done ? ICON_CHECK : ICON_COPY
+    }"></path></svg></button>`;
+  }
+
+  // Kopiert in die Zwischenablage. Reihenfolge der Wege:
+  // 1. Clipboard-API des Elternfensters (HA selbst): nicht von der
+  //    Permissions-Policy des iframes abhängig.
+  // 2. Clipboard-API des iframes.
+  // 3. execCommand("copy") über ein verstecktes Textfeld - nötig, wenn HA
+  //    über http:// statt https:// läuft: Dort gibt es navigator.clipboard
+  //    gar nicht (nur in sicheren Kontexten), execCommand geht trotzdem.
+  async _copy(value) {
+    const text = String(value || "");
+    if (!text) return;
+    let ok = false;
+    const apis = [];
+    try {
+      if (window.parent && window.parent !== window) apis.push(window.parent.navigator.clipboard);
+    } catch (err) {
+      // Anderer Ursprung: nur die eigenen Wege.
+    }
+    apis.push(navigator.clipboard);
+    for (const api of apis) {
+      if (ok || !api || typeof api.writeText !== "function") continue;
+      try {
+        await api.writeText(text);
+        ok = true;
+      } catch (err) {
+        // Nächster Weg.
+      }
+    }
+    if (!ok) ok = this._copyFallback(text);
+
+    this._toast(ok ? this._t("copied")(text) : this._t("copyFailed"));
+    if (!ok) return;
+    this._copiedValue = text;
+    window.clearTimeout(this._copiedTimer);
+    this._copiedTimer = window.setTimeout(() => {
+      this._copiedValue = null;
+      this._renderDialog();
+    }, COPIED_FEEDBACK_MS);
+    this._renderDialog();
+  }
+
+  _copyFallback(text) {
+    // Das Textfeld muss im Dialog liegen: showModal macht alles ausserhalb
+    // inert, dort liesse es sich nicht fokussieren und auswählen.
+    const host =
+      (this.shadowRoot && this.shadowRoot.querySelector("dialog.device[open]")) ||
+      this.shadowRoot ||
+      document.body;
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;";
+    host.appendChild(area);
+    let ok = false;
+    try {
+      area.focus();
+      area.select();
+      area.setSelectionRange(0, text.length);
+      ok = document.execCommand("copy");
+    } catch (err) {
+      ok = false;
+    }
+    area.remove();
+    return ok;
+  }
+
+  // Kurze Rückmeldung als HA-eigene Toast-Meldung unten im Bild (dasselbe
+  // Ereignis, das HA intern nutzt). Ohne HA drumherum bleibt es beim
+  // Häkchen am Button.
+  _toast(message) {
+    try {
+      const ha = (window.parent || window).document.querySelector("home-assistant");
+      if (!ha) return;
+      ha.dispatchEvent(
+        new CustomEvent("hass-notification", {
+          detail: { message },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } catch (err) {
+      // Keine Toast-Meldung möglich, das Häkchen genügt.
+    }
+  }
+
   _formatRelative(epoch) {
     if (!epoch) return "";
     const diff = epoch - Date.now() / 1000;
@@ -617,17 +729,25 @@ class UnifiDynamicPanel extends HTMLElement {
           ? `${esc(this._formatSeen(epoch))}<small>${esc(this._formatRelative(epoch))}</small>`
           : esc(t("unknown"));
 
+      // Wert mit Kopieren-Button; ohne Wert nur der Strich, ohne Button.
+      const copyable = (label, value, cls = "") =>
+        value
+          ? `<span class="copy-wrap"><span class="${cls}">${esc(value)}</span>${this._copyButtonHtml(
+              value,
+              label
+            )}</span>`
+          : "–";
       const fields = [
         [t("fieldStatus"), `${status}${protectedBadge}`],
         [t("fieldConn"), esc(connText)],
-        [t("fieldIp"), esc(c.ip || "–")],
-        [t("fieldMac"), `<span class="mono">${esc(c.mac)}</span>`],
-        [t("fieldHostname"), esc(c.hostname || "–")],
+        [t("fieldIp"), copyable(t("fieldIp"), c.ip)],
+        [t("fieldMac"), copyable(t("fieldMac"), c.mac, "mono")],
+        [t("fieldHostname"), copyable(t("fieldHostname"), c.hostname)],
       ];
       // WLAN-Felder nur, wenn der Client nicht nachweislich am Kabel hängt.
       if (!c.is_wired) {
-        fields.push([t("fieldSsid"), esc(c.essid || "–")]);
-        fields.push([t("fieldAp"), esc(c.ap_name || "–")]);
+        fields.push([t("fieldSsid"), copyable(t("fieldSsid"), c.essid)]);
+        fields.push([t("fieldAp"), copyable(t("fieldAp"), c.ap_name)]);
         const signal = this._formatSignal(c);
         fields.push([t("fieldSignal"), esc(signal || "–")]);
       }
@@ -643,10 +763,18 @@ class UnifiDynamicPanel extends HTMLElement {
         entitiesHtml = entities.length
           ? `<ul class="entities">${entities
               .map(
-                (e) => `<li><button data-dlg="more-info" data-entity-id="${esc(e.entityId)}">
-                  <span class="ent-name">${esc(e.name)}<small>${esc(e.entityId)}</small></span>
+                // Die ganze Zeile öffnet den Entitäts-Dialog; der Kopieren-
+                // Button liegt darin und gewinnt beim Klick, weil
+                // closest("[data-dlg]") zuerst ihn findet. Eine Zeile als
+                // <button> ginge nicht: Buttons dürfen keine Buttons enthalten.
+                (e) => `<li class="entity" role="button" tabindex="0" data-dlg="more-info" data-entity-id="${esc(
+                  e.entityId
+                )}">
+                  <span class="ent-name">${esc(e.name)}<span class="ent-id"><small>${esc(
+                    e.entityId
+                  )}</small>${this._copyButtonHtml(e.entityId, "Entity-ID")}</span></span>
                   <span class="ent-state">${esc(e.value)}</span>
-                </button></li>`
+                </li>`
               )
               .join("")}</ul>`
           : `<p class="dlg-note">${esc(t("entitiesNone"))}</p>`;
@@ -684,8 +812,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const focusSel =
       active && active.dataset && active.dataset.dlg
         ? `[data-dlg="${active.dataset.dlg}"]${
-            active.dataset.entityId ? `[data-entity-id="${active.dataset.entityId}"]` : ""
-          }`
+            active.dataset.entityId ? `[data-entity-id="${CSS.escape(active.dataset.entityId)}"]` : ""
+          }${active.dataset.copy ? `[data-copy="${CSS.escape(active.dataset.copy)}"]` : ""}`
         : null;
     const scroll = dialog.scrollTop;
     this._dialogHtml = html;
@@ -716,6 +844,10 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     if (action === "more-info") {
       this._openMoreInfo(btn.dataset.entityId);
+      return;
+    }
+    if (action === "copy") {
+      this._copy(btn.dataset.copy);
       return;
     }
     const c = this._clientByKey(this._dialogKey);
@@ -1307,32 +1439,78 @@ class UnifiDynamicPanel extends HTMLElement {
         .entities li + li {
           border-top: 1px solid var(--divider-color, #e0e0e0);
         }
-        .entities button {
+        .entities li.entity {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 12px;
+          box-sizing: border-box;
           width: 100%;
           padding: 10px 12px;
-          border: none;
-          background: none;
-          color: inherit;
-          font: inherit;
           font-size: 14px;
-          text-align: left;
           cursor: pointer;
         }
-        .entities button:hover {
+        .entities li.entity:hover {
           background: var(--secondary-background-color, rgba(0,0,0,0.06));
         }
         .ent-name {
           min-width: 0;
           overflow-wrap: anywhere;
         }
-        .ent-name small {
-          display: block;
+        .entities li.entity:focus-visible {
+          outline: 2px solid var(--primary-color, #03a9f4);
+          outline-offset: -2px;
+        }
+        .ent-id {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          min-width: 0;
+        }
+        .ent-id small {
+          min-width: 0;
           color: var(--secondary-text-color, #727272);
           font-size: 12px;
+          overflow-wrap: anywhere;
+        }
+        .copy-wrap {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          max-width: 100%;
+        }
+        .copy-wrap > span {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        /* Kleiner Icon-Button, aber mit ausreichend grosser Trefferfläche
+           für den Finger (negativer Rand gleicht das Polster optisch aus). */
+        .copy-btn {
+          flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          margin: -6px 0;
+          padding: 0;
+          border: none;
+          border-radius: 50%;
+          background: none;
+          color: var(--secondary-text-color, #727272);
+          cursor: pointer;
+        }
+        .copy-btn svg {
+          width: 16px;
+          height: 16px;
+          fill: currentColor;
+        }
+        .copy-btn:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.08));
+          color: var(--primary-text-color, #212121);
+        }
+        .copy-btn.done {
+          color: var(--success-color, #43a047);
         }
         .ent-state {
           flex: 0 0 auto;
@@ -1577,6 +1755,14 @@ class UnifiDynamicPanel extends HTMLElement {
 
     const dialog = this.shadowRoot.querySelector("dialog.device");
     dialog.addEventListener("click", (ev) => this._handleDialogClick(ev));
+    // Entitätszeilen sind keine echten Buttons (siehe _renderDialog), also
+    // Enter/Leertaste selbst in einen Klick übersetzen.
+    dialog.addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter" && ev.key !== " ") return;
+      if (!ev.target.matches || !ev.target.matches("li.entity")) return;
+      ev.preventDefault();
+      ev.target.click();
+    });
     // Esc schliesst den Dialog nativ; hier nur den Zustand nachziehen.
     dialog.addEventListener("close", () => {
       this._dialogKey = null;

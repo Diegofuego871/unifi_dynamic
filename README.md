@@ -200,6 +200,14 @@ itself; if an action fails, the error shows inside the dialog. Esc, the ×
 button or a click next to the dialog close it. Wired clients don't show the
 wireless fields.
 
+IP, MAC, hostname, SSID, access point and each entity ID have a small copy
+button next to them that puts exactly that value on the clipboard — for an
+entity only its ID, for example `sensor.unifi_dynamic_…_connection`. The
+icon turns into a check mark for a moment and Home Assistant shows a short
+"Copied: …" message at the bottom. Copying also works when Home Assistant is
+reached over plain `http://`, where browsers don't offer the clipboard API:
+the panel then falls back to the browser's older copy command.
+
 "First seen" comes from the controller's own `first_seen` field, so it also
 covers clients from before the installation. If the controller doesn't
 supply it, the integration uses the time it first saw the client itself —

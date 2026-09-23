@@ -5,6 +5,24 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] - 2026-09-23
+
+### Added
+
+- Copy buttons in the device view: IP, MAC, hostname, SSID and access point
+  each get a small button that copies just that value, and every entity gets
+  one next to its entity ID that copies only the ID. The icon briefly turns
+  into a check mark and Home Assistant shows a short "Copied: …" toast.
+  Works on plain `http://` too, where browsers don't provide the clipboard
+  API, by falling back to the browser's legacy copy command.
+
+### Changed
+
+- An entity row in the device view still opens Home Assistant's entity
+  dialog on click, and now also with Enter or Space when focused via
+  keyboard.
+- README device-view screenshots re-rendered with the copy buttons.
+
 ## [2.1.0] - 2026-09-23
 
 ### Added
@@ -822,6 +840,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.1.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.1
 [2.1.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.0
 [2.0.14]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.14
 [2.0.13]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.13
