@@ -8,6 +8,8 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
 ![Panel mit der Client-Tabelle, Suche, Filtern und geöffnetem Zeilenmenü](docs/panel-screenshot.png)
 
+![Geräteansicht eines Clients mit Angaben, Kopieren-Buttons, Entitäten und Aktionen](docs/panel-device-view.png)
+
 ## Funktionen
 
 - Legt pro Client ein Gerät mit Sensoren an: IP, MAC, SSID, Access Point,
