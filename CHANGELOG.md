@@ -5,6 +5,38 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-09-23
+
+### Added
+
+- Device view in the panel: tapping a row (or "Details" in its ⋮ menu)
+  opens a dialog with everything known about the client — status,
+  protection, connection type, IP, MAC, hostname, SSID, access point,
+  signal (dBm and RSSI), first seen and last seen with relative times — plus
+  its Home Assistant entities with their current state (tapping one opens
+  Home Assistant's entity dialog) and the actions "Open HA device page",
+  protect / stop protecting and "Remove". It closes by itself after a
+  successful removal; a failed action shows its error inside the dialog. On
+  a phone it slides up from the bottom as a sheet.
+- Row taps are guarded against accidental opening: swipes never count, and
+  neither does a tap within 300 ms of scrolling, a tap while a row menu is
+  open, or selecting text.
+- New option "Tapping a device notification opens" in the push section:
+  "Device view in the panel" (default) or "Home Assistant device page" for
+  anyone who doesn't use the panel. The panel link
+  (`/unifi-dynamic?entry=…&mac=…`) opens the client's device view, also when
+  the panel is already open, and then clears itself from the address; a
+  client that no longer exists shows a notice.
+- The integration now also stores the controller's `first_seen` and
+  `signal` per client. If the controller doesn't provide `first_seen`, the
+  integration records when it first saw the client itself; clients known
+  before this version show "unknown" rather than a made-up date.
+
+### Changed
+
+- The ⋮ menu's "Open device page" is now labeled "Open HA device page", to
+  tell it apart from the panel's own device view.
+
 ## [2.0.14] - 2026-09-22
 
 ### Changed
@@ -790,6 +822,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.1.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.0
 [2.0.14]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.14
 [2.0.13]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.13
 [2.0.12]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.12

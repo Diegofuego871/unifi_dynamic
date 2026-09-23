@@ -59,6 +59,7 @@
             "description": "Target, triggers and content of the messages to your phone. The «Content» checkboxes decide which details appear in the message about newly detected devices. If all of them are off, the display name is reported instead.",
             "data": {
               "notify_service": "Push notification target",
+              "notify_click_target": "Tapping a device notification opens",
               "notify_when_empty": "Also report when nothing was removed",
               "notify_new_clients": "Report new devices",
               "notify_controller_offline": "Report when the controller goes down",
@@ -71,8 +72,9 @@
             },
             "data_description": {
               "notify_service": "notify service or notify entity, for example a notify group.",
+              "notify_click_target": "Where tapping the notification of a single client leads. \"Device view in the panel\" opens the panel of this integration with that client's details and actions, even if Home Assistant has no device for it yet. \"Home Assistant device page\" is meant for anyone who doesn't use the panel; if the device doesn't exist yet, the integration page opens instead. Summaries and controller messages always open the integration page.",
               "notify_when_empty": "Enabled means a push after every daily run, even with no hits. Off by default.",
-              "notify_new_clients": "Push notification as soon as a client appears in the UniFi API for the first time. The “Content” checkboxes decide which details it contains. If one of them is not available yet, for example because the DHCP lease is not through, the message waits for up to 120 seconds and is sent as soon as everything is there. SSID and access point are only waited for on wireless clients. After that the message is sent with whatever is available. Nothing is reported during the initial fill after installation, otherwise every existing client would trigger a message. If more than five clients appear at once, a single summary is sent instead. Does not create a persistent notification. Tapping the notification opens the device page of that client.",
+              "notify_new_clients": "Push notification as soon as a client appears in the UniFi API for the first time. The “Content” checkboxes decide which details it contains. If one of them is not available yet, for example because the DHCP lease is not through, the message waits for up to 120 seconds and is sent as soon as everything is there. SSID and access point are only waited for on wireless clients. After that the message is sent with whatever is available. Nothing is reported during the initial fill after installation, otherwise every existing client would trigger a message. If more than five clients appear at once, a single summary is sent instead. Does not create a persistent notification. Where tapping the notification leads is set by «Tapping a device notification opens».",
               "notify_controller_offline": "Push notification as soon as the controller counts as down, plus an all-clear with the first successful poll. When it counts as down is set by «Considered down after (polls)» in the «Polling» section. Reported once per outage, not repeatedly. While the outage lasts, no clients are updated. On by default.",
               "message_name": "Name from the controller, otherwise DHCP hostname, otherwise the MAC.",
               "message_connection": "Wired or wireless.",
@@ -113,6 +115,14 @@
           "name": "Config entry",
           "description": "Optional. Without it, all configured UniFi hosts run."
         }
+      }
+    }
+  },
+  "selector": {
+    "notify_click_target": {
+      "options": {
+        "panel": "Device view in the panel",
+        "device": "Home Assistant device page"
       }
     }
   }

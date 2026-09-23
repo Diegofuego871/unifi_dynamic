@@ -36,6 +36,12 @@ STORE_MIGRATION_FLAG = "entity_id_migration_v1_done"
 # Purge, Online-Erkennung und den "Last seen"-Sensor.
 FIELD_SEEN_AT = "_seen_at"
 
+# Internes Cache-Feld: Epoch-Sekunden, zu denen die Integration den Client zum
+# ersten Mal gesehen hat. Nur Ersatz, falls der Controller kein eigenes
+# "first_seen" liefert; bei Clients, die schon vor diesem Feld im Cache
+# standen, bleibt es leer statt eines erfundenen Datums.
+FIELD_FIRST_SEEN = "_first_seen"
+
 # Nur diese Felder werden aus der UniFi-Antwort übernommen und persistiert.
 # Alles andere aus /stat/sta wird verworfen: kleinerer Store, keine
 # Überraschungsfelder, definierte Merge-Semantik.
@@ -47,7 +53,9 @@ CLIENT_FIELDS: tuple[str, ...] = (
     "essid",
     "is_wired",
     "rssi",
+    "signal",
     "ap_mac",
+    "first_seen",
 )
 
 # Berechnetes Feld im Snapshot: aufgelöster Name des Access Points. Steht nicht
@@ -93,6 +101,15 @@ DEFAULT_NOTIFY_NEW_CLIENTS = True
 # Push, wenn der Controller länger nicht antwortet, und Entwarnung danach.
 CONF_NOTIFY_CONTROLLER_OFFLINE = "notify_controller_offline"
 DEFAULT_NOTIFY_CONTROLLER_OFFLINE = True
+
+# Wohin ein Tipp auf die Meldung eines Clients führt: die Geräteansicht im
+# Panel dieser Integration oder die Geräteseite von Home Assistant. Die
+# HA-Geräteseite ist für alle gedacht, die das Panel nicht nutzen.
+CONF_NOTIFY_CLICK_TARGET = "notify_click_target"
+CLICK_TARGET_PANEL = "panel"
+CLICK_TARGET_DEVICE = "device"
+CLICK_TARGETS = (CLICK_TARGET_PANEL, CLICK_TARGET_DEVICE)
+DEFAULT_NOTIFY_CLICK_TARGET = CLICK_TARGET_PANEL
 
 # Inhalt der Neugeräte-Meldung, einzeln im UI schaltbar.
 CONF_MSG_NAME = "message_name"
@@ -161,13 +178,16 @@ DATA_PUSH_IMAGE = "unifi_dynamic_push_image"
 PANEL_URL_PATH = "unifi-dynamic"
 PANEL_TITLE = "UniFi Dynamic Clients"
 PANEL_ICON = "mdi:lan-check"
+# Deep-Link auf die Geräteansicht im Panel. Das Panel liest die Parameter aus
+# der URL von Home Assistant (nicht aus der iframe-URL, die fix ist).
+PANEL_CLIENT_URL_TEMPLATE = f"/{PANEL_URL_PATH}?entry={{entry_id}}&mac={{mac}}"
 PANEL_DIR = "panel"
 PANEL_HTML_FILE = "panel.html"
 PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "14"
+PANEL_VERSION = "15"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"

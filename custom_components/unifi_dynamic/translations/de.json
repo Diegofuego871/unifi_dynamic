@@ -59,6 +59,7 @@
             "description": "Ziel, Auslöser und Inhalt der Meldungen aufs Handy. Die Häkchen mit «Inhalt» bestimmen, welche Angaben in der Meldung über neu erkannte Geräte stehen. Ist alles davon aus, wird ersatzweise der Anzeigename gemeldet.",
             "data": {
               "notify_service": "Ziel für Push-Benachrichtigung",
+              "notify_click_target": "Tipp auf eine Gerätemeldung öffnet",
               "notify_when_empty": "Auch melden, wenn nichts entfernt wurde",
               "notify_new_clients": "Neue Geräte melden",
               "notify_controller_offline": "Melden, wenn der Controller ausfällt",
@@ -71,8 +72,9 @@
             },
             "data_description": {
               "notify_service": "notify-Service oder notify-Entity, zum Beispiel eine notify-Gruppe.",
+              "notify_click_target": "Wohin ein Tipp auf die Meldung zu einem einzelnen Client führt. «Geräteansicht im Panel» öffnet das Panel dieser Integration mit den Details und Aktionen dieses Clients, auch wenn Home Assistant noch kein Gerät dafür hat. «Home-Assistant-Geräteseite» ist für alle gedacht, die das Panel nicht nutzen; existiert das Gerät noch nicht, öffnet sich stattdessen die Integrationsseite. Sammelmeldungen und Controller-Meldungen öffnen immer die Integrationsseite.",
               "notify_when_empty": "Aktiv bedeutet eine Push nach jedem täglichen Lauf, auch ohne Treffer. Standardmässig aus.",
-              "notify_new_clients": "Push-Meldung, sobald ein Client zum ersten Mal in der UniFi-API auftaucht. Welche Angaben darin stehen, legen die Häkchen mit «Inhalt» fest. Fehlt eine davon beim ersten Auftauchen noch, etwa weil die DHCP-Lease nicht durch ist, wartet die Meldung bis zu 120 Sekunden und wird gesendet, sobald alles vorliegt. SSID und Access Point werden nur bei WLAN-Clients abgewartet. Danach geht die Meldung mit dem raus, was vorhanden ist. Bei der Erstbefüllung nach der Installation wird bewusst nichts gemeldet, sonst käme eine Meldung pro bereits vorhandenem Client. Tauchen mehr als fünf Clients gleichzeitig auf, kommt eine Sammelmeldung statt Einzelmeldungen. Erzeugt keine anhaltende Benachrichtigung. Ein Klick auf die Meldung öffnet die Geräteseite des Clients.",
+              "notify_new_clients": "Push-Meldung, sobald ein Client zum ersten Mal in der UniFi-API auftaucht. Welche Angaben darin stehen, legen die Häkchen mit «Inhalt» fest. Fehlt eine davon beim ersten Auftauchen noch, etwa weil die DHCP-Lease nicht durch ist, wartet die Meldung bis zu 120 Sekunden und wird gesendet, sobald alles vorliegt. SSID und Access Point werden nur bei WLAN-Clients abgewartet. Danach geht die Meldung mit dem raus, was vorhanden ist. Bei der Erstbefüllung nach der Installation wird bewusst nichts gemeldet, sonst käme eine Meldung pro bereits vorhandenem Client. Tauchen mehr als fünf Clients gleichzeitig auf, kommt eine Sammelmeldung statt Einzelmeldungen. Erzeugt keine anhaltende Benachrichtigung. Wohin ein Tipp auf die Meldung führt, legt «Tipp auf eine Gerätemeldung öffnet» fest.",
               "notify_controller_offline": "Push-Meldung, sobald der Controller als ausgefallen gilt, und Entwarnung mit der ersten wieder erfolgreichen Abfrage. Ab wann er als ausgefallen gilt, legt «Als ausgefallen nach (Abfragen)» im Abschnitt «Abfrage» fest. Gemeldet wird einmalig je Störung, nicht wiederholt. Solange die Störung besteht, werden keine Clients mehr aktualisiert. Standardmässig an.",
               "message_name": "Name aus dem Controller, sonst DHCP-Hostname, sonst die MAC.",
               "message_connection": "Kabel oder Wireless.",
@@ -113,6 +115,14 @@
           "name": "Config Entry",
           "description": "Optional. Ohne Angabe laufen alle eingerichteten UniFi-Hosts."
         }
+      }
+    }
+  },
+  "selector": {
+    "notify_click_target": {
+      "options": {
+        "panel": "Geräteansicht im Panel",
+        "device": "Home-Assistant-Geräteseite"
       }
     }
   }

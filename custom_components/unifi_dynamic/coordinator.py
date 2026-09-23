@@ -40,6 +40,7 @@ from .const import (
     DOMAIN,
     DOWNTIME_GRACE_SECONDS,
     FIELD_AP_NAME,
+    FIELD_FIRST_SEEN,
     FIELD_SEEN_AT,
     OFFLINE_AFTER_SECONDS,
     PURGE_SKIP_DISABLED,
@@ -82,6 +83,16 @@ def as_epoch_seconds(value: Any) -> float | None:
         v /= 1000.0
 
     return v
+
+
+def _first_seen(data: dict[str, Any]) -> float | None:
+    """
+    Erster Kontakt: bevorzugt das "first_seen" des Controllers, das auch vor
+    der Installation liegende Zeiten kennt, sonst der eigene Erstkontakt.
+    """
+    return as_epoch_seconds(data.get("first_seen")) or as_epoch_seconds(
+        data.get(FIELD_FIRST_SEEN)
+    )
 
 
 def preferred_client_name(data: dict[str, Any], mac: str) -> str:
@@ -368,6 +379,9 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 backfilled += 1
 
             entry[FIELD_SEEN_AT] = min(seen_at, now)
+            first_seen = as_epoch_seconds(raw.get(FIELD_FIRST_SEEN))
+            if first_seen is not None:
+                entry[FIELD_FIRST_SEEN] = min(first_seen, now)
             out[mac_l] = entry
 
         if backfilled:
@@ -632,9 +646,13 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                     "name": preferred_client_name(data, mac),
                     "ip": data.get("ip"),
                     "essid": data.get("essid"),
+                    "hostname": data.get("hostname"),
                     "ap_name": data.get(FIELD_AP_NAME),
                     "is_wired": data.get("is_wired"),
+                    "rssi": data.get("rssi"),
+                    "signal": data.get("signal"),
                     "seen_at": data.get(FIELD_SEEN_AT),
+                    "first_seen": _first_seen(data),
                     "online": self.is_client_online(mac),
                 }
             )
@@ -732,6 +750,13 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         for mac, data in fresh.items():
             self._merge_client(mac, data, now)
+
+        # Eigener Erstkontakt als Ersatz für ein fehlendes "first_seen" des
+        # Controllers. Nicht bei der Erstbefüllung: dort wäre es nur der
+        # Installationszeitpunkt, nicht der erste Kontakt des Clients.
+        if not first_fill:
+            for mac in new_macs:
+                self._client_cache[mac.lower()][FIELD_FIRST_SEEN] = now
 
         self._anchor = now
 

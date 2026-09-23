@@ -13,8 +13,10 @@ from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CLICK_TARGETS,
     CONF_API_KEY,
     CONF_HOST,
+    CONF_NOTIFY_CLICK_TARGET,
     CONF_NOTIFY_CONTROLLER_OFFLINE,
     CONF_NOTIFY_NEW_CLIENTS,
     CONF_NOTIFY_SERVICE,
@@ -28,6 +30,7 @@ from .const import (
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
     CONF_VERIFY_SSL,
+    DEFAULT_NOTIFY_CLICK_TARGET,
     DEFAULT_NOTIFY_CONTROLLER_OFFLINE,
     DEFAULT_NOTIFY_NEW_CLIENTS,
     DEFAULT_NOTIFY_SERVICE,
@@ -329,6 +332,23 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     options=notify_options,
                     mode=selector.SelectSelectorMode.DROPDOWN,
                     custom_value=True,
+                    sort=False,
+                )
+            ),
+            # Klickziel direkt unter dem Ziel-Dienst: beides betrifft, wo die
+            # Meldung ankommt und wohin sie führt.
+            vol.Required(
+                CONF_NOTIFY_CLICK_TARGET,
+                default=(
+                    current.get(CONF_NOTIFY_CLICK_TARGET)
+                    if current.get(CONF_NOTIFY_CLICK_TARGET) in CLICK_TARGETS
+                    else DEFAULT_NOTIFY_CLICK_TARGET
+                ),
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=list(CLICK_TARGETS),
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                    translation_key=CONF_NOTIFY_CLICK_TARGET,
                     sort=False,
                 )
             ),

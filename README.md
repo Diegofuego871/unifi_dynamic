@@ -29,7 +29,7 @@ the client has not been reported by the UniFi controller for a while.
 - The notification image ships with the integration, nothing to configure.
 - The new-device notification waits until every selected detail is actually
   available, then sends immediately. Tapping it opens that client's device
-  page. Two buttons act right from the notification: "Never remove" adds the
+  view in the panel, or optionally its Home Assistant device page. Two buttons act right from the notification: "Never remove" adds the
   client to the exclusion list, "Remove now" deletes it immediately.
 - The purge is skipped while the controller is unreachable, so an outage can
   never delete the inventory. A skipped run is reported.
@@ -44,8 +44,8 @@ the client has not been reported by the UniFi controller for a while.
 - A panel pinned in the sidebar shows a searchable, filterable table of every
   client across all configured UniFi hosts (alias, IP, MAC, SSID, access
   point, connection type, last seen, online status), with a per-row menu to
-  remove a client or add it to the exclusion list, and a click to open its
-  device page.
+  remove a client or add it to the exclusion list. Tapping a row opens a
+  device view with every detail, its entities and the same actions.
 
 ## Installation
 
@@ -100,6 +100,7 @@ grouped into four sections, collapsed when opened.
 | Option | Meaning | Default |
 | --- | --- | --- |
 | Push notification target | notify service or notify entity, for example a notify group | none |
+| Tapping a device notification opens | "Device view in the panel" or "Home Assistant device page" (for anyone not using the panel) | device view in the panel |
 | Also report when nothing was removed | Push after every daily run, even with no hits | off |
 | Report new devices | Push as soon as a client appears for the first time | on |
 | Report when the controller goes down | Push after an hour without a successful poll, plus an all-clear | on |
@@ -175,17 +176,50 @@ the HA process, so it is unaffected either way. This is per browser/device,
 not synced between them. A "Reset filters" button in the toolbar clears all
 of it back to the default view in one click.
 
-Each row has a ⋮ menu with "Protect from automatic removal" (adds the
+Each row has a ⋮ menu with "Details", "Protect from automatic removal" (adds the
 client to the exclusion list), "Remove" (asks for confirmation, then
 removes immediately — the same behavior as the notification button and the
 `remove_client` action: an active client is recreated on the next poll and
-reported as new again), and "Open device page". A client already on the
+reported as new again), and "Open HA device page". A client already on the
 exclusion list shows "Stop protecting" instead of "Protect from automatic
-removal", to take it back off the list. Clicking a row itself does nothing
-— device pages are reachable only
-through that menu item, deliberately: a row click used to open the device
-page directly, which was too easy to trigger by accident while scrolling or
-scanning the table. With more than one UniFi host configured, the table
+removal", to take it back off the list. The menu's first item, "Details",
+opens the device view — as does tapping the row itself.
+
+The device view is a dialog over the table (on a phone a sheet sliding up
+from the bottom) with everything the integration knows about the client:
+status, protection, connection type, IP, MAC, hostname, SSID, access point,
+signal (dBm and the controller's RSSI value, marked "last measured" while
+the client is offline), first seen and last seen, each with a relative time.
+Below that it lists the client's Home Assistant entities with their current
+state — tapping one opens Home Assistant's own entity dialog with history —
+and at the bottom the actions: "Open HA device page", protect / stop
+protecting, and "Remove". After a successful removal the dialog closes by
+itself; if an action fails, the error shows inside the dialog. Esc, the ×
+button or a click next to the dialog close it. Wired clients don't show the
+wireless fields.
+
+"First seen" comes from the controller's own `first_seen` field, so it also
+covers clients from before the installation. If the controller doesn't
+supply it, the integration uses the time it first saw the client itself —
+except for clients already known when the integration was set up or updated,
+which show "unknown" instead of a made-up date.
+
+A tap on a row used to lead straight to the device page and away from the
+panel, which happened too easily while scrolling. The dialog is guarded
+against that: a swipe never counts as a tap anyway, and a tap within 300 ms
+of scrolling (the one that stops a flick on a phone), a tap while a row menu
+is open (it only closes the menu) and selecting text (for example to copy a
+MAC) don't open it either.
+
+Push notifications about a single client link to
+`/unifi-dynamic?entry=<entry id>&mac=<mac>`; the panel opens that client's
+device view and then removes the parameters from the address, so reloading
+doesn't reopen it. This also works when the panel is already open. A client
+that no longer exists shows a notice instead. Whoever doesn't use the panel
+can switch the target back to the Home Assistant device page in the options
+("Tapping a device notification opens", push section).
+
+With more than one UniFi host configured, the table
 shows a host column and lists clients from all of them together rather than
 splitting into one panel per host.
 

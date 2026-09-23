@@ -37,6 +37,10 @@ from .const import (
     DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
     DEFAULT_PERSISTENT_NOTIFICATION,
     DEFAULT_PERSISTENT_WHEN_EMPTY,
+    CLICK_TARGET_DEVICE,
+    CLICK_TARGETS,
+    CONF_NOTIFY_CLICK_TARGET,
+    DEFAULT_NOTIFY_CLICK_TARGET,
     DEVICE_URL_TEMPLATE,
     DOMAIN,
     FIELD_AP_NAME,
@@ -44,6 +48,7 @@ from .const import (
     MESSAGE_FIELDS,
     NEW_CLIENT_TAG_PREFIX,
     NOTIFICATION_TAG_PREFIX,
+    PANEL_CLIENT_URL_TEMPLATE,
     NOTIFICATION_URL,
     NOTIFY_NONE,
     PURGE_SKIP_DISABLED,
@@ -84,6 +89,27 @@ def device_url(hass: HomeAssistant, entry: ConfigEntry, mac: str) -> str | None:
     if device is None:
         return None
     return DEVICE_URL_TEMPLATE.format(device_id=device.id)
+
+
+def click_target(entry: ConfigEntry) -> str:
+    """Gewähltes Klickziel der Client-Meldungen; Unbekanntes fällt auf den Default."""
+    raw = str(entry.options.get(CONF_NOTIFY_CLICK_TARGET) or "").strip()
+    return raw if raw in CLICK_TARGETS else DEFAULT_NOTIFY_CLICK_TARGET
+
+
+def client_url(hass: HomeAssistant, entry: ConfigEntry, mac: str) -> str | None:
+    """
+    Klickziel einer Meldung zu genau diesem Client.
+
+    Panel: Deep-Link auf die Geräteansicht, funktioniert auch, wenn das
+    Gerät in Home Assistant (noch) nicht existiert. HA-Geräteseite: nur wenn
+    das Gerät existiert, sonst None und damit die Integrationsseite.
+    """
+    if click_target(entry) == CLICK_TARGET_DEVICE:
+        return device_url(hass, entry, mac)
+    return PANEL_CLIENT_URL_TEMPLATE.format(
+        entry_id=entry.entry_id, mac=mac.lower()
+    )
 
 
 def client_actions(
@@ -453,9 +479,9 @@ async def async_send_new_clients_report(
             notification_data(
                 hass,
                 f"{NEW_CLIENT_TAG_PREFIX}_{mac.replace(':', '')}",
-                # Klick öffnet die Geräteseite dieses Clients. Existiert das
-                # Gerät noch nicht, bleibt es bei der Integrationsseite.
-                device_url(hass, entry, mac),
+                # Klick öffnet die Geräteansicht im Panel oder die
+                # HA-Geräteseite, je nach Option (siehe client_url).
+                client_url(hass, entry, mac),
                 actions,
             ),
         )
@@ -489,7 +515,7 @@ async def async_send_exclusion_notice(
         notification_data(
             hass,
             f"{ACTION_CONFIRM_TAG_PREFIX}_{mac.replace(':', '')}",
-            device_url(hass, entry, mac),
+            client_url(hass, entry, mac),
         ),
     )
 

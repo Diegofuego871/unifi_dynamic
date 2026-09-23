@@ -16,6 +16,10 @@
  * dieselbe Coordinator-Logik, die auch die Push-Aktionen und der Service
  * unifi_dynamic.remove_client nutzen.
  *
+ * Ein Tipp auf eine Zeile öffnet die Geräteansicht (Dialog) mit allen Daten,
+ * den HA-Entitäten und denselben Aktionen wie das Zeilenmenü. Push-Meldungen
+ * verlinken per ?entry=...&mac=... auf diese Ansicht (siehe _checkDeepLink).
+ *
  * Läuft in panel.html, die Home Assistant als eingebautes iframe-Panel
  * einbettet. Kopfzeile, Menü-Button und Titel rendert HA selbst um das
  * iframe herum; dieses Element füllt das iframe und bekommt sein hass-
@@ -50,7 +54,8 @@ const STRINGS = {
     connWireless: "WLAN",
     connUnknown: "unbekannt",
     excludedBadge: "geschützt",
-    menuOpenDevice: "Geräteseite öffnen",
+    menuDetails: "Details",
+    menuOpenDevice: "HA-Geräteseite öffnen",
     menuExclude: "Vor automatischem Löschen schützen",
     menuUnexclude: "Nicht mehr schützen",
     menuRemove: "Löschen",
@@ -64,6 +69,25 @@ const STRINGS = {
     clearSearch: "Suche leeren",
     multiHost: "Host",
     seenNever: "–",
+    dialogClose: "Schliessen",
+    fieldStatus: "Status",
+    fieldConn: "Verbindung",
+    fieldIp: "IP-Adresse",
+    fieldMac: "MAC-Adresse",
+    fieldHostname: "Hostname",
+    fieldSsid: "SSID",
+    fieldAp: "Access Point",
+    fieldSignal: "Signal (RSSI)",
+    fieldFirstSeen: "Zuerst gesehen",
+    fieldLastSeen: "Zuletzt gesehen",
+    fieldHost: "UniFi-Host",
+    signalLast: "zuletzt gemessen",
+    unknown: "unbekannt",
+    secEntities: "Entitäten",
+    entitiesNone: "Keine Entitäten.",
+    entitiesNoDevice: "Home Assistant hat für diesen Client noch kein Gerät angelegt.",
+    notFound: "Dieser Client ist nicht (mehr) vorhanden.",
+    actionFailed: "Aktion fehlgeschlagen:",
   },
   en: {
     searchPlaceholder: "Search (name, IP, MAC, SSID, AP)…",
@@ -92,7 +116,8 @@ const STRINGS = {
     connWireless: "Wireless",
     connUnknown: "unknown",
     excludedBadge: "protected",
-    menuOpenDevice: "Open device page",
+    menuDetails: "Details",
+    menuOpenDevice: "Open HA device page",
     menuExclude: "Protect from automatic removal",
     menuUnexclude: "Stop protecting",
     menuRemove: "Remove",
@@ -106,6 +131,25 @@ const STRINGS = {
     clearSearch: "Clear search",
     multiHost: "Host",
     seenNever: "–",
+    dialogClose: "Close",
+    fieldStatus: "Status",
+    fieldConn: "Connection",
+    fieldIp: "IP address",
+    fieldMac: "MAC address",
+    fieldHostname: "Hostname",
+    fieldSsid: "SSID",
+    fieldAp: "Access point",
+    fieldSignal: "Signal (RSSI)",
+    fieldFirstSeen: "First seen",
+    fieldLastSeen: "Last seen",
+    fieldHost: "UniFi host",
+    signalLast: "last measured",
+    unknown: "unknown",
+    secEntities: "Entities",
+    entitiesNone: "No entities.",
+    entitiesNoDevice: "Home Assistant has not created a device for this client yet.",
+    notFound: "This client does not exist (anymore).",
+    actionFailed: "Action failed:",
   },
 };
 
@@ -115,6 +159,11 @@ function pickLang(hass) {
 }
 
 const POLL_INTERVAL_MS = 10000;
+
+// Ein Klick kurz nach einer Scrollbewegung zählt nicht als Tipp auf die
+// Zeile: Auf dem Handy stoppt ein Tipp in eine laufende Schwungbewegung nur
+// das Scrollen, er soll nicht zusätzlich die Geräteansicht öffnen.
+const SCROLL_CLICK_GUARD_MS = 300;
 
 // Derselbe statische Pfad, unter dem __init__.py (_async_register_brand_path)
 // bereits brand/icon.png für die Push-Meldungen ausliefert - hier
@@ -194,6 +243,16 @@ class UnifiDynamicPanel extends HTMLElement {
     this._openMenuKey = null;
     this._pollTimer = null;
     this._built = false;
+
+    // Geräteansicht: Schlüssel "entry_id|mac" des angezeigten Clients, das
+    // zuletzt gerenderte HTML (nur bei Änderung neu aufbauen, sonst verlöre
+    // ein Button bei jedem Polling den Fokus) und ein Fehler der letzten
+    // Aktion im Dialog.
+    this._dialogKey = null;
+    this._dialogHtml = "";
+    this._dialogError = null;
+    this._lastScrollAt = 0;
+    this._onParentLocation = () => this._checkDeepLink();
   }
 
   _savePrefs() {
@@ -219,6 +278,8 @@ class UnifiDynamicPanel extends HTMLElement {
       this._fetchClients();
       this._startPolling();
     }
+    // Entitätszustände im offenen Dialog aktuell halten.
+    this._renderDialog();
   }
 
   get hass() {
@@ -231,10 +292,28 @@ class UnifiDynamicPanel extends HTMLElement {
       this._built = true;
     }
     this._startPolling();
+    this._watchParentLocation(true);
   }
 
   disconnectedCallback() {
     this._stopPolling();
+    this._watchParentLocation(false);
+  }
+
+  // Ist das Panel schon offen, wechselt HA bei einem Tipp auf eine weitere
+  // Meldung nur die URL, das iframe bleibt stehen. Deshalb auf die
+  // Navigation im Elternfenster hören, nicht nur beim Start prüfen.
+  _watchParentLocation(on) {
+    let parentWin;
+    try {
+      parentWin = window.parent;
+      if (!parentWin || parentWin === window) return;
+      const method = on ? "addEventListener" : "removeEventListener";
+      parentWin[method]("location-changed", this._onParentLocation);
+      parentWin[method]("popstate", this._onParentLocation);
+    } catch (err) {
+      // Anderer Ursprung (nicht in HA eingebettet): ohne Deep-Link weiter.
+    }
   }
 
   _t(key) {
@@ -268,6 +347,7 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     this._loading = false;
     this._renderRows();
+    if (!this._error) this._checkDeepLink();
   }
 
   // Fehler hier abfangen statt die Promise unbehandelt durchfallen zu
@@ -282,11 +362,11 @@ class UnifiDynamicPanel extends HTMLElement {
         mac,
       });
     } catch (err) {
-      this._error = (err && err.message) || String(err);
-      this._renderRows();
-      return;
+      this._actionFailed(err);
+      return false;
     }
     await this._fetchClients();
+    return true;
   }
 
   async _excludeClient(entryId, mac) {
@@ -297,11 +377,11 @@ class UnifiDynamicPanel extends HTMLElement {
         mac,
       });
     } catch (err) {
-      this._error = (err && err.message) || String(err);
-      this._renderRows();
-      return;
+      this._actionFailed(err);
+      return false;
     }
     await this._fetchClients();
+    return true;
   }
 
   async _unexcludeClient(entryId, mac) {
@@ -312,11 +392,21 @@ class UnifiDynamicPanel extends HTMLElement {
         mac,
       });
     } catch (err) {
-      this._error = (err && err.message) || String(err);
-      this._renderRows();
-      return;
+      this._actionFailed(err);
+      return false;
     }
     await this._fetchClients();
+    return true;
+  }
+
+  // Fehler einer Aktion: im Banner über der Tabelle und, falls die
+  // Geräteansicht offen ist, auch dort - das Banner liegt sonst verdeckt
+  // hinter dem Dialog.
+  _actionFailed(err) {
+    const text = (err && err.message) || String(err);
+    this._error = text;
+    if (this._dialogKey) this._dialogError = text;
+    this._renderRows();
   }
 
   // Navigation gehört ins Elternfenster (Home Assistant selbst): im iframe
@@ -325,11 +415,326 @@ class UnifiDynamicPanel extends HTMLElement {
   // "location-changed" am window, auf das der HA-Router hört.
   _openDevice(deviceId) {
     if (!deviceId) return;
+    this._navigate(`/config/devices/device/${deviceId}`, false);
+  }
+
+  _navigate(path, replace) {
     const target = window.parent || window;
-    target.history.pushState(null, "", `/config/devices/device/${deviceId}`);
+    if (replace) {
+      target.history.replaceState(target.history.state, "", path);
+    } else {
+      target.history.pushState(null, "", path);
+    }
     target.dispatchEvent(
-      new target.CustomEvent("location-changed", { detail: { replace: false } })
+      new target.CustomEvent("location-changed", { detail: { replace } })
     );
+  }
+
+  // Deep-Link aus einer Push-Meldung: /unifi-dynamic?entry=...&mac=...
+  // steht in der URL von Home Assistant, nicht in der des iframes (die ist
+  // fest). Erst nach dem ersten erfolgreichen Laden auswerten, damit der
+  // Dialog die Daten hat. Danach die Parameter aus der URL entfernen
+  // (replace, kein neuer Verlaufseintrag), sonst öffnete ein Neuladen des
+  // Panels den Dialog erneut.
+  _checkDeepLink() {
+    if (this._loading || this._error) return;
+    let loc;
+    try {
+      loc = (window.parent || window).location;
+    } catch (err) {
+      return;
+    }
+    const params = new URLSearchParams(loc.search || "");
+    const mac = String(params.get("mac") || "").trim().toLowerCase();
+    if (!mac) return;
+    const entryId = String(params.get("entry") || "").trim();
+    // Passt die Entry-ID nicht (z.B. Integration neu eingerichtet), reicht
+    // die MAC; unbekannt bleibt der Schlüssel trotzdem gesetzt und der
+    // Dialog meldet "nicht vorhanden" statt still nichts zu tun.
+    const hit =
+      this._clients.find((c) => c.mac === mac && (!entryId || c.entry_id === entryId)) ||
+      this._clients.find((c) => c.mac === mac);
+    try {
+      params.delete("mac");
+      params.delete("entry");
+      const rest = params.toString();
+      this._navigate(`${loc.pathname}${rest ? `?${rest}` : ""}${loc.hash || ""}`, true);
+    } catch (err) {
+      // URL bleibt stehen, der Dialog öffnet trotzdem.
+    }
+    this._openDialog(hit ? `${hit.entry_id}|${hit.mac}` : `${entryId}|${mac}`);
+  }
+
+  _clientByKey(key) {
+    return this._clients.find((c) => `${c.entry_id}|${c.mac}` === key) || null;
+  }
+
+  _openDialog(key) {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.device");
+    if (!dialog) return;
+    this._openMenuKey = null;
+    this._dialogKey = key;
+    this._dialogError = null;
+    this._dialogHtml = "";
+    this._renderRows();
+    this._renderDialog();
+    if (!dialog.open) {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    }
+    dialog.scrollTop = 0;
+  }
+
+  _closeDialog() {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.device");
+    this._dialogKey = null;
+    this._dialogError = null;
+    this._dialogHtml = "";
+    if (dialog && dialog.open) {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    }
+  }
+
+  // Entitäten des HA-Geräts aus der Entity-Registry, die HA dem Frontend im
+  // hass-Objekt mitgibt (hass.entities), mit Zustand aus hass.states.
+  _deviceEntities(deviceId) {
+    const hass = this._hass;
+    if (!deviceId || !hass || !hass.entities) return [];
+    return Object.values(hass.entities)
+      .filter((e) => e && e.device_id === deviceId)
+      .map((e) => {
+        const stateObj = hass.states ? hass.states[e.entity_id] : undefined;
+        const name =
+          (stateObj && stateObj.attributes && stateObj.attributes.friendly_name) ||
+          e.name ||
+          e.entity_id;
+        return { entityId: e.entity_id, name, value: this._formatEntityState(stateObj) };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }
+
+  // HAs eigene Formatierung (Übersetzung, Einheit, Zeitstempel), sofern das
+  // hass-Objekt sie anbietet (ab HA 2023.12); sonst Rohwert plus Einheit.
+  _formatEntityState(stateObj) {
+    if (!stateObj) return this._t("unknown");
+    try {
+      if (typeof this._hass.formatEntityState === "function") {
+        return this._hass.formatEntityState(stateObj);
+      }
+    } catch (err) {
+      // Rückfall unten.
+    }
+    const unit = stateObj.attributes && stateObj.attributes.unit_of_measurement;
+    return unit ? `${stateObj.state} ${unit}` : String(stateObj.state);
+  }
+
+  // Öffnet HAs eigenen Entitäts-Dialog (mehr Infos, Verlauf) über dem Panel.
+  _openMoreInfo(entityId) {
+    try {
+      const ha = (window.parent || window).document.querySelector("home-assistant");
+      if (!ha) return;
+      ha.dispatchEvent(
+        new CustomEvent("hass-more-info", {
+          detail: { entityId },
+          bubbles: true,
+          composed: true,
+        })
+      );
+    } catch (err) {
+      console.warn("unifi-dynamic-panel: Entitäts-Dialog nicht verfügbar", err);
+    }
+  }
+
+  _formatRelative(epoch) {
+    if (!epoch) return "";
+    const diff = epoch - Date.now() / 1000;
+    const abs = Math.abs(diff);
+    const units = [
+      ["year", 31536000],
+      ["month", 2592000],
+      ["day", 86400],
+      ["hour", 3600],
+      ["minute", 60],
+    ];
+    try {
+      const rtf = new Intl.RelativeTimeFormat(
+        pickLang(this._hass) === "de" ? "de-CH" : "en-US",
+        { numeric: "auto" }
+      );
+      for (const [unit, secs] of units) {
+        if (abs >= secs) return rtf.format(Math.round(diff / secs), unit);
+      }
+      return rtf.format(0, "minute");
+    } catch (err) {
+      return "";
+    }
+  }
+
+  _formatSignal(c) {
+    const parts = [];
+    if (typeof c.signal === "number") parts.push(`${c.signal} dBm`);
+    if (typeof c.rssi === "number") parts.push(`RSSI ${c.rssi}`);
+    if (!parts.length) return null;
+    const text = parts.join(" · ");
+    return c.online ? text : `${text} (${this._t("signalLast")})`;
+  }
+
+  _renderDialog() {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.device");
+    if (!dialog || !this._dialogKey) return;
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const c = this._clientByKey(this._dialogKey);
+
+    const closeBtn = `<button class="dlg-close" data-dlg="close" title="${esc(
+      t("dialogClose")
+    )}" aria-label="${esc(t("dialogClose"))}">×</button>`;
+    const errorHtml = this._dialogError
+      ? `<div class="dlg-error">${esc(t("actionFailed"))} ${esc(this._dialogError)}</div>`
+      : "";
+
+    let html;
+    if (!c) {
+      const mac = this._dialogKey.split("|")[1] || "";
+      html = `
+        <div class="dlg-head">
+          <div class="dlg-title"><h2>${esc(mac)}</h2></div>
+          ${closeBtn}
+        </div>
+        <div class="dlg-body"><p class="dlg-note">${esc(t("notFound"))}</p></div>`;
+    } else {
+      const connText =
+        c.is_wired == null ? t("connUnknown") : c.is_wired ? t("connWired") : t("connWireless");
+      const status = c.online
+        ? `<span class="badge online">${esc(t("statusOnline"))}</span>`
+        : `<span class="badge offline">${esc(t("statusOffline"))}</span>`;
+      const protectedBadge = c.excluded
+        ? `<span class="badge excluded">${esc(t("excludedBadge"))}</span>`
+        : "";
+      const timeValue = (epoch) =>
+        epoch
+          ? `${esc(this._formatSeen(epoch))}<small>${esc(this._formatRelative(epoch))}</small>`
+          : esc(t("unknown"));
+
+      const fields = [
+        [t("fieldStatus"), `${status}${protectedBadge}`],
+        [t("fieldConn"), esc(connText)],
+        [t("fieldIp"), esc(c.ip || "–")],
+        [t("fieldMac"), `<span class="mono">${esc(c.mac)}</span>`],
+        [t("fieldHostname"), esc(c.hostname || "–")],
+      ];
+      // WLAN-Felder nur, wenn der Client nicht nachweislich am Kabel hängt.
+      if (!c.is_wired) {
+        fields.push([t("fieldSsid"), esc(c.essid || "–")]);
+        fields.push([t("fieldAp"), esc(c.ap_name || "–")]);
+        const signal = this._formatSignal(c);
+        fields.push([t("fieldSignal"), esc(signal || "–")]);
+      }
+      fields.push([t("fieldFirstSeen"), timeValue(c.first_seen)]);
+      fields.push([t("fieldLastSeen"), timeValue(c.seen_at)]);
+      if (this._hostCount > 1) fields.push([t("fieldHost"), esc(c.host || "–")]);
+
+      let entitiesHtml;
+      if (!c.device_id) {
+        entitiesHtml = `<p class="dlg-note">${esc(t("entitiesNoDevice"))}</p>`;
+      } else {
+        const entities = this._deviceEntities(c.device_id);
+        entitiesHtml = entities.length
+          ? `<ul class="entities">${entities
+              .map(
+                (e) => `<li><button data-dlg="more-info" data-entity-id="${esc(e.entityId)}">
+                  <span class="ent-name">${esc(e.name)}<small>${esc(e.entityId)}</small></span>
+                  <span class="ent-state">${esc(e.value)}</span>
+                </button></li>`
+              )
+              .join("")}</ul>`
+          : `<p class="dlg-note">${esc(t("entitiesNone"))}</p>`;
+      }
+
+      html = `
+        <div class="dlg-head">
+          <div class="dlg-title">
+            <h2>${esc(c.name)}</h2>
+          </div>
+          ${closeBtn}
+        </div>
+        <div class="dlg-body">
+          ${errorHtml}
+          <dl class="fields">
+            ${fields.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}
+          </dl>
+          <h3>${esc(t("secEntities"))}</h3>
+          ${entitiesHtml}
+        </div>
+        <div class="dlg-actions">
+          <button data-dlg="open-device" ${c.device_id ? "" : "disabled"}>
+            ${esc(t("menuOpenDevice"))}
+          </button>
+          <button data-dlg="${c.excluded ? "unexclude" : "exclude"}">
+            ${esc(c.excluded ? t("menuUnexclude") : t("menuExclude"))}
+          </button>
+          <button data-dlg="remove" class="destructive">${esc(t("menuRemove"))}</button>
+        </div>`;
+    }
+
+    if (html === this._dialogHtml) return;
+    // Fokus und Scrollposition über den Neuaufbau retten (Polling).
+    const active = this.shadowRoot.activeElement;
+    const focusSel =
+      active && active.dataset && active.dataset.dlg
+        ? `[data-dlg="${active.dataset.dlg}"]${
+            active.dataset.entityId ? `[data-entity-id="${active.dataset.entityId}"]` : ""
+          }`
+        : null;
+    const scroll = dialog.scrollTop;
+    this._dialogHtml = html;
+    dialog.innerHTML = html;
+    dialog.scrollTop = scroll;
+    if (focusSel) {
+      const el = dialog.querySelector(focusSel);
+      if (el) el.focus();
+    }
+  }
+
+  async _handleDialogClick(ev) {
+    const dialog = ev.currentTarget;
+    // Klick auf den Hintergrund (ausserhalb des Inhalts) schliesst.
+    if (ev.target === dialog) {
+      const r = dialog.getBoundingClientRect();
+      const inside =
+        ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+      if (!inside) this._closeDialog();
+      return;
+    }
+    const btn = ev.target.closest("[data-dlg]");
+    if (!btn || btn.disabled) return;
+    const action = btn.dataset.dlg;
+    if (action === "close") {
+      this._closeDialog();
+      return;
+    }
+    if (action === "more-info") {
+      this._openMoreInfo(btn.dataset.entityId);
+      return;
+    }
+    const c = this._clientByKey(this._dialogKey);
+    if (!c) return;
+    this._dialogError = null;
+    if (action === "open-device") {
+      this._closeDialog();
+      this._openDevice(c.device_id);
+    } else if (action === "exclude") {
+      await this._excludeClient(c.entry_id, c.mac);
+    } else if (action === "unexclude") {
+      await this._unexcludeClient(c.entry_id, c.mac);
+    } else if (action === "remove") {
+      if (!window.confirm(this._t("confirmRemove")(c.name))) return;
+      // Nach erfolgreichem Löschen schliessen: der Client existiert nicht
+      // mehr, weitere Aktionen im Dialog liefen ins Leere.
+      if (await this._removeClient(c.entry_id, c.mac)) this._closeDialog();
+    }
+    this._renderDialog();
   }
 
   _filteredClients() {
@@ -554,8 +959,8 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         /* Zähler und Online/Offline-Filter in einem: ersetzt das frühere
            Auswahlfeld "Alle/Online/Offline", damit die Werkzeugleiste mit
-           dem Zähler nicht höher wird. Die Zahlen gelten immer für alle
-           Geräte, unabhängig von Suche und Verbindungsfilter. */
+           dem Zähler nicht höher wird. Die Zahlen folgen dem Verbindungs-
+           filter, nicht der Suche (siehe _renderStats). */
         .stats {
           flex: 0 0 auto;
           display: inline-flex;
@@ -771,6 +1176,202 @@ class UnifiDynamicPanel extends HTMLElement {
         .menu button.destructive {
           color: var(--error-color, #b00020);
         }
+        tbody tr[data-key] {
+          cursor: pointer;
+        }
+        tbody tr[data-key]:focus-visible {
+          outline: 2px solid var(--primary-color, #03a9f4);
+          outline-offset: -2px;
+        }
+        /* Geräteansicht: natives <dialog> (showModal) - Hintergrund, Esc und
+           Fokusfalle liefert der Browser. Auf dem Handy als Blatt von unten
+           über die ganze Breite. Der Dialog selbst scrollt, Kopf und
+           Aktionsleiste bleiben dabei per sticky sichtbar. */
+        dialog.device {
+          width: min(560px, calc(100vw - 32px));
+          max-height: calc(100% - 48px);
+          padding: 0;
+          border: none;
+          border-radius: 12px;
+          background: var(--card-background-color, #fff);
+          color: var(--primary-text-color, #212121);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+          overflow: auto;
+          overscroll-behavior: contain;
+        }
+        dialog.device::backdrop {
+          background: rgba(0,0,0,0.45);
+        }
+        @media (max-width: 600px) {
+          dialog.device {
+            width: 100%;
+            max-width: 100%;
+            max-height: 90%;
+            margin: auto 0 0;
+            border-radius: 16px 16px 0 0;
+          }
+        }
+        .dlg-head {
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          padding: 16px 12px 12px 20px;
+          background: var(--card-background-color, #fff);
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
+        }
+        .dlg-title {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .dlg-title h2 {
+          margin: 4px 0 0;
+          font-size: 20px;
+          font-weight: 500;
+          overflow-wrap: anywhere;
+        }
+        .dlg-close {
+          flex: 0 0 auto;
+          width: 40px;
+          height: 40px;
+          border: none;
+          border-radius: 50%;
+          background: none;
+          color: var(--secondary-text-color, #727272);
+          font-size: 24px;
+          line-height: 1;
+          cursor: pointer;
+        }
+        .dlg-close:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        }
+        .dlg-body {
+          padding: 8px 20px 16px;
+        }
+        .dlg-body h3 {
+          margin: 20px 0 8px;
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--secondary-text-color, #727272);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .fields {
+          display: grid;
+          grid-template-columns: max-content 1fr;
+          gap: 10px 16px;
+          margin: 8px 0 0;
+          font-size: 14px;
+        }
+        .fields dt {
+          color: var(--secondary-text-color, #727272);
+        }
+        .fields dd {
+          margin: 0;
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        .fields dd small {
+          display: block;
+          color: var(--secondary-text-color, #727272);
+        }
+        .fields .badge.excluded {
+          margin-left: 6px;
+        }
+        .mono {
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        .dlg-note {
+          margin: 8px 0;
+          color: var(--secondary-text-color, #727272);
+          font-size: 14px;
+        }
+        .dlg-error {
+          margin: 8px 0;
+          padding: 10px 12px;
+          border-radius: 8px;
+          box-shadow: inset 0 0 0 999px rgba(176, 0, 32, 0.08);
+          color: var(--error-color, #b00020);
+          font-size: 14px;
+        }
+        .entities {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          border: 1px solid var(--divider-color, #e0e0e0);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .entities li + li {
+          border-top: 1px solid var(--divider-color, #e0e0e0);
+        }
+        .entities button {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          width: 100%;
+          padding: 10px 12px;
+          border: none;
+          background: none;
+          color: inherit;
+          font: inherit;
+          font-size: 14px;
+          text-align: left;
+          cursor: pointer;
+        }
+        .entities button:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        }
+        .ent-name {
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+        .ent-name small {
+          display: block;
+          color: var(--secondary-text-color, #727272);
+          font-size: 12px;
+        }
+        .ent-state {
+          flex: 0 0 auto;
+          max-width: 50%;
+          text-align: right;
+          overflow-wrap: anywhere;
+        }
+        .dlg-actions {
+          position: sticky;
+          bottom: 0;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+          background: var(--card-background-color, #fff);
+          border-top: 1px solid var(--divider-color, #e0e0e0);
+        }
+        .dlg-actions button {
+          flex: 1 1 auto;
+          padding: 10px 14px;
+          border-radius: 8px;
+          border: 1px solid var(--divider-color, #ccc);
+          background: none;
+          color: var(--primary-text-color, #212121);
+          font: inherit;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .dlg-actions button:hover:not(:disabled) {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        }
+        .dlg-actions button:disabled {
+          color: var(--disabled-text-color, #9e9e9e);
+          cursor: default;
+        }
+        .dlg-actions button.destructive {
+          color: var(--error-color, #b00020);
+          border-color: currentColor;
+        }
         .state-row td {
           text-align: center;
           padding: 40px 12px;
@@ -861,6 +1462,8 @@ class UnifiDynamicPanel extends HTMLElement {
           <tbody></tbody>
         </table>
       </div>
+
+      <dialog class="device"></dialog>
     `;
 
     const search = this.shadowRoot.querySelector(".search");
@@ -955,10 +1558,30 @@ class UnifiDynamicPanel extends HTMLElement {
     // würde sonst optisch abdriften. .content ist der einzige Bereich, der
     // scrollt (siehe Kommentar bei :host).
     this.shadowRoot.querySelector(".content").addEventListener("scroll", () => {
+      this._lastScrollAt = Date.now();
       if (this._openMenuKey !== null) {
         this._openMenuKey = null;
         this._renderRows();
       }
+    });
+
+    // Tastatur: Enter/Leertaste auf einer fokussierten Zeile öffnet die
+    // Geräteansicht wie ein Klick.
+    this.shadowRoot.querySelector("tbody").addEventListener("keydown", (ev) => {
+      if (ev.key !== "Enter" && ev.key !== " ") return;
+      const row = ev.target.closest && ev.target.closest("tr[data-key]");
+      if (!row || ev.target !== row) return;
+      ev.preventDefault();
+      this._openDialog(row.dataset.key);
+    });
+
+    const dialog = this.shadowRoot.querySelector("dialog.device");
+    dialog.addEventListener("click", (ev) => this._handleDialogClick(ev));
+    // Esc schliesst den Dialog nativ; hier nur den Zustand nachziehen.
+    dialog.addEventListener("close", () => {
+      this._dialogKey = null;
+      this._dialogError = null;
+      this._dialogHtml = "";
     });
 
     this._renderRows();
@@ -986,7 +1609,9 @@ class UnifiDynamicPanel extends HTMLElement {
       ev.stopPropagation();
       const action = actionBtn.dataset.action;
       this._openMenuKey = null;
-      if (action === "open-device") {
+      if (action === "details") {
+        this._openDialog(key);
+      } else if (action === "open-device") {
         this._openDevice(deviceId);
       } else if (action === "exclude") {
         this._excludeClient(entryId, mac);
@@ -1001,11 +1626,20 @@ class UnifiDynamicPanel extends HTMLElement {
       return;
     }
 
-    // Klick auf die Zeile ausserhalb von Menü und Aktionen: bewusst ohne
-    // Wirkung. Ein Klick auf die Zeile öffnete früher die Geräteseite,
-    // was beim schnellen Scrollen/Klicken in der Tabelle leicht ungewollt
-    // ausgelöst wurde. Die Geräteseite ist jetzt ausschliesslich über den
-    // Menüpunkt "Geräteseite öffnen" erreichbar.
+    // Klick auf die Zeile öffnet die Geräteansicht. Früher führte er auf
+    // die HA-Geräteseite und damit weg vom Panel, was beim Scrollen leicht
+    // ungewollt passierte. Jetzt ist es nur ein Dialog, der sich mit einem
+    // Tipp wieder schliesst, und zusätzlich abgesichert: Nach einer
+    // Wischbewegung löst der Browser ohnehin keinen Klick aus; ein Tipp
+    // in eine noch laufende Schwungbewegung (stoppt nur das Scrollen) und
+    // ein Markieren von Text (z.B. MAC kopieren) öffnen ebenfalls nichts.
+    // Ist ein Zeilenmenü offen, schliesst der erste Tipp nur dieses (der
+    // Handler am shadowRoot erledigt das), statt gleich einen Dialog zu öffnen.
+    if (this._openMenuKey !== null) return;
+    if (Date.now() - this._lastScrollAt < SCROLL_CLICK_GUARD_MS) return;
+    const selection = window.getSelection ? String(window.getSelection() || "") : "";
+    if (selection) return;
+    this._openDialog(key);
   }
 
   // Gemeinsame Regel für Tabelle und Zähler, damit beide nie auseinander-
@@ -1049,6 +1683,9 @@ class UnifiDynamicPanel extends HTMLElement {
     if (!tbody) return;
 
     this._renderStats();
+    // Vor den frühen Rückgaben unten (Laden, leere Tabelle): der Dialog
+    // hängt nicht davon ab, ob der Client gerade in der Tabelle sichtbar ist.
+    this._renderDialog();
 
     const errorBanner = this.shadowRoot.querySelector(".error-banner");
     if (this._error) {
@@ -1101,6 +1738,9 @@ class UnifiDynamicPanel extends HTMLElement {
         const menu = menuOpen
           ? `
           <div class="menu">
+            <button data-action="details">
+              ${this._escape(this._t("menuDetails"))}
+            </button>
             <button data-action="open-device" ${c.device_id ? "" : "disabled"}>
               ${this._escape(this._t("menuOpenDevice"))}
             </button>
@@ -1114,7 +1754,7 @@ class UnifiDynamicPanel extends HTMLElement {
           : "";
 
         return `
-          <tr data-key="${this._escape(key)}"
+          <tr data-key="${this._escape(key)}" tabindex="0"
               data-entry-id="${this._escape(c.entry_id)}"
               data-mac="${this._escape(c.mac)}"
               data-name="${this._escape(c.name)}"

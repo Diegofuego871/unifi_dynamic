@@ -29,8 +29,8 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   Sprache).
 - Das Bild der Meldung bringt die Integration mit, nichts einzurichten.
 - Die Neugeräte-Meldung wartet, bis alle gewählten Angaben tatsächlich
-  vorliegen, und sendet dann sofort. Ein Klick darauf öffnet die Geräteseite
-  des Clients. Zwei Buttons wirken direkt aus der Meldung heraus: „Nie
+  vorliegen, und sendet dann sofort. Ein Tipp darauf öffnet die
+  Geräteansicht des Clients im Panel, wahlweise seine Home-Assistant-Geräteseite. Zwei Buttons wirken direkt aus der Meldung heraus: „Nie
   entfernen" setzt den Client auf die Ausnahmeliste, „Jetzt entfernen" löscht
   ihn sofort.
 - Der Purge setzt aus, solange der Controller nicht erreichbar ist. Ein Ausfall
@@ -47,7 +47,8 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   filterbare Tabelle aller Clients über alle konfigurierten UniFi-Hosts
   hinweg (Alias, IP, MAC, SSID, Access Point, Verbindungsart, zuletzt
   gesehen, Online-Status), mit Menü pro Zeile zum Entfernen oder Eintragen
-  in die Ausnahmeliste, und Klick öffnet die Geräteseite.
+  in die Ausnahmeliste. Ein Tipp auf eine Zeile öffnet eine Geräteansicht mit
+  allen Angaben, den Entitäten und denselben Aktionen.
 
 ## Installation
 
@@ -103,6 +104,7 @@ ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind.
 | Option | Bedeutung | Vorgabe |
 | --- | --- | --- |
 | Ziel für Push-Benachrichtigung | notify-Service oder notify-Entity, etwa eine notify-Gruppe | keines |
+| Tipp auf eine Gerätemeldung öffnet | „Geräteansicht im Panel" oder „Home-Assistant-Geräteseite" (für alle, die das Panel nicht nutzen) | Geräteansicht im Panel |
 | Auch melden, wenn nichts entfernt wurde | Push nach jedem täglichen Lauf, auch ohne Treffer | aus |
 | Neue Geräte melden | Push, sobald ein Client zum ersten Mal auftaucht | an |
 | Melden, wenn der Controller ausfällt | Push nach einer Stunde ohne erfolgreichen Poll, samt Entwarnung | an |
@@ -181,18 +183,52 @@ Das gilt pro Browser/Gerät, nicht geräteübergreifend synchronisiert. Ein
 Button „Filter zurücksetzen" in der Werkzeugleiste setzt alles mit einem
 Klick auf die Standardansicht zurück.
 
-Jede Zeile hat ein ⋮-Menü mit „Vor automatischem Löschen schützen" (trägt
+Jede Zeile hat ein ⋮-Menü mit „Details", „Vor automatischem Löschen schützen" (trägt
 den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt
 dann sofort — dasselbe Verhalten wie der Meldungs-Button und die Aktion
 `remove_client`: ein noch aktiver Client wird beim nächsten Abgleich neu
-angelegt und erneut als neu gemeldet) und „Geräteseite öffnen". Steht ein
+angelegt und erneut als neu gemeldet) und „HA-Geräteseite öffnen". Steht ein
 Client schon auf der Ausnahmeliste, zeigt das Menü stattdessen „Nicht mehr
-schützen", um ihn wieder davon zu entfernen. Ein Klick auf die Zeile selbst
-hat keine Wirkung mehr
-— die Geräteseite ist absichtlich nur noch über diesen Menüpunkt erreichbar:
-Ein Klick auf die Zeile öffnete früher direkt die Geräteseite, was beim
-Scrollen oder Überfliegen der Tabelle zu leicht versehentlich ausgelöst
-wurde. Bei mehr als einem konfigurierten UniFi-Host zeigt die Tabelle eine
+schützen", um ihn wieder davon zu entfernen. Der erste Menüpunkt,
+„Details", öffnet die Geräteansicht — ebenso ein Tipp auf die Zeile selbst.
+
+Die Geräteansicht ist ein Dialog über der Tabelle (auf dem Handy ein Blatt,
+das von unten hereinfährt) mit allem, was die Integration über den Client
+weiss: Status, Schutz, Verbindungsart, IP, MAC, Hostname, SSID, Access
+Point, Signal (dBm und der RSSI-Wert des Controllers, bei einem Offline-Client
+als „zuletzt gemessen" markiert), zuerst und zuletzt gesehen, jeweils mit
+relativer Zeitangabe. Darunter stehen die Home-Assistant-Entitäten des
+Clients mit ihrem aktuellen Zustand — ein Tipp darauf öffnet den
+Entitäts-Dialog von Home Assistant mit Verlauf — und unten die Aktionen:
+„HA-Geräteseite öffnen", schützen bzw. nicht mehr schützen und „Löschen".
+Nach erfolgreichem Löschen schliesst sich der Dialog von selbst; schlägt eine
+Aktion fehl, steht der Fehler im Dialog. Esc, der ×-Button oder ein Klick
+neben den Dialog schliessen ihn. Kabel-Clients zeigen die WLAN-Felder nicht.
+
+„Zuerst gesehen" stammt aus dem Feld `first_seen` des Controllers und reicht
+damit auch vor die Installation zurück. Liefert der Controller es nicht,
+nimmt die Integration den Zeitpunkt, zu dem sie den Client selbst zum ersten
+Mal gesehen hat — ausser bei Clients, die bei Einrichtung oder Update schon
+bekannt waren: Die zeigen „unbekannt" statt eines erfundenen Datums.
+
+Ein Tipp auf die Zeile führte früher direkt auf die Geräteseite und damit
+weg vom Panel, was beim Scrollen zu leicht passierte. Der Dialog ist dagegen
+abgesichert: Eine Wischbewegung zählt ohnehin nie als Tipp, und auch ein Tipp
+innerhalb von 300 ms nach dem Scrollen (der Tipp, der auf dem Handy eine
+Schwungbewegung stoppt), ein Tipp bei offenem Zeilenmenü (schliesst nur das
+Menü) und das Markieren von Text (etwa um eine MAC zu kopieren) öffnen ihn
+nicht.
+
+Push-Meldungen zu einem einzelnen Client verlinken auf
+`/unifi-dynamic?entry=<Entry-ID>&mac=<MAC>`; das Panel öffnet die
+Geräteansicht dieses Clients und entfernt die Parameter danach aus der
+Adresse, damit ein Neuladen sie nicht erneut öffnet. Das funktioniert auch
+bei bereits offenem Panel. Existiert der Client nicht mehr, erscheint ein
+Hinweis. Wer das Panel nicht nutzt, stellt das Ziel in den Optionen („Tipp
+auf eine Gerätemeldung öffnet", Abschnitt Push) auf die
+Home-Assistant-Geräteseite zurück.
+
+Bei mehr als einem konfigurierten UniFi-Host zeigt die Tabelle eine
 Host-Spalte und listet die Clients aller Hosts gemeinsam, statt ein Panel
 pro Host aufzuspalten.
 
