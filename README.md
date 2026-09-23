@@ -185,6 +185,8 @@ exclusion list shows "Stop protecting" instead of "Protect from automatic
 removal", to take it back off the list. The menu's first item, "Details",
 opens the device view — as does tapping the row itself.
 
+![Device view of a client with its details, entities and actions](docs/panel-device-view-en.png)
+
 The device view is a dialog over the table (on a phone a sheet sliding up
 from the bottom) with everything the integration knows about the client:
 status, protection, connection type, IP, MAC, hostname, SSID, access point,

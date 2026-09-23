@@ -192,6 +192,8 @@ Client schon auf der Ausnahmeliste, zeigt das Menü stattdessen „Nicht mehr
 schützen", um ihn wieder davon zu entfernen. Der erste Menüpunkt,
 „Details", öffnet die Geräteansicht — ebenso ein Tipp auf die Zeile selbst.
 
+![Geräteansicht eines Clients mit Angaben, Entitäten und Aktionen](docs/panel-device-view.png)
+
 Die Geräteansicht ist ein Dialog über der Tabelle (auf dem Handy ein Blatt,
 das von unten hereinfährt) mit allem, was die Integration über den Client
 weiss: Status, Schutz, Verbindungsart, IP, MAC, Hostname, SSID, Access
