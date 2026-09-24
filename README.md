@@ -51,6 +51,8 @@ the client has not been reported by the UniFi controller for a while.
 
 ## Installation
 
+Requires Home Assistant 2024.12 or newer.
+
 ### Via HACS (custom repository)
 
 1. Open HACS → three-dot menu (top right) → **Custom repositories**.

@@ -104,7 +104,7 @@ def preferred_client_name(data: dict[str, Any], mac: str) -> str:
 # async_get_device_by_identifier existiert erst ab Home Assistant 2026.8.0
 # (Umstellung auf pro Config-Entry eindeutige Identifier). Das alte
 # async_get_device(identifiers=...) ist seither als deprecated markiert und
-# wird ab 2027.8.0 entfernt, hacs.json lässt aber Home Assistant ab 2024.1.0
+# wird ab 2027.8.0 entfernt, hacs.json lässt aber Home Assistant ab 2024.12.0
 # zu. Das Flag wird einmalig zur Ladezeit geprüft, nicht bei jedem Aufruf.
 _HAS_DEVICE_BY_IDENTIFIER: Final = hasattr(dr.DeviceRegistry, "async_get_device_by_identifier")
 

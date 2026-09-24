@@ -1,0 +1,3 @@
+# Python-Bytecode: wird von Python selbst erzeugt, gehört nicht ins Repo
+__pycache__/
+*.py[cod]

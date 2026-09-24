@@ -54,6 +54,8 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
 ## Installation
 
+Voraussetzung: Home Assistant 2024.12 oder neuer.
+
 ### Über HACS (Custom Repository)
 
 1. HACS öffnen → Drei-Punkte-Menü (oben rechts) → **Custom repositories**.
