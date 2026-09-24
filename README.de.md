@@ -216,7 +216,13 @@ verknüpfen — etwa dem Shelly- oder Sonos-Gerät hinter diesem Netzwerk-Client
 In der Geräteansicht öffnet „Gerät verknüpfen…" eine durchsuchbare Liste
 aller Home-Assistant-Geräte (Name, Bereich, Hersteller); Geräte, die dieselbe
 MAC-Adresse wie der Client melden, stehen als Vorschlag oben unter „Passt zur
-MAC-Adresse". Danach zeigt die Ansicht das verknüpfte Gerät mit Bereich und
+MAC-Adresse". Geräte, die bereits mit einem anderen Client verknüpft sind,
+tragen den Hinweis „Bereits verknüpft mit: …" mit dessen Namen und stehen nach
+den freien Geräten; sie bleiben wählbar, weil ein Home-Assistant-Gerät zu
+mehreren Clients gehören kann (etwa LAN- und WLAN-Anschluss desselben Geräts).
+Der Schalter „Bereits verknüpfte ausblenden" in der Liste blendet sie
+stattdessen aus; die Einstellung merkt sich der Browser, und das Gerät des
+gerade bearbeiteten Clients bleibt immer sichtbar. Danach zeigt die Ansicht das verknüpfte Gerät mit Bereich und
 Modell, „Ändern" und „Verknüpfung entfernen", ein Klick auf den Namen öffnet
 seine Geräteseite. Die Tabelle hat eine Spalte „HA-Gerät" mit dem Namen des
 verknüpften Geräts, ein Klick führt direkt auf dessen Geräteseite; die Spalte

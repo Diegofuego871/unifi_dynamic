@@ -5,6 +5,28 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.3] - 2026-09-24
+
+### Added
+
+- The device list for linking marks devices that are already linked to
+  another client with "Already linked to: …" and that client's name, and
+  lists them after the free ones. Suggestions by MAC address stay at the
+  top, with the same note. They remain selectable, because one Home
+  Assistant device can belong to several clients (for example the wired and
+  the wireless interface of the same device). The search also finds a
+  device by the name of the client it is linked to.
+- A "Hide already linked" switch in the list hides those devices instead
+  and shows how many were hidden. The setting is remembered per browser;
+  the device linked to the client being edited always stays visible.
+
+### Fixed
+
+- Closing the device view with Esc and immediately opening another client
+  could leave the new view without its client, because the browser reports
+  the close with a delay. The late close is now ignored when a view is
+  already open again.
+
 ## [2.2.2] - 2026-09-24
 
 ### Fixed
@@ -889,6 +911,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.2.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.3
 [2.2.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.2
 [2.2.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.1
 [2.2.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.0

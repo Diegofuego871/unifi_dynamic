@@ -208,7 +208,14 @@ Each client can be linked to any Home Assistant device — for example the
 Shelly or Sonos device that sits behind this network client. In the device
 view, "Link a device…" opens a searchable list of all Home Assistant devices
 (name, area, manufacturer); devices that report the same MAC address as the
-client are suggested at the top under "Matches the MAC address". The linked
+client are suggested at the top under "Matches the MAC address". Devices
+already linked to another client are marked "Already linked to: …" with that
+client's name and listed after the free ones; they stay selectable, since one
+Home Assistant device can belong to several clients (for example the wired
+and the wireless interface of the same device). The "Hide already linked"
+switch in the list hides them instead; the setting is remembered per
+browser, and the device linked to the client you are editing always stays
+visible. The linked
 device then shows with its area and model, "Change" and "Remove link", and a
 click on its name opens its device page. The table has an "HA device" column
 with the linked device's name, one click away from its device page; the

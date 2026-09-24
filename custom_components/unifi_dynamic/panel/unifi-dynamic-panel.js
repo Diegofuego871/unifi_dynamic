@@ -105,6 +105,10 @@ const STRINGS = {
     pickerNone: "Kein Gerät gefunden.",
     pickerMore: (n) => `${n} weitere - Suche verfeinern.`,
     pickerCurrent: "verknüpft",
+    pickerHideLinked: "Bereits verknüpfte ausblenden",
+    pickerLinkedTo: (names) => `Bereits verknüpft mit: ${names}`,
+    pickerHiddenCount: (n) =>
+      n === 1 ? "1 bereits verknüpftes Gerät ausgeblendet." : `${n} bereits verknüpfte Geräte ausgeblendet.`,
   },
   en: {
     searchPlaceholder: "Search (name, IP, MAC, SSID, AP)…",
@@ -184,6 +188,10 @@ const STRINGS = {
     pickerNone: "No device found.",
     pickerMore: (n) => `${n} more - refine the search.`,
     pickerCurrent: "linked",
+    pickerHideLinked: "Hide already linked",
+    pickerLinkedTo: (names) => `Already linked to: ${names}`,
+    pickerHiddenCount: (n) =>
+      n === 1 ? "1 already linked device hidden." : `${n} already linked devices hidden.`,
   },
 };
 
@@ -235,6 +243,9 @@ const DEFAULT_PREFS = {
   connFilter: "all",
   sortKey: null,
   sortDir: "asc",
+  // Geräteauswahl: bei anderen Clients schon verknüpfte Geräte ausblenden
+  // statt nur markieren. Gilt nur für die Auswahl, nicht für die Tabelle.
+  hideLinked: false,
 };
 
 // Fehler beim Lesen/Schreiben werden bewusst nur geloggt, nie geworfen:
@@ -255,6 +266,7 @@ function loadPrefs() {
         : DEFAULT_PREFS.connFilter,
       sortKey: SORT_KEYS.includes(parsed.sortKey) ? parsed.sortKey : DEFAULT_PREFS.sortKey,
       sortDir: parsed.sortDir === "desc" ? "desc" : DEFAULT_PREFS.sortDir,
+      hideLinked: parsed.hideLinked === true,
     };
   } catch (err) {
     console.warn("unifi-dynamic-panel: Einstellungen konnten nicht geladen werden", err);
@@ -286,6 +298,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._connFilter = prefs.connFilter;
     this._sortKey = prefs.sortKey;
     this._sortDir = prefs.sortDir;
+    this._hideLinked = prefs.hideLinked;
 
     this._openMenuKey = null;
     this._pollTimer = null;
@@ -319,6 +332,7 @@ class UnifiDynamicPanel extends HTMLElement {
       connFilter: this._connFilter,
       sortKey: this._sortKey,
       sortDir: this._sortDir,
+      hideLinked: this._hideLinked,
     });
   }
 
@@ -643,27 +657,55 @@ class UnifiDynamicPanel extends HTMLElement {
       list = `<p class="dlg-note">${esc(t("loading"))}</p>`;
     } else {
       const q = this._pickerQuery.trim().toLowerCase();
+      const currentId = c.linked_device ? c.linked_device.id : null;
+      const currentKey = `${c.entry_id}|${c.mac}`;
+      // Geräte, die schon bei anderen Clients verknüpft sind, mit deren
+      // Namen. Mehrere Clients pro Gerät sind erlaubt (z.B. LAN und WLAN
+      // desselben Geräts), deshalb nur markieren bzw. wahlweise ausblenden,
+      // nie sperren.
+      const linkedElsewhere = new Map();
+      for (const other of this._clients) {
+        if (!other.linked_device || `${other.entry_id}|${other.mac}` === currentKey) continue;
+        const names = linkedElsewhere.get(other.linked_device.id) || [];
+        names.push(other.name);
+        linkedElsewhere.set(other.linked_device.id, names);
+      }
+      const takenBy = (d) => (d.id === currentId ? null : linkedElsewhere.get(d.id) || null);
       const matches = (d) =>
         !q ||
-        [d.name, d.area, d.manufacturer, d.model]
+        [d.name, d.area, d.manufacturer, d.model, ...(takenBy(d) || [])]
           .filter(Boolean)
           .join(" ")
           .toLowerCase()
           .includes(q);
-      const currentId = c.linked_device ? c.linked_device.id : null;
-      const item = (d) => `<button class="pick${d.id === currentId ? " current" : ""}"
+      // Ausgeblendet werden nur bei anderen verknüpfte Geräte, nie das
+      // eigene - sonst liesse sich die eigene Zuordnung nicht mehr sehen.
+      let hiddenCount = 0;
+      const visible = (d) => {
+        if (!this._hideLinked || !takenBy(d)) return true;
+        hiddenCount += 1;
+        return false;
+      };
+      const item = (d) => {
+        const taken = takenBy(d);
+        return `<button class="pick${d.id === currentId ? " current" : ""}${taken ? " taken" : ""}"
           data-dlg="link-pick" data-device-id="${esc(d.id)}">
           <span class="ln-name">${esc(d.name)}${
             d.id === currentId ? ` <span class="badge excluded">${esc(t("pickerCurrent"))}</span>` : ""
           }</span>
           ${meta(d) ? `<small>${esc(meta(d))}</small>` : ""}
+          ${taken ? `<small class="pick-taken">${esc(t("pickerLinkedTo")(taken.join(", ")))}</small>` : ""}
         </button>`;
+      };
+      const candidates = this._devices.filter((d) => matches(d) && visible(d));
       // Vorschläge: Geräte, die dieselbe MAC melden (Shelly, Sonos, ...).
-      const suggested = this._devices.filter(
-        (d) => (d.macs || []).includes(c.mac) && matches(d)
-      );
+      // Bleiben oben, auch wenn schon verknüpft (dann mit Hinweis).
+      const suggested = candidates.filter((d) => (d.macs || []).includes(c.mac));
       const suggestedIds = new Set(suggested.map((d) => d.id));
-      const rest = this._devices.filter((d) => !suggestedIds.has(d.id) && matches(d));
+      // Freie Geräte zuerst, bereits verknüpfte ans Ende; innerhalb der
+      // Gruppen bleibt die alphabetische Reihenfolge vom Backend.
+      const rest = candidates.filter((d) => !suggestedIds.has(d.id));
+      rest.sort((a, b) => (takenBy(a) ? 1 : 0) - (takenBy(b) ? 1 : 0));
       const shown = rest.slice(0, PICKER_LIMIT);
       list = "";
       if (suggested.length) {
@@ -682,6 +724,9 @@ class UnifiDynamicPanel extends HTMLElement {
       if (rest.length > shown.length) {
         list += `<p class="dlg-note">${esc(t("pickerMore")(rest.length - shown.length))}</p>`;
       }
+      if (hiddenCount) {
+        list += `<p class="dlg-note">${esc(t("pickerHiddenCount")(hiddenCount))}</p>`;
+      }
     }
 
     return `<div class="picker">
@@ -691,6 +736,10 @@ class UnifiDynamicPanel extends HTMLElement {
           )}" value="${esc(this._pickerQuery)}" autocomplete="off" />
           <button data-dlg="link-cancel">${esc(t("linkCancel"))}</button>
         </div>
+        <label class="picker-toggle">
+          <input type="checkbox" data-dlg="picker-hide-linked" ${this._hideLinked ? "checked" : ""} />
+          ${esc(t("pickerHideLinked"))}
+        </label>
         <div class="picker-list">${list}</div>
       </div>`;
   }
@@ -984,8 +1033,10 @@ class UnifiDynamicPanel extends HTMLElement {
         : null;
     // Beim Suchfeld der Geräteauswahl auch die Cursorposition retten, sonst
     // spränge der Cursor bei jedem Tastendruck (Neuaufbau) ans Ende.
+    // Nur bei Textfeldern: Checkboxen haben keine Textauswahl, dort würde
+    // setSelectionRange einen Fehler werfen.
     const caret =
-      active && active.tagName === "INPUT"
+      active && active.tagName === "INPUT" && (active.type === "search" || active.type === "text")
         ? [active.selectionStart, active.selectionEnd]
         : null;
     const scroll = dialog.scrollTop;
@@ -1043,6 +1094,15 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     if (action === "link-cancel") {
       this._pickerOpen = false;
+      this._renderDialog();
+      return;
+    }
+    // Direkt im Klick verarbeiten, nicht erst bei "change": der Neuaufbau
+    // unten würde die Checkbox sonst auf den alten Zustand zurücksetzen,
+    // bevor "change" feuert.
+    if (action === "picker-hide-linked") {
+      this._hideLinked = btn.checked;
+      this._savePrefs();
       this._renderDialog();
       return;
     }
@@ -1823,6 +1883,31 @@ class UnifiDynamicPanel extends HTMLElement {
         .pick.current {
           background: var(--secondary-background-color, rgba(0,0,0,0.04));
         }
+        .picker-toggle {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
+          color: var(--secondary-text-color, #727272);
+          font-size: 14px;
+          cursor: pointer;
+          user-select: none;
+        }
+        .picker-toggle input {
+          width: 18px;
+          height: 18px;
+          margin: 0;
+          accent-color: var(--primary-color, #03a9f4);
+          cursor: pointer;
+        }
+        /* Bei einem anderen Client schon verknüpft: gedämpft, aber wählbar. */
+        .pick.taken .ln-name {
+          color: var(--secondary-text-color, #727272);
+        }
+        .pick small.pick-taken {
+          color: var(--warning-color, #e65100);
+        }
         .pick-group {
           padding: 10px 12px 4px;
           color: var(--secondary-text-color, #727272);
@@ -2101,6 +2186,10 @@ class UnifiDynamicPanel extends HTMLElement {
     });
     // Esc schliesst den Dialog nativ; hier nur den Zustand nachziehen.
     dialog.addEventListener("close", () => {
+      // "close" kommt asynchron. Wurde inzwischen schon der nächste Client
+      // geöffnet (Esc und sofort andere Zeile), gehört der Zustand bereits
+      // zu diesem und darf nicht zurückgesetzt werden.
+      if (dialog.open) return;
       this._dialogKey = null;
       this._dialogError = null;
       this._dialogHtml = "";
