@@ -5,6 +5,15 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.2] - 2026-09-24
+
+### Fixed
+
+- Links to devices of the official UniFi Network integration that were set
+  in 2.2.0 are now removed automatically, the same way as links to deleted
+  devices. 2.2.1 only hid these devices from the list and kept existing
+  links, so they still showed in the table and the device view.
+
 ## [2.2.1] - 2026-09-24
 
 ### Changed
@@ -880,6 +889,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.2.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.2
 [2.2.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.1
 [2.2.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.0
 [2.1.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.1

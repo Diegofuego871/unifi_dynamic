@@ -227,7 +227,9 @@ UniFi-Network-Integration sind nicht verknüpfbar und erscheinen nicht in der
 Liste: UniFi Network legt für dieselben Clients (und für Access Points und
 Switches) eigene Geräte an, als Verknüpfungsziel wären sie nur eine Doppelung
 des Clients. Ein Gerät, das sich UniFi Network mit einer anderen Integration
-teilt, etwa einem Shelly, bleibt wählbar. Die Verknüpfung übersteht Neustarts und Updates. Wird der Client entfernt — von Hand oder
+teilt, etwa einem Shelly, bleibt wählbar. Zeigt eine Verknüpfung trotzdem auf
+ein solches Gerät (gesetzt vor Version 2.2.1), wird sie automatisch entfernt.
+Die Verknüpfung übersteht Neustarts und Updates. Wird der Client entfernt — von Hand oder
 durch den Purge —, geht die Verknüpfung mit, und ein später neu angelegter
 Client muss neu verknüpft werden; die Schutzfunktion bewahrt einen Client
 (und damit seine Verknüpfung) vor dem Purge. Wird das verknüpfte Gerät in

@@ -666,9 +666,11 @@ def _ws_list_clients(
             linked_id = coordinator.linked_device_id(row["mac"])
             if linked_id:
                 linked_device = dev_reg.async_get(linked_id)
-                if linked_device is None:
-                    # Verknüpftes Gerät wurde in HA gelöscht: Verknüpfung
-                    # aufräumen statt einen toten Eintrag anzuzeigen.
+                if linked_device is None or not _is_linkable(hass, linked_device):
+                    # Verknüpftes Gerät wurde in HA gelöscht, oder es ist nicht
+                    # (mehr) verknüpfbar - etwa eine Verknüpfung auf ein
+                    # UniFi-Network-Gerät aus 2.2.0: Verknüpfung aufräumen
+                    # statt einen toten oder unerwünschten Eintrag anzuzeigen.
                     coordinator.set_device_link(row["mac"], None)
                 else:
                     linked = _device_summary(linked_device, area_reg)

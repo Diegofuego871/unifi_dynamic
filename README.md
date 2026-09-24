@@ -219,7 +219,8 @@ Network integration can't be linked and don't appear in the list: UniFi
 Network creates its own devices for the same clients (and for access points
 and switches), so as a link target they would only duplicate the client. A
 device that UniFi Network shares with another integration, such as a Shelly,
-stays selectable. The link survives
+stays selectable. A link that points to such a device anyway (set before
+version 2.2.1) is removed automatically. The link survives
 restarts and updates. When the client is removed — by hand or by the purge —
 the link goes with it, and a client created again later has to be linked
 again; protecting a client keeps it (and its link) from being purged. If the
