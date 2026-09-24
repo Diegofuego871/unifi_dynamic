@@ -759,6 +759,35 @@ def _is_own_device(device: dr.DeviceEntry) -> bool:
     return any(domain == DOMAIN for domain, *_ in device.identifiers)
 
 
+# Integrationen, deren Geräte nicht verknüpfbar sind: diese hier und die
+# offizielle UniFi-Network-Integration ("unifi"). Letztere legt für dieselben
+# Clients eigene Geräte an (Device-Tracker) sowie Geräte für Access Points und
+# Switches - als Verknüpfungsziel wären das nur Doppelungen desselben Clients.
+NOT_LINKABLE_DOMAINS = frozenset({DOMAIN, "unifi"})
+
+
+def _is_linkable(hass: HomeAssistant, device: dr.DeviceEntry) -> bool:
+    """
+    Darf dieses HA-Gerät mit einem Client verknüpft werden?
+
+    Massgeblich sind die Config-Entries des Geräts: Gehört es ausschliesslich
+    zu nicht verknüpfbaren Integrationen, fällt es weg. Teilt es sich ein
+    Gerät mit einer anderen Integration (z.B. Shelly und UniFi Network am
+    selben Registry-Eintrag), bleibt es wählbar - es ist dann das Shelly-
+    Gerät. Ohne Config-Entry entscheiden die Identifier.
+    """
+    if _is_own_device(device):
+        return False
+    domains = set()
+    for entry_id in device.config_entries:
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is not None:
+            domains.add(entry.domain)
+    if not domains:
+        domains = {domain for domain, *_ in device.identifiers}
+    return not domains or not domains <= NOT_LINKABLE_DOMAINS
+
+
 def _device_summary(device: dr.DeviceEntry, area_reg: ar.AreaRegistry) -> dict[str, Any]:
     """Anzeige-Daten eines HA-Geräts für Tabelle, Dialog und Auswahlliste."""
     area = area_reg.async_get_area(device.area_id) if device.area_id else None
@@ -783,13 +812,13 @@ def _device_summary(device: dr.DeviceEntry, area_reg: ar.AreaRegistry) -> dict[s
 def _ws_list_devices(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Alle HA-Geräte ausser den eigenen, für die Auswahl im Panel."""
+    """Alle verknüpfbaren HA-Geräte (siehe _is_linkable) für die Auswahl im Panel."""
     dev_reg = dr.async_get(hass)
     area_reg = ar.async_get(hass)
     devices = [
         _device_summary(device, area_reg)
         for device in dev_reg.devices.values()
-        if not _is_own_device(device)
+        if _is_linkable(hass, device)
     ]
     devices.sort(key=lambda d: str(d["name"]).casefold())
     connection.send_result(msg["id"], {"devices": devices})
@@ -823,9 +852,11 @@ def _ws_link_device(
         if device is None:
             connection.send_error(msg["id"], "not_found", "Unbekanntes Gerät")
             return
-        if _is_own_device(device):
+        if not _is_linkable(hass, device):
             connection.send_error(
-                msg["id"], "invalid", "Geräte dieser Integration sind nicht verknüpfbar"
+                msg["id"],
+                "invalid",
+                "Geräte dieser Integration und von UniFi Network sind nicht verknüpfbar",
             )
             return
 

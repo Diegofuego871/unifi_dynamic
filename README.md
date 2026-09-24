@@ -214,7 +214,12 @@ column can be sorted and the search box finds clients by the linked device's
 name and area too.
 
 The link is stored by this integration only; the linked device itself is
-never changed, and devices of this integration can't be linked. It survives
+never changed. Devices of this integration and of the official UniFi
+Network integration can't be linked and don't appear in the list: UniFi
+Network creates its own devices for the same clients (and for access points
+and switches), so as a link target they would only duplicate the client. A
+device that UniFi Network shares with another integration, such as a Shelly,
+stays selectable. The link survives
 restarts and updates. When the client is removed — by hand or by the purge —
 the link goes with it, and a client created again later has to be linked
 again; protecting a client keeps it (and its link) from being purged. If the

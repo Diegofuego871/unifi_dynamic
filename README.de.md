@@ -222,8 +222,12 @@ ist sortierbar, und die Suche findet Clients auch über Namen und Bereich des
 verknüpften Geräts.
 
 Die Verknüpfung speichert nur diese Integration; das verknüpfte Gerät selbst
-wird nie verändert, und Geräte dieser Integration sind nicht verknüpfbar. Sie
-übersteht Neustarts und Updates. Wird der Client entfernt — von Hand oder
+wird nie verändert. Geräte dieser Integration und der offiziellen
+UniFi-Network-Integration sind nicht verknüpfbar und erscheinen nicht in der
+Liste: UniFi Network legt für dieselben Clients (und für Access Points und
+Switches) eigene Geräte an, als Verknüpfungsziel wären sie nur eine Doppelung
+des Clients. Ein Gerät, das sich UniFi Network mit einer anderen Integration
+teilt, etwa einem Shelly, bleibt wählbar. Die Verknüpfung übersteht Neustarts und Updates. Wird der Client entfernt — von Hand oder
 durch den Purge —, geht die Verknüpfung mit, und ein später neu angelegter
 Client muss neu verknüpft werden; die Schutzfunktion bewahrt einen Client
 (und damit seine Verknüpfung) vor dem Purge. Wird das verknüpfte Gerät in

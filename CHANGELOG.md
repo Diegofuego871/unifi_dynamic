@@ -5,6 +5,19 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.1] - 2026-09-24
+
+### Changed
+
+- Devices of the official UniFi Network integration no longer appear in the
+  device list for linking and can't be linked. UniFi Network creates its own
+  devices for the same clients (plus access points and switches), so they
+  were only duplicates of the client and, reporting the same MAC address,
+  even showed up at the top as suggestions. A device that UniFi Network
+  shares with another integration (for example a Shelly) stays selectable.
+  Links set before this version are kept; change or remove them in the
+  device view if needed.
+
 ## [2.2.0] - 2026-09-24
 
 ### Added
@@ -867,6 +880,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.2.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.1
 [2.2.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.0
 [2.1.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.1
 [2.1.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.0
