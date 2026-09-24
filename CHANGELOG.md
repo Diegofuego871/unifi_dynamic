@@ -5,6 +5,33 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-09-24
+
+### Added
+
+- Link a client to any Home Assistant device. The device view has a new
+  "Linked device" section: "Link a device…" opens a searchable list of all
+  Home Assistant devices (name, area, manufacturer, model), with devices
+  that report the client's MAC address suggested at the top. A linked
+  device shows with its area and model, can be changed or unlinked, and a
+  click on it opens its device page.
+- New "HA device" table column with the linked device's name; one click
+  opens its device page. The column is sortable, and the search also finds
+  clients by the linked device's name and area.
+- The link is stored by this integration only and never changes the linked
+  device; devices of this integration can't be linked. Removing a client —
+  by hand or by the purge — also removes its link, and a link to a device
+  that was deleted in Home Assistant is dropped automatically. There is
+  deliberately no automatic merging by MAC address, so removing a client can
+  never affect the other integration's device.
+- WebSocket commands `unifi_dynamic/list_devices` and
+  `unifi_dynamic/link_device` (admin only, like the others).
+
+### Changed
+
+- README screenshots re-rendered with the new column and section, again
+  with entirely made-up data.
+
 ## [2.1.1] - 2026-09-23
 
 ### Added
@@ -840,6 +867,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.2.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.0
 [2.1.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.1
 [2.1.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.1.0
 [2.0.14]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.0.14

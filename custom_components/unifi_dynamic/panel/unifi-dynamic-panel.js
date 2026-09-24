@@ -40,6 +40,7 @@ const STRINGS = {
     filterConnWired: "Kabel",
     filterConnWireless: "WLAN",
     colName: "Alias",
+    colLinked: "HA-Gerät",
     colIp: "IP",
     colMac: "MAC",
     colSsid: "SSID",
@@ -91,6 +92,19 @@ const STRINGS = {
     copy: (what) => `${what} kopieren`,
     copied: (value) => `Kopiert: ${value}`,
     copyFailed: "Kopieren nicht möglich - der Browser erlaubt keinen Zugriff auf die Zwischenablage.",
+    secLinked: "Verknüpftes Gerät",
+    linkedNone: "Kein Home-Assistant-Gerät verknüpft.",
+    linkAdd: "Gerät verknüpfen…",
+    linkChange: "Ändern",
+    linkRemove: "Verknüpfung entfernen",
+    linkCancel: "Abbrechen",
+    linkOpen: (name) => `Geräteseite von ${name} öffnen`,
+    pickerSearch: "Gerät suchen (Name, Bereich, Hersteller)…",
+    pickerSuggested: "Passt zur MAC-Adresse",
+    pickerAll: "Alle Geräte",
+    pickerNone: "Kein Gerät gefunden.",
+    pickerMore: (n) => `${n} weitere - Suche verfeinern.`,
+    pickerCurrent: "verknüpft",
   },
   en: {
     searchPlaceholder: "Search (name, IP, MAC, SSID, AP)…",
@@ -105,6 +119,7 @@ const STRINGS = {
     filterConnWired: "Wired",
     filterConnWireless: "Wireless",
     colName: "Alias",
+    colLinked: "HA device",
     colIp: "IP",
     colMac: "MAC",
     colSsid: "SSID",
@@ -156,6 +171,19 @@ const STRINGS = {
     copy: (what) => `Copy ${what}`,
     copied: (value) => `Copied: ${value}`,
     copyFailed: "Could not copy - the browser does not allow access to the clipboard.",
+    secLinked: "Linked device",
+    linkedNone: "No Home Assistant device linked.",
+    linkAdd: "Link a device…",
+    linkChange: "Change",
+    linkRemove: "Remove link",
+    linkCancel: "Cancel",
+    linkOpen: (name) => `Open device page of ${name}`,
+    pickerSearch: "Search devices (name, area, manufacturer)…",
+    pickerSuggested: "Matches the MAC address",
+    pickerAll: "All devices",
+    pickerNone: "No device found.",
+    pickerMore: (n) => `${n} more - refine the search.`,
+    pickerCurrent: "linked",
   },
 };
 
@@ -173,6 +201,10 @@ const SCROLL_CLICK_GUARD_MS = 300;
 
 // Wie lange ein Kopieren-Button nach dem Kopieren das Häkchen zeigt.
 const COPIED_FEEDBACK_MS = 1500;
+
+// Höchstzahl Geräte in der Auswahlliste ohne Suchbegriff bzw. pro Suche;
+// eine Liste mit Hunderten Einträgen wäre auf dem Handy nicht bedienbar.
+const PICKER_LIMIT = 50;
 
 // Material Design Icons (mdi:content-copy, mdi:check), inline statt über
 // ha-icon, weil das iframe HAs Komponenten nicht kennt.
@@ -193,7 +225,7 @@ const BRAND_ICON_URL = "/unifi_dynamic/icon.png";
 // dem HA-Prozess zu tun hat - kein eigener Server-Speicher nötig. Bewusst
 // pro Browser/Gerät, nicht geräteübergreifend synchronisiert.
 const STORAGE_KEY = "unifi_dynamic_panel_prefs";
-const SORT_KEYS = ["name", "ip", "mac", "essid", "ap_name", "conn", "seen_at", "status"];
+const SORT_KEYS = ["name", "linked", "ip", "mac", "essid", "ap_name", "conn", "seen_at", "status"];
 const ONLINE_FILTERS = ["all", "online", "offline"];
 const CONN_FILTERS = ["all", "wired", "wireless"];
 
@@ -270,6 +302,13 @@ class UnifiDynamicPanel extends HTMLElement {
     // Wert, dessen Kopieren-Button gerade das Häkchen zeigt.
     this._copiedValue = null;
     this._copiedTimer = null;
+    // Geräteauswahl für die Verknüpfung: offen/zu, Suchbegriff, die per
+    // WebSocket geholte Geräteliste (null = noch nicht geladen) und ein
+    // Ladefehler.
+    this._pickerOpen = false;
+    this._pickerQuery = "";
+    this._devices = null;
+    this._devicesError = null;
     this._onParentLocation = () => this._checkDeepLink();
   }
 
@@ -494,6 +533,8 @@ class UnifiDynamicPanel extends HTMLElement {
     this._dialogKey = key;
     this._dialogError = null;
     this._dialogHtml = "";
+    this._pickerOpen = false;
+    this._pickerQuery = "";
     this._renderRows();
     this._renderDialog();
     if (!dialog.open) {
@@ -508,6 +549,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._dialogKey = null;
     this._dialogError = null;
     this._dialogHtml = "";
+    this._pickerOpen = false;
     if (dialog && dialog.open) {
       if (typeof dialog.close === "function") dialog.close();
       else dialog.removeAttribute("open");
@@ -562,6 +604,129 @@ class UnifiDynamicPanel extends HTMLElement {
     } catch (err) {
       console.warn("unifi-dynamic-panel: Entitäts-Dialog nicht verfügbar", err);
     }
+  }
+
+  // Abschnitt "Verknüpftes Gerät" in der Geräteansicht: entweder das
+  // verknüpfte Gerät mit Ändern/Entfernen, oder die Geräteauswahl.
+  _linkedSectionHtml(c) {
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const meta = (d) =>
+      [d.area, [d.manufacturer, d.model].filter(Boolean).join(" ")]
+        .filter(Boolean)
+        .join(" · ");
+
+    if (!this._pickerOpen) {
+      const d = c.linked_device;
+      if (!d) {
+        return `<p class="dlg-note">${esc(t("linkedNone"))}</p>
+          <button class="link-add" data-dlg="link-open">${esc(t("linkAdd"))}</button>`;
+      }
+      return `<div class="linked-card">
+          <button class="linked-main" data-dlg="open-linked" data-linked-id="${esc(d.id)}"
+            title="${esc(t("linkOpen")(d.name))}">
+            <span class="ln-name">${esc(d.name)}</span>
+            ${meta(d) ? `<small>${esc(meta(d))}</small>` : ""}
+          </button>
+          <div class="linked-actions">
+            <button data-dlg="link-open">${esc(t("linkChange"))}</button>
+            <button data-dlg="link-remove">${esc(t("linkRemove"))}</button>
+          </div>
+        </div>`;
+    }
+
+    let list;
+    if (this._devicesError) {
+      list = `<p class="dlg-note">${esc(t("error"))} ${esc(this._devicesError)}</p>
+        <button class="link-add" data-dlg="link-retry">${esc(t("retry"))}</button>`;
+    } else if (!this._devices) {
+      list = `<p class="dlg-note">${esc(t("loading"))}</p>`;
+    } else {
+      const q = this._pickerQuery.trim().toLowerCase();
+      const matches = (d) =>
+        !q ||
+        [d.name, d.area, d.manufacturer, d.model]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      const currentId = c.linked_device ? c.linked_device.id : null;
+      const item = (d) => `<button class="pick${d.id === currentId ? " current" : ""}"
+          data-dlg="link-pick" data-device-id="${esc(d.id)}">
+          <span class="ln-name">${esc(d.name)}${
+            d.id === currentId ? ` <span class="badge excluded">${esc(t("pickerCurrent"))}</span>` : ""
+          }</span>
+          ${meta(d) ? `<small>${esc(meta(d))}</small>` : ""}
+        </button>`;
+      // Vorschläge: Geräte, die dieselbe MAC melden (Shelly, Sonos, ...).
+      const suggested = this._devices.filter(
+        (d) => (d.macs || []).includes(c.mac) && matches(d)
+      );
+      const suggestedIds = new Set(suggested.map((d) => d.id));
+      const rest = this._devices.filter((d) => !suggestedIds.has(d.id) && matches(d));
+      const shown = rest.slice(0, PICKER_LIMIT);
+      list = "";
+      if (suggested.length) {
+        list += `<div class="pick-group">${esc(t("pickerSuggested"))}</div>${suggested
+          .map(item)
+          .join("")}`;
+      }
+      if (shown.length) {
+        list += `${suggested.length ? `<div class="pick-group">${esc(t("pickerAll"))}</div>` : ""}${shown
+          .map(item)
+          .join("")}`;
+      }
+      if (!suggested.length && !shown.length) {
+        list = `<p class="dlg-note">${esc(t("pickerNone"))}</p>`;
+      }
+      if (rest.length > shown.length) {
+        list += `<p class="dlg-note">${esc(t("pickerMore")(rest.length - shown.length))}</p>`;
+      }
+    }
+
+    return `<div class="picker">
+        <div class="picker-bar">
+          <input type="search" data-dlg="picker-search" placeholder="${esc(
+            t("pickerSearch")
+          )}" value="${esc(this._pickerQuery)}" autocomplete="off" />
+          <button data-dlg="link-cancel">${esc(t("linkCancel"))}</button>
+        </div>
+        <div class="picker-list">${list}</div>
+      </div>`;
+  }
+
+  async _openPicker() {
+    this._pickerOpen = true;
+    this._pickerQuery = "";
+    this._devicesError = null;
+    this._renderDialog();
+    const input = this.shadowRoot.querySelector('[data-dlg="picker-search"]');
+    if (input) input.focus();
+    // Liste bei jedem Öffnen frisch holen: neue oder umbenannte Geräte.
+    try {
+      const result = await this._hass.callWS({ type: "unifi_dynamic/list_devices" });
+      this._devices = result.devices || [];
+    } catch (err) {
+      this._devicesError = (err && err.message) || String(err);
+    }
+    this._renderDialog();
+  }
+
+  async _linkDevice(c, deviceId) {
+    try {
+      await this._hass.callWS({
+        type: "unifi_dynamic/link_device",
+        entry_id: c.entry_id,
+        mac: c.mac,
+        device_id: deviceId,
+      });
+    } catch (err) {
+      this._actionFailed(err);
+      return false;
+    }
+    this._pickerOpen = false;
+    await this._fetchClients();
+    return true;
   }
 
   _copyButtonHtml(value, label) {
@@ -792,6 +957,8 @@ class UnifiDynamicPanel extends HTMLElement {
           <dl class="fields">
             ${fields.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}
           </dl>
+          <h3>${esc(t("secLinked"))}</h3>
+          ${this._linkedSectionHtml(c)}
           <h3>${esc(t("secEntities"))}</h3>
           ${entitiesHtml}
         </div>
@@ -815,13 +982,28 @@ class UnifiDynamicPanel extends HTMLElement {
             active.dataset.entityId ? `[data-entity-id="${CSS.escape(active.dataset.entityId)}"]` : ""
           }${active.dataset.copy ? `[data-copy="${CSS.escape(active.dataset.copy)}"]` : ""}`
         : null;
+    // Beim Suchfeld der Geräteauswahl auch die Cursorposition retten, sonst
+    // spränge der Cursor bei jedem Tastendruck (Neuaufbau) ans Ende.
+    const caret =
+      active && active.tagName === "INPUT"
+        ? [active.selectionStart, active.selectionEnd]
+        : null;
     const scroll = dialog.scrollTop;
+    const pickerList = dialog.querySelector(".picker-list");
+    const pickerScroll = pickerList ? pickerList.scrollTop : 0;
     this._dialogHtml = html;
     dialog.innerHTML = html;
     dialog.scrollTop = scroll;
+    const newList = dialog.querySelector(".picker-list");
+    if (newList) newList.scrollTop = pickerScroll;
     if (focusSel) {
       const el = dialog.querySelector(focusSel);
-      if (el) el.focus();
+      if (el) {
+        el.focus();
+        if (caret && typeof el.setSelectionRange === "function") {
+          el.setSelectionRange(caret[0], caret[1]);
+        }
+      }
     }
   }
 
@@ -850,12 +1032,35 @@ class UnifiDynamicPanel extends HTMLElement {
       this._copy(btn.dataset.copy);
       return;
     }
+    if (action === "open-linked") {
+      this._closeDialog();
+      this._openDevice(btn.dataset.linkedId);
+      return;
+    }
+    if (action === "link-open") {
+      this._openPicker();
+      return;
+    }
+    if (action === "link-cancel") {
+      this._pickerOpen = false;
+      this._renderDialog();
+      return;
+    }
+    if (action === "link-retry") {
+      this._devices = null;
+      this._openPicker();
+      return;
+    }
     const c = this._clientByKey(this._dialogKey);
     if (!c) return;
     this._dialogError = null;
     if (action === "open-device") {
       this._closeDialog();
       this._openDevice(c.device_id);
+    } else if (action === "link-pick") {
+      await this._linkDevice(c, btn.dataset.deviceId);
+    } else if (action === "link-remove") {
+      await this._linkDevice(c, null);
     } else if (action === "exclude") {
       await this._excludeClient(c.entry_id, c.mac);
     } else if (action === "unexclude") {
@@ -876,7 +1081,8 @@ class UnifiDynamicPanel extends HTMLElement {
       if (this._onlineFilter === "offline" && c.online) return false;
       if (!this._matchesConn(c)) return false;
       if (!q) return true;
-      const haystack = [c.name, c.ip, c.mac, c.essid, c.ap_name]
+      const linked = c.linked_device || {};
+      const haystack = [c.name, c.ip, c.mac, c.essid, c.ap_name, linked.name, linked.area]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -906,6 +1112,7 @@ class UnifiDynamicPanel extends HTMLElement {
   // Rohfeld zurückgeführt, damit sortiert werden kann.
   _sortValue(client, key) {
     if (key === "conn") return client.is_wired;
+    if (key === "linked") return client.linked_device ? client.linked_device.name : null;
     if (key === "status") return client.online;
     return client[key];
   }
@@ -955,6 +1162,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const t = (k) => this._t(k);
     row.innerHTML = `
       ${this._headerCellHtml("name", t("colName"))}
+      ${this._headerCellHtml("linked", t("colLinked"))}
       ${this._headerCellHtml("ip", t("colIp"))}
       ${this._headerCellHtml("mac", t("colMac"))}
       ${this._headerCellHtml("essid", t("colSsid"))}
@@ -1509,6 +1717,120 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--secondary-background-color, rgba(0,0,0,0.08));
           color: var(--primary-text-color, #212121);
         }
+        .linked-link {
+          padding: 0;
+          border: none;
+          background: none;
+          color: var(--primary-color, #03a9f4);
+          font: inherit;
+          cursor: pointer;
+          text-align: left;
+        }
+        .linked-link:hover {
+          text-decoration: underline;
+        }
+        .linked-card {
+          border: 1px solid var(--divider-color, #e0e0e0);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .linked-main,
+        .pick {
+          display: block;
+          box-sizing: border-box;
+          width: 100%;
+          padding: 10px 12px;
+          border: none;
+          background: none;
+          color: inherit;
+          font: inherit;
+          font-size: 14px;
+          text-align: left;
+          cursor: pointer;
+        }
+        .linked-main .ln-name {
+          color: var(--primary-color, #03a9f4);
+        }
+        .linked-main:hover,
+        .pick:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        }
+        .linked-main small,
+        .pick small {
+          display: block;
+          color: var(--secondary-text-color, #727272);
+          font-size: 12px;
+        }
+        .linked-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 0 12px 12px;
+        }
+        .linked-actions button,
+        .link-add,
+        .picker-bar button {
+          padding: 8px 12px;
+          border-radius: 8px;
+          border: 1px solid var(--divider-color, #ccc);
+          background: none;
+          color: var(--primary-text-color, #212121);
+          font: inherit;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .linked-actions button:hover,
+        .link-add:hover,
+        .picker-bar button:hover {
+          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        }
+        .picker {
+          border: 1px solid var(--divider-color, #e0e0e0);
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .picker-bar {
+          display: flex;
+          gap: 8px;
+          padding: 8px;
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
+        }
+        .picker-bar input {
+          flex: 1 1 auto;
+          min-width: 0;
+          box-sizing: border-box;
+          padding: 8px 10px;
+          border-radius: 8px;
+          border: 1px solid var(--divider-color, #ccc);
+          background: var(--primary-background-color, #fff);
+          color: var(--primary-text-color, #212121);
+          /* 16px verhindert das automatische Hineinzoomen von iOS. */
+          font-size: 16px;
+        }
+        /* Eigene Scrollfläche, damit die Liste den Dialog nicht endlos lang
+           macht; Kopf und Aktionen des Dialogs bleiben erreichbar. */
+        .picker-list {
+          max-height: 320px;
+          overflow: auto;
+          overscroll-behavior: contain;
+        }
+        .picker-list .dlg-note {
+          padding: 0 12px;
+        }
+        .pick + .pick {
+          border-top: 1px solid var(--divider-color, #e0e0e0);
+        }
+        .pick.current {
+          background: var(--secondary-background-color, rgba(0,0,0,0.04));
+        }
+        .pick-group {
+          padding: 10px 12px 4px;
+          color: var(--secondary-text-color, #727272);
+          font-size: 12px;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
         .copy-btn.done {
           color: var(--success-color, #43a047);
         }
@@ -1627,6 +1949,7 @@ class UnifiDynamicPanel extends HTMLElement {
           <thead>
             <tr>
               ${this._headerCellHtml("name", t("colName"))}
+              ${this._headerCellHtml("linked", t("colLinked"))}
               ${this._headerCellHtml("ip", t("colIp"))}
               ${this._headerCellHtml("mac", t("colMac"))}
               ${this._headerCellHtml("essid", t("colSsid"))}
@@ -1763,6 +2086,19 @@ class UnifiDynamicPanel extends HTMLElement {
       ev.preventDefault();
       ev.target.click();
     });
+    dialog.addEventListener("input", (ev) => {
+      if (!ev.target.matches || !ev.target.matches('[data-dlg="picker-search"]')) return;
+      this._pickerQuery = ev.target.value;
+      this._renderDialog();
+    });
+    // Esc bei offener Geräteauswahl schliesst nur die Auswahl, nicht den
+    // ganzen Dialog.
+    dialog.addEventListener("cancel", (ev) => {
+      if (!this._pickerOpen) return;
+      ev.preventDefault();
+      this._pickerOpen = false;
+      this._renderDialog();
+    });
     // Esc schliesst den Dialog nativ; hier nur den Zustand nachziehen.
     dialog.addEventListener("close", () => {
       this._dialogKey = null;
@@ -1797,6 +2133,8 @@ class UnifiDynamicPanel extends HTMLElement {
       this._openMenuKey = null;
       if (action === "details") {
         this._openDialog(key);
+      } else if (action === "open-linked") {
+        this._openDevice(actionBtn.dataset.linkedId);
       } else if (action === "open-device") {
         this._openDevice(deviceId);
       } else if (action === "exclude") {
@@ -1884,7 +2222,7 @@ class UnifiDynamicPanel extends HTMLElement {
     }
 
     if (this._loading) {
-      tbody.innerHTML = `<tr class="state-row"><td colspan="9">${this._escape(
+      tbody.innerHTML = `<tr class="state-row"><td colspan="10">${this._escape(
         this._t("loading")
       )}</td></tr>`;
       return;
@@ -1892,7 +2230,7 @@ class UnifiDynamicPanel extends HTMLElement {
 
     const rows = this._filteredClients();
     if (rows.length === 0) {
-      tbody.innerHTML = `<tr class="state-row"><td colspan="9">${this._escape(
+      tbody.innerHTML = `<tr class="state-row"><td colspan="10">${this._escape(
         this._t("empty")
       )}</td></tr>`;
       return;
@@ -1946,6 +2284,15 @@ class UnifiDynamicPanel extends HTMLElement {
               data-name="${this._escape(c.name)}"
               data-device-id="${this._escape(c.device_id || "")}">
             <td class="name-cell">${nameLine}${excludedBadge}</td>
+            <td>${
+              c.linked_device
+                ? `<button class="linked-link" data-action="open-linked" data-linked-id="${this._escape(
+                    c.linked_device.id
+                  )}" title="${this._escape(
+                    this._t("linkOpen")(c.linked_device.name)
+                  )}">${this._escape(c.linked_device.name)}</button>`
+                : "–"
+            }</td>
             <td>${this._escape(c.ip || "–")}</td>
             <td>${this._escape(c.mac)}</td>
             <td>${this._escape(c.essid || "–")}</td>

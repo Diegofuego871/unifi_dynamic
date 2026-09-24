@@ -51,6 +51,7 @@ from .const import (
     STORE_ANCHOR,
     STORE_AP_NAMES,
     STORE_CLIENT_CACHE,
+    STORE_DEVICE_LINKS,
     STORE_KNOWN_NAMES,
     STORE_MIGRATION_FLAG,
 )
@@ -244,6 +245,8 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         self._client_cache: dict[str, dict[str, Any]] = {}
         self._known_names: dict[str, str] = {}
+        # Client-MAC -> Geräte-ID des im Panel verknüpften HA-Geräts.
+        self._device_links: dict[str, str] = {}
 
         # MAC -> Name der UniFi-Geräte (Access Points, Switches, Gateway).
         self._ap_names: dict[str, str] = {}
@@ -293,6 +296,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             STORE_KNOWN_NAMES: self._known_names,
             STORE_ANCHOR: self._anchor,
             STORE_MIGRATION_FLAG: self._migration_done,
+            STORE_DEVICE_LINKS: self._device_links,
         }
 
     def _schedule_save(self) -> None:
@@ -324,6 +328,14 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         self._migration_done = bool(stored.get(STORE_MIGRATION_FLAG, False))
         self._anchor = as_epoch_seconds(stored.get(STORE_ANCHOR))
+
+        links = stored.get(STORE_DEVICE_LINKS)
+        if isinstance(links, dict):
+            self._device_links = {
+                str(mac).lower(): str(device_id)
+                for mac, device_id in links.items()
+                if device_id
+            }
 
         names = stored.get(STORE_KNOWN_NAMES)
         if isinstance(names, dict):
@@ -657,6 +669,35 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 }
             )
         return rows
+
+    # -- Verknüpfte HA-Geräte ---------------------------------------------------
+
+    def linked_device_id(self, mac: str) -> str | None:
+        return self._device_links.get(mac.lower())
+
+    @callback
+    def set_device_link(self, mac: str, device_id: str | None) -> bool:
+        """
+        Setzt oder entfernt die Verknüpfung eines Clients mit einem HA-Gerät.
+
+        Nur für Clients im Cache: eine Verknüpfung ohne Client wäre nirgends
+        sichtbar und würde nie aufgeräumt. Gibt zurück, ob sich etwas
+        geändert hat.
+        """
+        mac_l = mac.lower()
+        if mac_l not in self._client_cache:
+            return False
+        current = self._device_links.get(mac_l)
+        if device_id:
+            if current == device_id:
+                return False
+            self._device_links[mac_l] = device_id
+        else:
+            if current is None:
+                return False
+            self._device_links.pop(mac_l)
+        self._schedule_save()
+        return True
 
     # -- Update -------------------------------------------------------------
 
@@ -1071,6 +1112,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         self._client_cache.pop(mac, None)
         self._known_names.pop(mac, None)
+        # Die Verknüpfung gehört zum Client: wird er gelöscht, geht sie mit.
+        # Ein später neu angelegter Client wird bewusst nicht automatisch
+        # wieder verknüpft.
+        self._device_links.pop(mac, None)
 
         # Auch aus dem aktuellen Snapshot entfernen, sonst könnte die MAC vor
         # dem nächsten Poll erneut angelegt werden.

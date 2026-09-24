@@ -30,6 +30,9 @@ STORE_AP_NAMES = "ap_names"
 STORE_KNOWN_NAMES = "known_names"
 STORE_ANCHOR = "last_success"
 STORE_MIGRATION_FLAG = "entity_id_migration_v1_done"
+# Verknüpfung Client-MAC -> Geräte-ID eines beliebigen HA-Geräts, im Panel
+# gesetzt. Reine Zuordnung: das verknüpfte Gerät wird nie verändert.
+STORE_DEVICE_LINKS = "device_links"
 
 # Internes Cache-Feld: Epoch-Sekunden (UTC), zu denen die Integration den
 # Client zuletzt selbst in der UniFi-API gesehen hat. Einzige Grundlage für
@@ -187,7 +190,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "16"
+PANEL_VERSION = "17"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
@@ -199,6 +202,8 @@ WS_TYPE_LIST_CLIENTS = f"{DOMAIN}/list_clients"
 WS_TYPE_REMOVE_CLIENT = f"{DOMAIN}/remove_client"
 WS_TYPE_EXCLUDE_CLIENT = f"{DOMAIN}/exclude_client"
 WS_TYPE_UNEXCLUDE_CLIENT = f"{DOMAIN}/unexclude_client"
+WS_TYPE_LIST_DEVICES = f"{DOMAIN}/list_devices"
+WS_TYPE_LINK_DEVICE = f"{DOMAIN}/link_device"
 
 # Android ersetzt Meldungen mit gleichem Tag, statt sie zu stapeln.
 NOTIFICATION_TAG_PREFIX = "unifi_dynamic_purge"

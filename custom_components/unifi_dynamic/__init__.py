@@ -23,6 +23,7 @@ from homeassistant.core import (
     SupportsResponse,
     callback,
 )
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -64,6 +65,8 @@ from .const import (
     WS_TYPE_EXCLUDE_CLIENT,
     WS_TYPE_LIST_CLIENTS,
     WS_TYPE_REMOVE_CLIENT,
+    WS_TYPE_LINK_DEVICE,
+    WS_TYPE_LIST_DEVICES,
     WS_TYPE_UNEXCLUDE_CLIENT,
 )
 from .coordinator import (
@@ -653,10 +656,22 @@ def _ws_list_clients(
     dev_reg = dr.async_get(hass)
     clients: list[dict[str, Any]] = []
 
+    area_reg = ar.async_get(hass)
+
     for entry_id, coordinator in hass.data.get(DOMAIN, {}).items():
         excluded = get_excluded_macs(coordinator.entry)
         for row in coordinator.panel_clients():
             device = get_client_device(dev_reg, entry_id, row["mac"])
+            linked = None
+            linked_id = coordinator.linked_device_id(row["mac"])
+            if linked_id:
+                linked_device = dev_reg.async_get(linked_id)
+                if linked_device is None:
+                    # Verknüpftes Gerät wurde in HA gelöscht: Verknüpfung
+                    # aufräumen statt einen toten Eintrag anzuzeigen.
+                    coordinator.set_device_link(row["mac"], None)
+                else:
+                    linked = _device_summary(linked_device, area_reg)
             clients.append(
                 {
                     **row,
@@ -664,6 +679,7 @@ def _ws_list_clients(
                     "host": coordinator.host,
                     "excluded": row["mac"] in excluded,
                     "device_id": device.id if device is not None else None,
+                    "linked_device": linked,
                 }
             )
 
@@ -738,6 +754,90 @@ def _ws_unexclude_client(
     connection.send_result(msg["id"], {"changed": changed})
 
 
+def _is_own_device(device: dr.DeviceEntry) -> bool:
+    """Gerät dieser Integration (ein UniFi-Client), nicht verknüpfbar."""
+    return any(domain == DOMAIN for domain, *_ in device.identifiers)
+
+
+def _device_summary(device: dr.DeviceEntry, area_reg: ar.AreaRegistry) -> dict[str, Any]:
+    """Anzeige-Daten eines HA-Geräts für Tabelle, Dialog und Auswahlliste."""
+    area = area_reg.async_get_area(device.area_id) if device.area_id else None
+    return {
+        "id": device.id,
+        "name": device.name_by_user or device.name or device.id,
+        "area": area.name if area is not None else None,
+        "manufacturer": device.manufacturer,
+        "model": device.model,
+        # Für den Vorschlag "passt zur MAC" im Panel; nur lesend genutzt.
+        "macs": sorted(
+            str(value).lower()
+            for kind, value in device.connections
+            if kind == dr.CONNECTION_NETWORK_MAC
+        ),
+    }
+
+
+@websocket_api.websocket_command({vol.Required("type"): WS_TYPE_LIST_DEVICES})
+@websocket_api.require_admin
+@callback
+def _ws_list_devices(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Alle HA-Geräte ausser den eigenen, für die Auswahl im Panel."""
+    dev_reg = dr.async_get(hass)
+    area_reg = ar.async_get(hass)
+    devices = [
+        _device_summary(device, area_reg)
+        for device in dev_reg.devices.values()
+        if not _is_own_device(device)
+    ]
+    devices.sort(key=lambda d: str(d["name"]).casefold())
+    connection.send_result(msg["id"], {"devices": devices})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_LINK_DEVICE,
+        vol.Required("entry_id"): str,
+        vol.Required(ATTR_MAC): str,
+        # None entfernt die Verknüpfung.
+        vol.Required("device_id"): vol.Any(str, None),
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_link_device(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Verknüpft einen Client mit einem HA-Gerät oder hebt das auf."""
+    coordinator: UnifiDynamicCoordinator | None = hass.data.get(DOMAIN, {}).get(
+        msg["entry_id"]
+    )
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+
+    device_id = msg["device_id"] or None
+    if device_id is not None:
+        device = dr.async_get(hass).async_get(device_id)
+        if device is None:
+            connection.send_error(msg["id"], "not_found", "Unbekanntes Gerät")
+            return
+        if _is_own_device(device):
+            connection.send_error(
+                msg["id"], "invalid", "Geräte dieser Integration sind nicht verknüpfbar"
+            )
+            return
+
+    mac = str(msg[ATTR_MAC]).strip().lower()
+    if not coordinator.client_snapshot(mac):
+        connection.send_error(msg["id"], "not_found", "Unbekannter Client")
+        return
+
+    changed = coordinator.set_device_link(mac, device_id)
+    connection.send_result(msg["id"], {"changed": changed})
+
+
 @callback
 def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Registriert die Panel-WebSocket-Befehle einmal pro Instanz."""
@@ -749,6 +849,8 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_remove_client)
     websocket_api.async_register_command(hass, _ws_exclude_client)
     websocket_api.async_register_command(hass, _ws_unexclude_client)
+    websocket_api.async_register_command(hass, _ws_list_devices)
+    websocket_api.async_register_command(hass, _ws_link_device)
 
 
 # ---------------------------------------------------------------------------

@@ -47,7 +47,7 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   wurden. Reine Kabel-Clients bekommen sie nicht.
 - Ein in der Seitenleiste angeheftetes Panel zeigt eine durchsuch- und
   filterbare Tabelle aller Clients über alle konfigurierten UniFi-Hosts
-  hinweg (Alias, IP, MAC, SSID, Access Point, Verbindungsart, zuletzt
+  hinweg (Alias, verknüpftes HA-Gerät, IP, MAC, SSID, Access Point, Verbindungsart, zuletzt
   gesehen, Online-Status), mit Menü pro Zeile zum Entfernen oder Eintragen
   in die Ausnahmeliste. Ein Tipp auf eine Zeile öffnet eine Geräteansicht mit
   allen Angaben, den Entitäten und denselben Aktionen.
@@ -209,6 +209,29 @@ Nach erfolgreichem Löschen schliesst sich der Dialog von selbst; schlägt eine
 Aktion fehl, steht der Fehler im Dialog. Esc, der ×-Button oder ein Klick
 neben den Dialog schliessen ihn. Kabel-Clients zeigen die WLAN-Felder nicht.
 
+Jeder Client lässt sich mit einem beliebigen Home-Assistant-Gerät
+verknüpfen — etwa dem Shelly- oder Sonos-Gerät hinter diesem Netzwerk-Client.
+In der Geräteansicht öffnet „Gerät verknüpfen…" eine durchsuchbare Liste
+aller Home-Assistant-Geräte (Name, Bereich, Hersteller); Geräte, die dieselbe
+MAC-Adresse wie der Client melden, stehen als Vorschlag oben unter „Passt zur
+MAC-Adresse". Danach zeigt die Ansicht das verknüpfte Gerät mit Bereich und
+Modell, „Ändern" und „Verknüpfung entfernen", ein Klick auf den Namen öffnet
+seine Geräteseite. Die Tabelle hat eine Spalte „HA-Gerät" mit dem Namen des
+verknüpften Geräts, ein Klick führt direkt auf dessen Geräteseite; die Spalte
+ist sortierbar, und die Suche findet Clients auch über Namen und Bereich des
+verknüpften Geräts.
+
+Die Verknüpfung speichert nur diese Integration; das verknüpfte Gerät selbst
+wird nie verändert, und Geräte dieser Integration sind nicht verknüpfbar. Sie
+übersteht Neustarts und Updates. Wird der Client entfernt — von Hand oder
+durch den Purge —, geht die Verknüpfung mit, und ein später neu angelegter
+Client muss neu verknüpft werden; die Schutzfunktion bewahrt einen Client
+(und damit seine Verknüpfung) vor dem Purge. Wird das verknüpfte Gerät in
+Home Assistant gelöscht, fällt die Verknüpfung automatisch weg. Bewusst keine
+Zusammenführung über die MAC-Adresse: Sie würde die Geräte dieser Integration
+an Geräte anderer Integrationen binden, und das Entfernen eines Clients
+könnte dann das fremde Gerät mitnehmen.
+
 Neben IP, MAC, Hostname, SSID, Access Point und jeder Entity-ID steht ein
 kleiner Kopieren-Button, der genau diesen Wert in die Zwischenablage legt —
 bei einer Entität nur ihre ID, etwa `sensor.unifi_dynamic_…_connection`. Das
@@ -273,12 +296,13 @@ Farben des aktiven Designs, passt sich also hellem und dunklem Modus an.
 Die Tabelle selbst ist ein eigenständiges Web Component ohne externe
 Bibliothek und ohne Build-Schritt — HACS installiert diese Integration als
 reine Dateikopie, es gibt also nichts zu bündeln. Sie spricht mit dem
-Backend über vier WebSocket-Befehle (`unifi_dynamic/list_clients`,
+Backend über sechs WebSocket-Befehle (`unifi_dynamic/list_clients`,
 `unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`,
-`unifi_dynamic/unexclude_client`), dünne Wrapper um dieselbe
+`unifi_dynamic/unexclude_client`, dazu `unifi_dynamic/list_devices` und
+`unifi_dynamic/link_device` für die Verknüpfungen), die ersten vier dünne Wrapper um dieselbe
 Coordinator-Logik, die Meldungsaktionen und die Aktion `remove_client` schon
 nutzen — für das Panel existiert keine eigene Entfernen- oder
-Ausnahmeliste-Logik. Alle vier Befehle verlangen Administratorrechte,
+Ausnahmeliste-Logik. Alle sechs Befehle verlangen Administratorrechte,
 passend zur `require_admin`-Einstellung des Panels selbst.
 
 Panel-Texte sind wie die Meldungen zweisprachig, die Sprachquelle

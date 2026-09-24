@@ -44,7 +44,7 @@ the client has not been reported by the UniFi controller for a while.
 - SSID and access point sensors only for clients that have been seen on
   wireless. Wired-only clients do not get them.
 - A panel pinned in the sidebar shows a searchable, filterable table of every
-  client across all configured UniFi hosts (alias, IP, MAC, SSID, access
+  client across all configured UniFi hosts (alias, linked HA device, IP, MAC, SSID, access
   point, connection type, last seen, online status), with a per-row menu to
   remove a client or add it to the exclusion list. Tapping a row opens a
   device view with every detail, its entities and the same actions.
@@ -202,6 +202,27 @@ itself; if an action fails, the error shows inside the dialog. Esc, the ×
 button or a click next to the dialog close it. Wired clients don't show the
 wireless fields.
 
+Each client can be linked to any Home Assistant device — for example the
+Shelly or Sonos device that sits behind this network client. In the device
+view, "Link a device…" opens a searchable list of all Home Assistant devices
+(name, area, manufacturer); devices that report the same MAC address as the
+client are suggested at the top under "Matches the MAC address". The linked
+device then shows with its area and model, "Change" and "Remove link", and a
+click on its name opens its device page. The table has an "HA device" column
+with the linked device's name, one click away from its device page; the
+column can be sorted and the search box finds clients by the linked device's
+name and area too.
+
+The link is stored by this integration only; the linked device itself is
+never changed, and devices of this integration can't be linked. It survives
+restarts and updates. When the client is removed — by hand or by the purge —
+the link goes with it, and a client created again later has to be linked
+again; protecting a client keeps it (and its link) from being purged. If the
+linked device is deleted in Home Assistant, the link is dropped
+automatically. Deliberately no merging via MAC address: that would tie this
+integration's devices to other integrations' devices, and removing a client
+could then take the other device with it.
+
 IP, MAC, hostname, SSID, access point and each entity ID have a small copy
 button next to them that puts exactly that value on the clipboard — for an
 entity only its ID, for example `sensor.unifi_dynamic_…_connection`. The
@@ -261,12 +282,13 @@ or token), and takes over the active theme's colors so it matches light and
 dark mode. The table itself is a self-contained Web Component with no
 external library and no build step — HACS installs this integration as a
 plain file copy, so there is nothing to bundle. It talks to the backend
-through four WebSocket commands (`unifi_dynamic/list_clients`,
+through six WebSocket commands (`unifi_dynamic/list_clients`,
 `unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`,
-`unifi_dynamic/unexclude_client`), thin wrappers around the same
+`unifi_dynamic/unexclude_client`, plus `unifi_dynamic/list_devices` and
+`unifi_dynamic/link_device` for the device links), the first four thin wrappers around the same
 coordinator logic the notification actions and the `remove_client` action
 already use — no separate removal or exclusion logic exists for the panel.
-All four commands require administrator rights, matching the panel's own
+All six commands require administrator rights, matching the panel's own
 `require_admin` setting.
 
 Panel text is bilingual like the notifications, but the language source
