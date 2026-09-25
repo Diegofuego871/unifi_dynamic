@@ -216,14 +216,17 @@ schützen", um ihn wieder davon zu entfernen. Der erste Menüpunkt,
 ![Geräteansicht eines Clients mit Angaben, Entitäten und Aktionen](docs/panel-device-view.png)
 
 Die Geräteansicht ist ein Dialog über der Tabelle (auf dem Handy ein Blatt,
-das von unten hereinfährt) mit allem, was die Integration über den Client
-weiss: Status, Schutz, Verbindungsart, IP, MAC, Hostname, SSID, Access
-Point, Signal (dBm und der RSSI-Wert des Controllers, bei einem Offline-Client
-als „zuletzt gemessen" markiert), zuerst und zuletzt gesehen, jeweils mit
-relativer Zeitangabe. Darunter stehen die Home-Assistant-Entitäten des
-Clients mit ihrem aktuellen Zustand — ein Tipp darauf öffnet den
-Entitäts-Dialog von Home Assistant mit Verlauf — und unten die Aktionen:
-„HA-Geräteseite öffnen", schützen bzw. nicht mehr schützen und „Löschen".
+das von unten hereinfährt). Der Kopf zeigt Name, Status und Schutz als
+Pillen sowie den Hostnamen; direkt darunter stehen die Schnellaktionen
+„HA-Geräteseite öffnen" und „Schützen" bzw. „Schutz aufheben". Der Abschnitt
+„Netzwerk" zeigt alles, was die Integration über den Client weiss, als
+Kacheln: IP, MAC, Hostname, SSID, Access Point, Signal (dBm, der RSSI-Wert
+des Controllers und Balken, bei einem Offline-Client als „zuletzt gemessen"
+markiert), zuerst und zuletzt gesehen mit relativer Zeitangabe sowie die
+Verbindungsart. Darunter folgen das verknüpfte Gerät und die
+Home-Assistant-Entitäten des Clients mit ihrem aktuellen Zustand — ein Tipp
+darauf öffnet den Entitäts-Dialog von Home Assistant mit Verlauf. Die
+Leiste unten enthält „Schliessen" und „Löschen".
 Nach erfolgreichem Löschen schliesst sich der Dialog von selbst; schlägt eine
 Aktion fehl, steht der Fehler im Dialog. Esc, der ×-Button oder ein Klick
 neben den Dialog schliessen ihn. Kabel-Clients zeigen die WLAN-Felder nicht.

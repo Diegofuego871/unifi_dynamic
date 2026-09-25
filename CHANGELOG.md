@@ -5,6 +5,26 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.1] - 2026-09-25
+
+### Changed
+
+- Device view in the new design: a header with a connection icon, the name,
+  status and protection as pills and the hostname; quick actions "Open HA
+  device page" and "Protect" / "Stop protecting" right below; network data
+  as tiles with copy buttons and signal bars; the linked device as a card;
+  entities with icons and a count; "Close" and "Remove" in the bottom bar.
+- Device list for linking in the new design: search field with icon,
+  "Hide already linked" as a switch (still a real checkbox for keyboard and
+  screen readers), devices with icons.
+- README screenshots re-rendered, again with entirely made-up data.
+
+### Fixed
+
+- On a phone, the other columns were visible in a narrow strip left of the
+  pinned alias column while scrolling sideways. The column now sticks to
+  the very edge of the screen.
+
 ## [2.3.0] - 2026-09-25
 
 ### Added
@@ -946,6 +966,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.3.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.1
 [2.3.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.0
 [2.2.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.3
 [2.2.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.2

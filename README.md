@@ -209,14 +209,16 @@ opens the device view — as does tapping the row itself.
 ![Device view of a client with its details, entities and actions](docs/panel-device-view-en.png)
 
 The device view is a dialog over the table (on a phone a sheet sliding up
-from the bottom) with everything the integration knows about the client:
-status, protection, connection type, IP, MAC, hostname, SSID, access point,
-signal (dBm and the controller's RSSI value, marked "last measured" while
-the client is offline), first seen and last seen, each with a relative time.
-Below that it lists the client's Home Assistant entities with their current
-state — tapping one opens Home Assistant's own entity dialog with history —
-and at the bottom the actions: "Open HA device page", protect / stop
-protecting, and "Remove". After a successful removal the dialog closes by
+from the bottom). Its header shows the name, status and protection as pills
+and the hostname; right below sit the quick actions "Open HA device page"
+and "Protect" / "Stop protecting". The "Network" section shows everything
+the integration knows about the client as tiles: IP, MAC, hostname, SSID,
+access point, signal (dBm, the controller's RSSI value and bars, marked
+"last measured" while the client is offline), first seen and last seen with
+a relative time, and the connection type. Below follow the linked device
+and the client's Home Assistant entities with their current state —
+tapping one opens Home Assistant's own entity dialog with history. The
+bottom bar holds "Close" and "Remove". After a successful removal the dialog closes by
 itself; if an action fails, the error shows inside the dialog. Esc, the ×
 button or a click next to the dialog close it. Wired clients don't show the
 wireless fields.

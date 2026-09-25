@@ -106,6 +106,10 @@ const STRINGS = {
     copied: (value) => `Kopiert: ${value}`,
     copyFailed: "Kopieren nicht möglich - der Browser erlaubt keinen Zugriff auf die Zwischenablage.",
     secLinked: "Verknüpftes Gerät",
+    secNetwork: "Netzwerk",
+    quickOpenDevice: "HA-Geräteseite",
+    quickProtect: "Schützen",
+    quickUnprotect: "Schutz aufheben",
     linkedNone: "Kein Home-Assistant-Gerät verknüpft.",
     linkAdd: "Gerät verknüpfen…",
     linkChange: "Ändern",
@@ -202,6 +206,10 @@ const STRINGS = {
     copied: (value) => `Copied: ${value}`,
     copyFailed: "Could not copy - the browser does not allow access to the clipboard.",
     secLinked: "Linked device",
+    secNetwork: "Network",
+    quickOpenDevice: "HA device page",
+    quickProtect: "Protect",
+    quickUnprotect: "Stop protecting",
     linkedNone: "No Home Assistant device linked.",
     linkAdd: "Link a device…",
     linkChange: "Change",
@@ -281,6 +289,9 @@ const ICONS = {
   info: "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
   open: "M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z",
   trash: "M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z",
+  close: "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z",
+  device: "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z",
+  entity: "M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7Z",
 };
 function icon(name) {
   return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name]}"></path></svg>`;
@@ -708,14 +719,15 @@ class UnifiDynamicPanel extends HTMLElement {
     if (!this._pickerOpen) {
       const d = c.linked_device;
       if (!d) {
-        return `<p class="dlg-note">${esc(t("linkedNone"))}</p>
-          <button class="link-add" data-dlg="link-open">${esc(t("linkAdd"))}</button>`;
+        return `<div class="linked-empty"><span class="dlg-note">${esc(t("linkedNone"))}</span>
+          <button class="link-add" data-dlg="link-open">${icon("link")}${esc(t("linkAdd"))}</button></div>`;
       }
       return `<div class="linked-card">
           <button class="linked-main" data-dlg="open-linked" data-linked-id="${esc(d.id)}"
             title="${esc(t("linkOpen")(d.name))}">
-            <span class="ln-name">${esc(d.name)}</span>
-            ${meta(d) ? `<small>${esc(meta(d))}</small>` : ""}
+            <span class="ln-icon">${icon("device")}</span>
+            <span class="ln-text"><span class="ln-name">${esc(d.name)}</span>
+            ${meta(d) ? `<small>${esc(meta(d))}</small>` : ""}</span>
           </button>
           <div class="linked-actions">
             <button data-dlg="link-open">${esc(t("linkChange"))}</button>
@@ -765,12 +777,12 @@ class UnifiDynamicPanel extends HTMLElement {
         const taken = takenBy(d);
         return `<button class="pick${d.id === currentId ? " current" : ""}${taken ? " taken" : ""}"
           data-dlg="link-pick" data-device-id="${esc(d.id)}">
-          <span class="ln-name">${esc(d.name)}${
+          <span class="ln-icon">${icon("device")}</span><span class="ln-text"><span class="ln-name">${esc(d.name)}${
             d.id === currentId ? ` <span class="badge excluded">${esc(t("pickerCurrent"))}</span>` : ""
           }</span>
           ${meta(d) ? `<small>${esc(meta(d))}</small>` : ""}
           ${taken ? `<small class="pick-taken">${esc(t("pickerLinkedTo")(taken.join(", ")))}</small>` : ""}
-        </button>`;
+        </span></button>`;
       };
       const candidates = this._devices.filter((d) => matches(d) && visible(d));
       // Vorschläge: Geräte, die dieselbe MAC melden (Shelly, Sonos, ...).
@@ -806,7 +818,7 @@ class UnifiDynamicPanel extends HTMLElement {
 
     return `<div class="picker">
         <div class="picker-bar">
-          <input type="search" data-dlg="picker-search" placeholder="${esc(
+          ${icon("search")}<input type="search" data-dlg="picker-search" placeholder="${esc(
             t("pickerSearch")
           )}" value="${esc(this._pickerQuery)}" autocomplete="off" />
           <button data-dlg="link-cancel">${esc(t("linkCancel"))}</button>
@@ -990,7 +1002,7 @@ class UnifiDynamicPanel extends HTMLElement {
 
     const closeBtn = `<button class="dlg-close" data-dlg="close" title="${esc(
       t("dialogClose")
-    )}" aria-label="${esc(t("dialogClose"))}">×</button>`;
+    )}" aria-label="${esc(t("dialogClose"))}">${icon("close")}</button>`;
     const errorHtml = this._dialogError
       ? `<div class="dlg-error">${esc(t("actionFailed"))} ${esc(this._dialogError)}</div>`
       : "";
@@ -1000,55 +1012,73 @@ class UnifiDynamicPanel extends HTMLElement {
       const mac = this._dialogKey.split("|")[1] || "";
       html = `
         <div class="dlg-head">
+          <span class="dlg-avatar">${icon("unknown")}</span>
           <div class="dlg-title"><h2>${esc(mac)}</h2></div>
           ${closeBtn}
         </div>
         <div class="dlg-body"><p class="dlg-note">${esc(t("notFound"))}</p></div>`;
     } else {
+      const kind = c.is_wired == null ? "unknown" : c.is_wired ? "eth" : "wifi";
       const connText =
         c.is_wired == null ? t("connUnknown") : c.is_wired ? t("connWired") : t("connWireless");
       const status = c.online
-        ? `<span class="badge online">${esc(t("statusOnline"))}</span>`
-        : `<span class="badge offline">${esc(t("statusOffline"))}</span>`;
+        ? `<span class="pill online"><span class="dot online"></span>${esc(t("statusOnline"))}</span>`
+        : `<span class="pill offline"><span class="dot offline"></span>${esc(t("statusOffline"))}</span>`;
       const protectedBadge = c.excluded
-        ? `<span class="badge excluded">${esc(t("excludedBadge"))}</span>`
+        ? `<span class="pill protected">${icon("shield")}${esc(t("excludedBadge"))}</span>`
         : "";
+      // Zeitpunkt absolut, darunter relativ.
       const timeValue = (epoch) =>
         epoch
           ? `${esc(this._formatSeen(epoch))}<small>${esc(this._formatRelative(epoch))}</small>`
-          : esc(t("unknown"));
+          : `<span class="muted">${esc(t("unknown"))}</span>`;
+      // Kachel: Beschriftung (mit Kopieren-Button, wenn es etwas zu
+      // kopieren gibt) und Wert. Ohne Wert ein Strich und kein Button.
+      const tile = (label, valueHtml, copyValue, wide) => `<div class="tile${wide ? " wide" : ""}">
+          <div class="tile-k"><span>${esc(label)}</span>${
+            copyValue ? this._copyButtonHtml(copyValue, label) : ""
+          }</div>
+          <div class="tile-v">${valueHtml}</div>
+        </div>`;
+      const text = (v, cls = "") =>
+        v ? `<span class="${cls}">${esc(v)}</span>` : `<span class="muted">–</span>`;
 
-      // Wert mit Kopieren-Button; ohne Wert nur der Strich, ohne Button.
-      const copyable = (label, value, cls = "") =>
-        value
-          ? `<span class="copy-wrap"><span class="${cls}">${esc(value)}</span>${this._copyButtonHtml(
-              value,
-              label
-            )}</span>`
-          : "–";
-      const fields = [
-        [t("fieldStatus"), `${status}${protectedBadge}`],
-        [t("fieldConn"), esc(connText)],
-        [t("fieldIp"), copyable(t("fieldIp"), c.ip)],
-        [t("fieldMac"), copyable(t("fieldMac"), c.mac, "mono")],
-        [t("fieldHostname"), copyable(t("fieldHostname"), c.hostname)],
+      const tiles = [
+        tile(t("fieldIp"), text(c.ip, "mono"), c.ip),
+        tile(t("fieldMac"), text(c.mac, "mono"), c.mac),
+        tile(t("fieldHostname"), text(c.hostname), c.hostname),
       ];
       // WLAN-Felder nur, wenn der Client nicht nachweislich am Kabel hängt.
       if (!c.is_wired) {
-        fields.push([t("fieldSsid"), copyable(t("fieldSsid"), c.essid)]);
-        fields.push([t("fieldAp"), copyable(t("fieldAp"), c.ap_name)]);
+        tiles.push(tile(t("fieldSsid"), text(c.essid), c.essid));
+        tiles.push(tile(t("fieldAp"), text(c.ap_name), c.ap_name));
         const signal = this._formatSignal(c);
-        fields.push([t("fieldSignal"), esc(signal || "–")]);
+        const bars = signalBars(c.signal);
+        tiles.push(
+          tile(
+            t("fieldSignal"),
+            signal
+              ? `${esc(signal)}${
+                  bars
+                    ? ` <span class="bars s${bars}${c.online ? "" : " stale"}"><i></i><i></i><i></i><i></i></span>`
+                    : ""
+                }`
+              : `<span class="muted">–</span>`
+          )
+        );
       }
-      fields.push([t("fieldFirstSeen"), timeValue(c.first_seen)]);
-      fields.push([t("fieldLastSeen"), timeValue(c.seen_at)]);
-      if (this._hostCount > 1) fields.push([t("fieldHost"), esc(c.host || "–")]);
+      tiles.push(tile(t("fieldFirstSeen"), timeValue(c.first_seen)));
+      tiles.push(tile(t("fieldLastSeen"), timeValue(c.seen_at)));
+      tiles.push(tile(t("fieldConn"), `<span class="conn">${icon(kind)}${esc(connText)}</span>`));
+      if (this._hostCount > 1) tiles.push(tile(t("fieldHost"), text(c.host)));
 
       let entitiesHtml;
+      let entityCount = 0;
       if (!c.device_id) {
         entitiesHtml = `<p class="dlg-note">${esc(t("entitiesNoDevice"))}</p>`;
       } else {
         const entities = this._deviceEntities(c.device_id);
+        entityCount = entities.length;
         entitiesHtml = entities.length
           ? `<ul class="entities">${entities
               .map(
@@ -1059,6 +1089,7 @@ class UnifiDynamicPanel extends HTMLElement {
                 (e) => `<li class="entity" role="button" tabindex="0" data-dlg="more-info" data-entity-id="${esc(
                   e.entityId
                 )}">
+                  <span class="ent-icon">${icon("entity")}</span>
                   <span class="ent-name">${esc(e.name)}<span class="ent-id"><small>${esc(
                     e.entityId
                   )}</small>${this._copyButtonHtml(e.entityId, "Entity-ID")}</span></span>
@@ -1071,29 +1102,37 @@ class UnifiDynamicPanel extends HTMLElement {
 
       html = `
         <div class="dlg-head">
+          <span class="dlg-avatar">${icon(kind)}</span>
           <div class="dlg-title">
             <h2>${esc(c.name)}</h2>
+            <div class="dlg-sub">${status}${protectedBadge}${
+              c.hostname ? `<span class="dlg-host">${esc(c.hostname)}</span>` : ""
+            }</div>
           </div>
           ${closeBtn}
         </div>
+        <div class="dlg-quick">
+          <button class="qbtn" data-dlg="open-device" ${c.device_id ? "" : "disabled"}>${icon(
+            "open"
+          )}${esc(t("menuOpenDevice"))}</button>
+          <button class="qbtn" data-dlg="${c.excluded ? "unexclude" : "exclude"}">${icon(
+            c.excluded ? "shieldOff" : "shield"
+          )}${esc(c.excluded ? t("quickUnprotect") : t("quickProtect"))}</button>
+        </div>
         <div class="dlg-body">
           ${errorHtml}
-          <dl class="fields">
-            ${fields.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join("")}
-          </dl>
+          <h3>${esc(t("secNetwork"))}</h3>
+          <div class="tiles">${tiles.join("")}</div>
           <h3>${esc(t("secLinked"))}</h3>
           ${this._linkedSectionHtml(c)}
-          <h3>${esc(t("secEntities"))}</h3>
+          <h3>${esc(t("secEntities"))}${entityCount ? `<span class="h3-count">${entityCount}</span>` : ""}</h3>
           ${entitiesHtml}
         </div>
         <div class="dlg-actions">
-          <button data-dlg="open-device" ${c.device_id ? "" : "disabled"}>
-            ${esc(t("menuOpenDevice"))}
-          </button>
-          <button data-dlg="${c.excluded ? "unexclude" : "exclude"}">
-            ${esc(c.excluded ? t("menuUnexclude") : t("menuExclude"))}
-          </button>
-          <button data-dlg="remove" class="destructive">${esc(t("menuRemove"))}</button>
+          <button class="dlg-btn" data-dlg="close">${esc(t("dialogClose"))}</button>
+          <button class="dlg-btn destructive" data-dlg="remove">${icon("trash")}${esc(
+            t("menuRemove")
+          )}</button>
         </div>`;
     }
 
@@ -2138,10 +2177,14 @@ class UnifiDynamicPanel extends HTMLElement {
           thead tr.head-row th {
             border-bottom: 1px solid var(--udc-divider);
           }
+          /* left: -12px = minus Innenabstand von .content: die Spalte
+             klebt am Bildschirmrand, nicht 12px daneben - sonst scrollen
+             die übrigen Spalten in diesem Streifen sichtbar vorbei. Im
+             Ruhezustand wirkt sticky nicht, die Spalte sitzt normal. */
           thead tr.head-row th:first-child,
           tbody td:first-child {
             position: sticky;
-            left: 0;
+            left: -12px;
             box-shadow: 1px 0 0 var(--udc-divider);
           }
           thead tr.head-row th:first-child {
@@ -2345,146 +2388,484 @@ class UnifiDynamicPanel extends HTMLElement {
            über die ganze Breite. Der Dialog selbst scrollt, Kopf und
            Aktionsleiste bleiben dabei per sticky sichtbar. */
         dialog.device {
-          width: min(560px, calc(100vw - 32px));
+          width: min(640px, calc(100vw - 32px));
           max-height: calc(100% - 48px);
           padding: 0;
           border: none;
-          border-radius: 12px;
-          background: var(--card-background-color, #fff);
-          color: var(--primary-text-color, #212121);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+          border-radius: 22px;
+          background: var(--udc-card);
+          color: var(--udc-text);
+          box-shadow: var(--udc-shadow);
           overflow: auto;
           overscroll-behavior: contain;
         }
         dialog.device::backdrop {
-          background: rgba(0,0,0,0.45);
+          background: rgba(0,0,0,0.5);
         }
         @media (max-width: 600px) {
           dialog.device {
             width: 100%;
             max-width: 100%;
-            max-height: 90%;
+            max-height: 92%;
             margin: auto 0 0;
-            border-radius: 16px 16px 0 0;
+            border-radius: 22px 22px 0 0;
           }
         }
         .dlg-head {
           position: sticky;
           top: 0;
-          z-index: 1;
+          z-index: 2;
           display: flex;
           align-items: flex-start;
-          gap: 8px;
-          padding: 16px 12px 12px 20px;
-          background: var(--card-background-color, #fff);
-          border-bottom: 1px solid var(--divider-color, #e0e0e0);
+          gap: 14px;
+          padding: 20px 16px 14px 22px;
+          background: var(--udc-card);
+        }
+        .dlg-avatar {
+          flex: 0 0 auto;
+          display: grid;
+          place-items: center;
+          width: 52px;
+          height: 52px;
+          border-radius: 15px;
+          background: var(--udc-primary-soft);
+          color: var(--udc-primary);
+        }
+        .dlg-avatar svg {
+          width: 28px;
+          height: 28px;
         }
         .dlg-title {
           flex: 1 1 auto;
           min-width: 0;
         }
         .dlg-title h2 {
-          margin: 4px 0 0;
-          font-size: 20px;
+          margin: 2px 0 6px;
+          font-size: 21px;
           font-weight: 500;
           overflow-wrap: anywhere;
+        }
+        .dlg-sub {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+          color: var(--udc-text2);
+          font-size: 13px;
+        }
+        .dlg-host::before {
+          content: "· ";
+        }
+        .pill.protected {
+          background: var(--udc-warning-soft);
+          color: var(--udc-warning);
+        }
+        .pill svg {
+          width: 13px;
+          height: 13px;
         }
         .dlg-close {
           flex: 0 0 auto;
-          width: 40px;
-          height: 40px;
+          display: grid;
+          place-items: center;
+          width: 36px;
+          height: 36px;
           border: none;
           border-radius: 50%;
-          background: none;
-          color: var(--secondary-text-color, #727272);
-          font-size: 24px;
-          line-height: 1;
+          background: var(--udc-subtle);
+          color: var(--udc-text2);
           cursor: pointer;
         }
+        .dlg-close svg {
+          width: 18px;
+          height: 18px;
+        }
         .dlg-close:hover {
-          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+          background: var(--udc-hover);
+          color: var(--udc-text);
+        }
+        .dlg-quick {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 0 22px 6px;
+        }
+        .qbtn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          height: 34px;
+          padding: 0 14px;
+          border-radius: 99px;
+          border: 1px solid var(--udc-divider);
+          background: none;
+          color: var(--udc-text);
+          font: inherit;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .qbtn svg {
+          width: 17px;
+          height: 17px;
+          color: var(--udc-text2);
+        }
+        .qbtn:hover:not(:disabled) {
+          background: var(--udc-hover);
+        }
+        .qbtn:disabled {
+          color: var(--udc-text3);
+          cursor: default;
         }
         .dlg-body {
-          padding: 8px 20px 16px;
+          padding: 4px 22px 18px;
         }
         .dlg-body h3 {
-          margin: 20px 0 8px;
-          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 18px 0 8px;
+          font-size: 12px;
           font-weight: 500;
-          color: var(--secondary-text-color, #727272);
+          color: var(--udc-text2);
           text-transform: uppercase;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.05em;
         }
-        .fields {
+        .h3-count {
+          padding: 0 7px;
+          border-radius: 99px;
+          background: var(--udc-subtle);
+          letter-spacing: 0;
+        }
+        .tiles {
           display: grid;
-          grid-template-columns: max-content 1fr;
-          gap: 10px 16px;
-          margin: 8px 0 0;
-          font-size: 14px;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
         }
-        .fields dt {
-          color: var(--secondary-text-color, #727272);
+        @media (max-width: 600px) {
+          .tiles {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
-        .fields dd {
-          margin: 0;
+        .tile {
           min-width: 0;
+          padding: 9px 12px 10px;
+          border-radius: 12px;
+          background: var(--udc-subtle);
+        }
+        .tile-k {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 4px;
+          min-height: 22px;
+          color: var(--udc-text2);
+          font-size: 12px;
+        }
+        .tile-v {
+          margin-top: 2px;
+          font-size: 14px;
           overflow-wrap: anywhere;
         }
-        .fields dd small {
+        .tile-v small {
           display: block;
-          color: var(--secondary-text-color, #727272);
+          color: var(--udc-text3);
+          font-size: 12px;
         }
-        .fields .badge.excluded {
-          margin-left: 6px;
+        .tile .copy-btn {
+          margin: -4px -6px -4px 0;
         }
         .mono {
           font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          font-size: 13px;
         }
         .dlg-note {
           margin: 8px 0;
-          color: var(--secondary-text-color, #727272);
+          color: var(--udc-text2);
           font-size: 14px;
         }
         .dlg-error {
           margin: 8px 0;
           padding: 10px 12px;
-          border-radius: 8px;
-          box-shadow: inset 0 0 0 999px rgba(176, 0, 32, 0.08);
-          color: var(--error-color, #b00020);
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--udc-error) 12%, transparent);
+          color: var(--udc-error);
           font-size: 14px;
         }
+        /* Verknüpftes Gerät */
+        .linked-empty {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px 12px;
+          padding: 10px 12px 10px 14px;
+          border-radius: 14px;
+          background: var(--udc-subtle);
+        }
+        .linked-empty .dlg-note {
+          margin: 0;
+        }
+        .linked-card {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px 6px 6px;
+          border-radius: 14px;
+          background: var(--udc-subtle);
+        }
+        .linked-main,
+        .pick {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          box-sizing: border-box;
+          padding: 8px;
+          border: none;
+          border-radius: 10px;
+          background: none;
+          color: inherit;
+          font: inherit;
+          font-size: 14px;
+          text-align: left;
+          cursor: pointer;
+        }
+        .linked-main {
+          flex: 1 1 200px;
+          min-width: 0;
+        }
+        .pick {
+          width: 100%;
+          padding: 9px 14px;
+          border-radius: 0;
+        }
+        .ln-icon {
+          flex: 0 0 auto;
+          display: grid;
+          place-items: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 11px;
+          background: var(--udc-card);
+          color: var(--udc-primary);
+        }
+        .pick .ln-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          color: var(--udc-text2);
+        }
+        .ln-icon svg {
+          width: 19px;
+          height: 19px;
+        }
+        .ln-text {
+          min-width: 0;
+        }
+        .linked-main .ln-name {
+          color: var(--udc-primary);
+          font-weight: 500;
+        }
+        .linked-main small,
+        .pick small {
+          display: block;
+          color: var(--udc-text2);
+          font-size: 12px;
+        }
+        .linked-main:hover,
+        .pick:hover {
+          background: var(--udc-hover);
+        }
+        .linked-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .linked-actions button,
+        .link-add,
+        .picker-bar button {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          height: 34px;
+          padding: 0 12px;
+          border-radius: 10px;
+          border: 1px solid var(--udc-divider);
+          background: var(--udc-card);
+          color: var(--udc-text);
+          font: inherit;
+          font-size: 13px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .link-add svg {
+          width: 16px;
+          height: 16px;
+          color: var(--udc-primary);
+        }
+        .linked-actions button:hover,
+        .link-add:hover,
+        .picker-bar button:hover {
+          background: var(--udc-hover);
+        }
+        .picker {
+          border-radius: 14px;
+          background: var(--udc-subtle);
+          overflow: hidden;
+        }
+        .picker-bar {
+          position: relative;
+          display: flex;
+          gap: 8px;
+          padding: 10px;
+        }
+        .picker-bar > svg {
+          position: absolute;
+          left: 21px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 18px;
+          height: 18px;
+          color: var(--udc-text3);
+          pointer-events: none;
+        }
+        .picker-bar input {
+          flex: 1 1 auto;
+          min-width: 0;
+          box-sizing: border-box;
+          height: 38px;
+          padding: 0 10px 0 36px;
+          border-radius: 10px;
+          border: 1px solid var(--udc-divider);
+          background: var(--udc-input);
+          color: var(--udc-text);
+          /* 16px verhindert das automatische Hineinzoomen von iOS. */
+          font-size: 16px;
+        }
+        .picker-bar button {
+          height: 38px;
+        }
+        .picker-toggle {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 0 14px 10px;
+          color: var(--udc-text2);
+          font-size: 13px;
+          cursor: pointer;
+          user-select: none;
+        }
+        /* Checkbox als Schalter dargestellt; bleibt eine echte Checkbox
+           (Tastatur, Leertaste, Bildschirmleser). */
+        .picker-toggle input {
+          -webkit-appearance: none;
+          appearance: none;
+          position: relative;
+          flex: 0 0 auto;
+          width: 34px;
+          height: 20px;
+          margin: 0;
+          border-radius: 99px;
+          background: var(--udc-text3);
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .picker-toggle input::before {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #fff;
+          transition: transform 0.15s;
+        }
+        .picker-toggle input:checked {
+          background: var(--udc-primary);
+        }
+        .picker-toggle input:checked::before {
+          transform: translateX(14px);
+        }
+        .picker-toggle input:focus-visible {
+          outline: 2px solid var(--udc-primary);
+          outline-offset: 2px;
+        }
+        /* Eigene Scrollfläche, damit die Liste den Dialog nicht endlos lang
+           macht; Kopf und Aktionen des Dialogs bleiben erreichbar. */
+        .picker-list {
+          max-height: 320px;
+          overflow: auto;
+          overscroll-behavior: contain;
+          border-top: 1px solid var(--udc-divider);
+        }
+        .picker-list .dlg-note {
+          padding: 0 14px;
+        }
+        .pick.current {
+          background: var(--udc-primary-soft);
+        }
+        .pick.taken .ln-name {
+          color: var(--udc-text2);
+        }
+        .pick small.pick-taken {
+          color: var(--udc-warning);
+        }
+        .pick-group {
+          padding: 10px 14px 4px;
+          color: var(--udc-text2);
+          font-size: 11px;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        /* Entitäten */
         .entities {
           list-style: none;
           margin: 0;
           padding: 0;
-          border: 1px solid var(--divider-color, #e0e0e0);
-          border-radius: 8px;
+          border-radius: 14px;
+          background: var(--udc-subtle);
           overflow: hidden;
         }
         .entities li + li {
-          border-top: 1px solid var(--divider-color, #e0e0e0);
+          border-top: 1px solid var(--udc-divider);
         }
         .entities li.entity {
           display: flex;
           align-items: center;
-          justify-content: space-between;
           gap: 12px;
           box-sizing: border-box;
           width: 100%;
-          padding: 10px 12px;
+          padding: 10px 14px;
           font-size: 14px;
           cursor: pointer;
         }
         .entities li.entity:hover {
-          background: var(--secondary-background-color, rgba(0,0,0,0.06));
-        }
-        .ent-name {
-          min-width: 0;
-          overflow-wrap: anywhere;
+          background: var(--udc-hover);
         }
         .entities li.entity:focus-visible {
-          outline: 2px solid var(--primary-color, #03a9f4);
+          outline: 2px solid var(--udc-primary);
           outline-offset: -2px;
+        }
+        .ent-icon {
+          flex: 0 0 auto;
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 9px;
+          background: var(--udc-card);
+          color: var(--udc-text2);
+        }
+        .ent-icon svg {
+          width: 16px;
+          height: 16px;
+        }
+        .ent-name {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow-wrap: anywhere;
         }
         .ent-id {
           display: flex;
@@ -2494,18 +2875,14 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         .ent-id small {
           min-width: 0;
-          color: var(--secondary-text-color, #727272);
+          color: var(--udc-text3);
           font-size: 12px;
           overflow-wrap: anywhere;
         }
-        .copy-wrap {
-          display: inline-flex;
-          align-items: center;
-          gap: 2px;
-          max-width: 100%;
-        }
-        .copy-wrap > span {
-          min-width: 0;
+        .ent-state {
+          flex: 0 0 auto;
+          max-width: 45%;
+          text-align: right;
           overflow-wrap: anywhere;
         }
         /* Kleiner Icon-Button, aber mit ausreichend grosser Trefferfläche
@@ -2522,197 +2899,58 @@ class UnifiDynamicPanel extends HTMLElement {
           border: none;
           border-radius: 50%;
           background: none;
-          color: var(--secondary-text-color, #727272);
+          color: var(--udc-text3);
           cursor: pointer;
         }
         .copy-btn svg {
-          width: 16px;
-          height: 16px;
-          fill: currentColor;
+          width: 15px;
+          height: 15px;
         }
         .copy-btn:hover {
-          background: var(--secondary-background-color, rgba(0,0,0,0.08));
-          color: var(--primary-text-color, #212121);
-        }
-        .linked-link {
-          padding: 0;
-          border: none;
-          background: none;
-          color: var(--primary-color, #03a9f4);
-          font: inherit;
-          cursor: pointer;
-          text-align: left;
-        }
-        .linked-link:hover {
-          text-decoration: underline;
-        }
-        .linked-card {
-          border: 1px solid var(--divider-color, #e0e0e0);
-          border-radius: 8px;
-          overflow: hidden;
-        }
-        .linked-main,
-        .pick {
-          display: block;
-          box-sizing: border-box;
-          width: 100%;
-          padding: 10px 12px;
-          border: none;
-          background: none;
-          color: inherit;
-          font: inherit;
-          font-size: 14px;
-          text-align: left;
-          cursor: pointer;
-        }
-        .linked-main .ln-name {
-          color: var(--primary-color, #03a9f4);
-        }
-        .linked-main:hover,
-        .pick:hover {
-          background: var(--secondary-background-color, rgba(0,0,0,0.06));
-        }
-        .linked-main small,
-        .pick small {
-          display: block;
-          color: var(--secondary-text-color, #727272);
-          font-size: 12px;
-        }
-        .linked-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          padding: 0 12px 12px;
-        }
-        .linked-actions button,
-        .link-add,
-        .picker-bar button {
-          padding: 8px 12px;
-          border-radius: 8px;
-          border: 1px solid var(--divider-color, #ccc);
-          background: none;
-          color: var(--primary-text-color, #212121);
-          font: inherit;
-          font-size: 14px;
-          cursor: pointer;
-        }
-        .linked-actions button:hover,
-        .link-add:hover,
-        .picker-bar button:hover {
-          background: var(--secondary-background-color, rgba(0,0,0,0.06));
-        }
-        .picker {
-          border: 1px solid var(--divider-color, #e0e0e0);
-          border-radius: 8px;
-          overflow: hidden;
-        }
-        .picker-bar {
-          display: flex;
-          gap: 8px;
-          padding: 8px;
-          border-bottom: 1px solid var(--divider-color, #e0e0e0);
-        }
-        .picker-bar input {
-          flex: 1 1 auto;
-          min-width: 0;
-          box-sizing: border-box;
-          padding: 8px 10px;
-          border-radius: 8px;
-          border: 1px solid var(--divider-color, #ccc);
-          background: var(--primary-background-color, #fff);
-          color: var(--primary-text-color, #212121);
-          /* 16px verhindert das automatische Hineinzoomen von iOS. */
-          font-size: 16px;
-        }
-        /* Eigene Scrollfläche, damit die Liste den Dialog nicht endlos lang
-           macht; Kopf und Aktionen des Dialogs bleiben erreichbar. */
-        .picker-list {
-          max-height: 320px;
-          overflow: auto;
-          overscroll-behavior: contain;
-        }
-        .picker-list .dlg-note {
-          padding: 0 12px;
-        }
-        .pick + .pick {
-          border-top: 1px solid var(--divider-color, #e0e0e0);
-        }
-        .pick.current {
-          background: var(--secondary-background-color, rgba(0,0,0,0.04));
-        }
-        .picker-toggle {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          border-bottom: 1px solid var(--divider-color, #e0e0e0);
-          color: var(--secondary-text-color, #727272);
-          font-size: 14px;
-          cursor: pointer;
-          user-select: none;
-        }
-        .picker-toggle input {
-          width: 18px;
-          height: 18px;
-          margin: 0;
-          accent-color: var(--primary-color, #03a9f4);
-          cursor: pointer;
-        }
-        /* Bei einem anderen Client schon verknüpft: gedämpft, aber wählbar. */
-        .pick.taken .ln-name {
-          color: var(--secondary-text-color, #727272);
-        }
-        .pick small.pick-taken {
-          color: var(--warning-color, #e65100);
-        }
-        .pick-group {
-          padding: 10px 12px 4px;
-          color: var(--secondary-text-color, #727272);
-          font-size: 12px;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
+          background: var(--udc-hover);
+          color: var(--udc-text);
         }
         .copy-btn.done {
-          color: var(--success-color, #43a047);
-        }
-        .ent-state {
-          flex: 0 0 auto;
-          max-width: 50%;
-          text-align: right;
-          overflow-wrap: anywhere;
+          color: var(--udc-success);
         }
         .dlg-actions {
           position: sticky;
           bottom: 0;
+          z-index: 2;
           display: flex;
-          flex-wrap: wrap;
           gap: 8px;
-          padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
-          background: var(--card-background-color, #fff);
-          border-top: 1px solid var(--divider-color, #e0e0e0);
+          padding: 14px 22px calc(16px + env(safe-area-inset-bottom, 0px));
+          background: var(--udc-card);
+          border-top: 1px solid var(--udc-divider);
         }
-        .dlg-actions button {
-          flex: 1 1 auto;
-          padding: 10px 14px;
-          border-radius: 8px;
-          border: 1px solid var(--divider-color, #ccc);
+        .dlg-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          height: 42px;
+          padding: 0 18px;
+          border-radius: 12px;
+          border: 1px solid var(--udc-divider);
           background: none;
-          color: var(--primary-text-color, #212121);
+          color: var(--udc-text);
           font: inherit;
           font-size: 14px;
           cursor: pointer;
         }
-        .dlg-actions button:hover:not(:disabled) {
-          background: var(--secondary-background-color, rgba(0,0,0,0.06));
+        .dlg-btn[data-dlg="close"] {
+          flex: 1 1 auto;
         }
-        .dlg-actions button:disabled {
-          color: var(--disabled-text-color, #9e9e9e);
-          cursor: default;
+        .dlg-btn svg {
+          width: 18px;
+          height: 18px;
         }
-        .dlg-actions button.destructive {
-          color: var(--error-color, #b00020);
-          border-color: currentColor;
+        .dlg-btn:hover {
+          background: var(--udc-hover);
+        }
+        .dlg-btn.destructive {
+          color: var(--udc-error);
+          border-color: color-mix(in srgb, var(--udc-error) 45%, transparent);
         }
         .state-row td {
           text-align: center;
