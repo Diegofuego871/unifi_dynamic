@@ -157,35 +157,52 @@ gibt es nicht, die Antwort ist die Rückmeldung.
 
 Ein Panel namens „UniFi Dynamic Clients" ist in der Seitenleiste angeheftet
 (nur für Administratoren sichtbar). Es zeigt eine Tabelle mit allen Clients
-über alle konfigurierten UniFi-Hosts hinweg — Alias, IP, MAC, SSID, Access
-Point, Verbindungsart, zuletzt gesehen und ein Online/Offline-Badge —, die
-sich aktualisiert, indem sie alle 10 Sekunden nachfragt, solange das Panel
-offen ist. Die Suchleiste oben durchsucht alle diese Felder gleichzeitig,
-mit einem „×"-Button, der erscheint, sobald Text drinsteht, und ihn mit
-einem Klick leert. Daneben zählt eine Statusleiste alle Geräte und wie viele
-davon online und offline sind — „40 Geräte · ● 34 online · ○ 6 offline" —
-über alle Hosts hinweg. Die Zahlen folgen dem Kabel/WLAN-Filter, beschreiben
-also immer die Gruppe, die man gerade anschaut – nicht aber der Suche oder
-der Online/Offline-Auswahl selbst (sonst stünde bei „online" 0, während man
-die Offline-Geräte ansieht). Sie
-dient zugleich als Online/Offline-Filter: ein Tipp auf „online" oder
-„offline" zeigt nur diese Geräte, ein erneuter Tipp auf den aktiven Teil
-wieder alle, und der aktive Teil ist hervorgehoben. Ein Dropdown filtert
-nach Kabel/WLAN. Ein Klick auf eine Spaltenüberschrift sortiert die Tabelle
-aufsteigend danach;
-ein erneuter Klick auf dieselbe Überschrift dreht auf absteigend um, ein
-Klick auf eine andere Überschrift wechselt die Sortierspalte. Ein kleiner
-Pfeil markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der
-sortierten Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig
-von der Richtung.
+über alle konfigurierten UniFi-Hosts hinweg — Alias, verknüpftes HA-Gerät,
+IP, MAC, SSID, Access Point, Verbindungsart, zuletzt gesehen und Status —,
+die sich alle 10 Sekunden aktualisiert, solange das Panel offen ist.
+WLAN-Clients zeigen ihr Signal als Balken neben der Verbindungsart (aus dem
+dBm-Wert des Controllers: 4 Balken ab -60 dBm, 3 ab -67, 2 ab -75, sonst 1;
+grau, solange offline), „zuletzt gesehen" steht relativ („vor 5 Min.") mit
+der genauen Zeit darunter, und geschützte Clients tragen ein kleines Schild
+neben dem Namen.
 
-Suchtext, beide Filter sowie Sortierspalte und -richtung werden im
+Die Suchleiste oben durchsucht alle Spalten gleichzeitig. Daneben zählt eine
+Statusleiste die Geräte und wie viele davon online und offline sind — „40
+Geräte · ● 34 online · ○ 6 offline" — über alle Hosts hinweg. Sie dient
+zugleich als Online/Offline-Filter: ein Tipp auf „online" oder „offline"
+zeigt nur diese Geräte, ein erneuter Tipp auf den aktiven Teil wieder alle.
+
+Unter jeder Spaltenüberschrift steht ein eigener Filter: ein Textfeld für
+Alias, HA-Gerät, IP, MAC, SSID und Access Point (Gross-/Kleinschreibung egal;
+die MAC auch ohne Trennzeichen, „a1d0" findet „…:a1:d0") und eine Auswahl für
+Verbindung (Alle/WLAN/Kabel), zuletzt gesehen (Alle/< 1 Std./< 24 Std./> 7
+Tage) und Status (derselbe Zustand wie die Statusleiste). Alle Filter lassen
+sich kombinieren. Aktive Filter sind hervorgehoben und stehen als Chips über
+der Tabelle („Access Point: Büro ✕"), einzeln entfernbar oder alle auf
+einmal mit „Alle entfernen". Die Zahlen der Statusleiste folgen den
+Spaltenfiltern, beschreiben also immer die Gruppe, die man gerade anschaut –
+nicht aber der Suche oder der Online/Offline-Auswahl selbst (sonst stünde
+bei „online" 0, während man die Offline-Geräte ansieht). Titel- und
+Filterzeile bleiben beim Scrollen stehen. Die Fusszeile zeigt, wie viele
+Clients gelistet sind und wann die Daten zuletzt geholt wurden. Auf dem
+Handy weicht die Filterzeile einem Filter-Button (mit der Zahl aktiver
+Filter), der ein Blatt mit denselben Feldern und dem Button „12 von 40
+Clients anzeigen" öffnet; die Alias-Spalte bleibt beim seitlichen Scrollen
+stehen und zeigt Status-Punkt sowie Verbindung/Access Point unter dem Namen.
+
+Ein Klick auf eine Spaltenüberschrift sortiert die Tabelle aufsteigend
+danach, ein erneuter Klick dreht auf absteigend um. Ein kleiner Pfeil
+markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der sortierten
+Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig von der
+Richtung.
+
+Suchtext, alle Filter sowie Sortierspalte und -richtung werden im
 `localStorage` des Browsers gemerkt und überstehen ein Neuladen der Seite
 oder sogar einen kompletten Home-Assistant-Neustart — `localStorage` hat
 mit dem HA-Prozess nichts zu tun, bleibt also in beiden Fällen unberührt.
-Das gilt pro Browser/Gerät, nicht geräteübergreifend synchronisiert. Ein
-Button „Filter zurücksetzen" in der Werkzeugleiste setzt alles mit einem
-Klick auf die Standardansicht zurück.
+Das gilt pro Browser/Gerät, nicht geräteübergreifend synchronisiert.
+„Filter zurücksetzen" in der Werkzeugleiste (mit der Zahl aktiver Filter)
+setzt alles mit einem Klick auf die Standardansicht zurück.
 
 Jede Zeile hat ein ⋮-Menü mit „Details", „Vor automatischem Löschen schützen" (trägt
 den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt

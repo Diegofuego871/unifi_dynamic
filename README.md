@@ -154,31 +154,48 @@ feedback.
 
 A panel named "UniFi Dynamic Clients" is pinned in the sidebar (visible to
 administrators only). It shows one table with every client across all
-configured UniFi hosts — alias, IP, MAC, SSID, access point, connection
-type, last seen and an online/offline badge — refreshed by polling every 10
-seconds while the panel is open. The search box at the top matches across
-all of those fields at once, with a "×" button that appears once it has
-text and clears it in one click. Next to it, a status bar counts all
-devices and how many of them are online and offline — "40 devices · ● 34
-online · ○ 6 offline" — across all hosts. The numbers follow the
-wired/wireless filter, so they always describe the group you are looking
-at, but not the search or the online/offline choice itself (otherwise
-"online" would read 0 while showing offline devices). It doubles as the online/offline filter: tapping "online" or
-"offline" shows only those devices, tapping the active part again goes back
-to all, and the active part is highlighted. A dropdown filters by
-wired/wireless. Clicking a column header sorts the table
-by that column, ascending; clicking the same header again reverses to
-descending, and clicking a different header switches to sorting by that one
-instead. A small arrow marks the active column and direction. Rows with a
-missing value for the sorted column (no IP, never seen) always sort to the
-end, regardless of direction.
+configured UniFi hosts — alias, linked HA device, IP, MAC, SSID, access
+point, connection type, last seen and status — refreshed by polling every
+10 seconds while the panel is open. Wireless clients show their signal as
+bars next to the connection type (from the controller's dBm value: 4 bars
+from -60 dBm, 3 from -67, 2 from -75, otherwise 1; grey while offline),
+"last seen" reads relative ("5 min. ago") with the exact time below, and
+protected clients carry a small shield next to their name.
 
-The search text, both filters, and the sort column and direction
-are remembered in the browser's `localStorage` and survive a page reload or
+The search box at the top matches across all columns at once. Next to it,
+a status bar counts the devices and how many of them are online and
+offline — "40 devices · ● 34 online · ○ 6 offline" — across all hosts. It
+doubles as the online/offline filter: tapping "online" or "offline" shows
+only those devices, tapping the active part again goes back to all.
+
+Below each column header sits its own filter: a text field for alias, HA
+device, IP, MAC, SSID and access point (case doesn't matter; MAC also works
+without separators, "a1d0" finds "…:a1:d0"), and a choice for connection
+(all/wireless/wired), last seen (all/< 1 h/< 24 h/> 7 days) and status (the
+same state as the status bar). All filters combine. Active ones are
+highlighted and listed as chips above the table ("Access point: Office ✕"),
+each removable on its own or all at once with "Clear all". The status bar's
+numbers follow the column filters, so they always describe the group you
+are looking at — but not the search or the online/offline choice itself
+(otherwise "online" would read 0 while showing offline devices). Header and
+filter row stay in place while scrolling. The footer shows how many clients
+are listed and when the data was last refreshed. On a phone the filter row
+gives way to a filter button (with the number of active filters) that opens
+a sheet with the same fields and a "Show 12 of 40 clients" button; the alias
+column stays put when scrolling sideways and shows the status dot and
+connection/access point below the name.
+
+Clicking a column header sorts the table by that column, ascending;
+clicking it again reverses to descending. A small arrow marks the active
+column and direction. Rows with a missing value for the sorted column (no
+IP, never seen) always sort to the end, regardless of direction.
+
+The search text, all filters, and the sort column and direction are
+remembered in the browser's `localStorage` and survive a page reload or
 even a full Home Assistant restart — `localStorage` has nothing to do with
 the HA process, so it is unaffected either way. This is per browser/device,
-not synced between them. A "Reset filters" button in the toolbar clears all
-of it back to the default view in one click.
+not synced between them. "Reset filters" in the toolbar (with the number of
+active filters) clears all of it back to the default view in one click.
 
 Each row has a ⋮ menu with "Details", "Protect from automatic removal" (adds the
 client to the exclusion list), "Remove" (asks for confirmation, then

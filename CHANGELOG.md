@@ -5,6 +5,41 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2026-09-25
+
+### Added
+
+- Column filters: below each column header sits its own filter — a text
+  field for alias, HA device, IP, MAC, SSID and access point (case doesn't
+  matter; MAC also without separators) and a choice for connection
+  (all/wireless/wired), last seen (all/< 1 h/< 24 h/> 7 days) and status.
+  All filters combine, are remembered per browser like before, and header
+  and filter row stay in place while scrolling.
+- Active filters appear as chips above the table, each removable on its
+  own or all at once. "Reset filters" shows how many filters are active.
+- On a phone a filter button (with the number of active filters) opens a
+  sheet with the same fields and a "Show N of M clients" button; the alias
+  column stays put when scrolling sideways and shows the status dot and
+  connection/access point below the name.
+- Signal bars for wireless clients (from the controller's dBm value),
+  relative "last seen" times with the exact time below, a shield for
+  protected clients, and a footer with the number of listed clients and the
+  time of the last refresh.
+- Placeholder rows while the list is loading for the first time.
+
+### Changed
+
+- Modernized table design in line with Home Assistant's current look:
+  rounded table card, status bar as a segmented control, status pills,
+  connection icons, a menu with icons. Colors still come entirely from the
+  active Home Assistant theme, light and dark.
+- The status bar's numbers now follow all column filters (before: only the
+  wired/wireless filter). Search and the online/offline choice still don't
+  affect them.
+- The wired/wireless dropdown moved from the toolbar into the connection
+  column's filter.
+- README screenshots re-rendered, again with entirely made-up data.
+
 ## [2.2.3] - 2026-09-24
 
 ### Added
@@ -911,6 +946,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.3.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.0
 [2.2.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.3
 [2.2.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.2
 [2.2.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.1
