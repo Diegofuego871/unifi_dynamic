@@ -193,9 +193,12 @@ stehen und zeigt Status-Punkt sowie Verbindung/Access Point unter dem Namen.
 „Spalten" in der Werkzeugleiste öffnet eine kleine Liste mit einem Schalter
 pro Spalte, um nicht benötigte auszublenden — HA-Gerät, IP, MAC, SSID,
 Access Point, Verbindung, zuletzt gesehen und Status; der Alias bleibt
-immer, weil er der Einstieg in die Geräteansicht ist. „Alle einblenden"
-holt alles zurück, ein Zähler am Button zeigt die Zahl ausgeblendeter
-Spalten. Auf dem Handy stehen dieselben Schalter im Filter-Blatt. Der Filter
+immer, weil er der Einstieg in die Geräteansicht ist. Mit dem Griff ≡ vor
+jeder Spalte ändert sich die Reihenfolge: ziehen (Maus oder Finger) oder
+Pfeiltasten auf dem Griff; der Alias bleibt vorn, das ⋮-Menü hinten.
+„Alle einblenden" holt alle Spalten zurück, „Standard" stellt Sichtbarkeit
+und Reihenfolge wieder her, ein Zähler am Button zeigt die Zahl
+ausgeblendeter Spalten. Auf dem Handy stehen dieselben Schalter im Filter-Blatt. Der Filter
 einer ausgeblendeten Spalte wirkt weiter und bleibt als Chip sichtbar.
 
 Ein Klick auf eine Spaltenüberschrift sortiert die Tabelle aufsteigend
@@ -205,14 +208,15 @@ Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig von der
 Richtung.
 
 Online/Offline-Auswahl, Verbindungsfilter, Sortierspalte und -richtung, die
-ausgeblendeten Spalten und der Schalter „Bereits verknüpfte ausblenden"
+ausgeblendeten Spalten samt Reihenfolge und der Schalter „Bereits verknüpfte ausblenden"
 werden pro Home-Assistant-Benutzer gespeichert, im eigenen Speicher von
 Home Assistant für Frontend-Einstellungen — dort, wo Home Assistant auch
 seine eigenen Tabelleneinstellungen ablegt. Sie gelten damit auf allen
 Geräten und Browsern, mit denen du dich anmeldest, auch in der
 Companion-App, und überstehen Neuladen und Neustarts. Ausgeblendete Spalten
-werden getrennt für Handy-Breite (bis 600px) und breitere Bildschirme
-gespeichert, damit eine am Handy ausgeblendete Spalte am Desktop nicht fehlt.
+und ihre Reihenfolge werden getrennt für Handy-Breite (bis 600px) und
+breitere Bildschirme gespeichert, damit Änderungen am Handy den Desktop
+nicht betreffen.
 Suchtext, Textfilter pro Spalte und „zuletzt gesehen" werden bewusst nicht
 gespeichert: sie gelten nur, solange das Panel offen ist. Jeder Browser hält
 zusätzlich eine lokale Kopie für einen sofortigen Start; es gewinnt jeweils

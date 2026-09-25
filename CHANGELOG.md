@@ -5,6 +5,17 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.1] - 2026-09-25
+
+### Added
+
+- Column order: in the "Columns" list (and in the phone's filter sheet)
+  each column has a ≡ handle to drag it to a new position — with the mouse
+  or a finger — or to move it with the arrow keys. The alias stays first
+  and the ⋮ menu last. "Default" restores visibility and order. The order
+  is saved per Home Assistant user like the visible columns, separately for
+  phone-width and wider screens.
+
 ## [2.5.0] - 2026-09-25
 
 ### Changed
@@ -1000,6 +1011,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.5.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.1
 [2.5.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.0
 [2.4.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.4.0
 [2.3.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.1

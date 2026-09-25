@@ -188,8 +188,11 @@ connection/access point below the name.
 "Columns" in the toolbar opens a small list with a switch per column to
 hide the ones you don't need — HA device, IP, MAC, SSID, access point,
 connection, last seen and status; the alias always stays, since it is the
-way into the device view. "Show all" brings everything back, and a badge on
-the button counts the hidden columns. On a phone the same switches sit in
+way into the device view. The ≡ handle in front of each column changes the
+order: drag it (mouse or finger) or use the arrow keys on it; the alias
+stays first and the ⋮ menu last. "Show all" brings every column back,
+"Default" restores visibility and order, and a badge on the button counts
+the hidden columns. On a phone the same switches sit in
 the filter sheet. A hidden column's filter keeps applying and stays visible
 as a chip.
 
@@ -199,13 +202,13 @@ column and direction. Rows with a missing value for the sorted column (no
 IP, never seen) always sort to the end, regardless of direction.
 
 The online/offline choice, the connection filter, the sort column and
-direction, the hidden columns and the "Hide already linked" switch are
+direction, the hidden columns and their order, and the "Hide already linked" switch are
 saved per Home Assistant user, in Home Assistant's own storage for frontend
 settings — the same place Home Assistant keeps its own table settings. They
 therefore apply on every device and browser you sign in with, including the
-companion app, and survive reloads and restarts. Hidden columns are kept
-separately for phone-width screens (up to 600px) and wider ones, so hiding
-a column on the phone doesn't hide it on the desktop. The search text, the
+companion app, and survive reloads and restarts. Hidden columns and
+their order are kept separately for phone-width screens (up to 600px) and
+wider ones, so changing them on the phone doesn't affect the desktop. The search text, the
 text filters per column and "last seen" are deliberately not saved: they
 only apply while the panel is open. Each browser also keeps a local copy
 for an instant start; whichever state is newer wins, and if Home Assistant

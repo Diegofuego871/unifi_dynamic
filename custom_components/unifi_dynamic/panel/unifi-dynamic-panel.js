@@ -41,6 +41,8 @@ const STRINGS = {
     columnsBtn: "Spalten",
     columnsTitle: "Spalten anzeigen",
     columnsAll: "Alle einblenden",
+    columnsDefault: "Standard",
+    columnsDrag: (label) => `${label} verschieben (ziehen oder Pfeiltasten)`,
     showN: (n, total) => `${n} von ${total} Clients anzeigen`,
     footer: (n, total, time) => `${n} von ${total} Clients angezeigt · Stand ${time}`,
     footerHint: "Zeile antippen für Details",
@@ -144,6 +146,8 @@ const STRINGS = {
     columnsBtn: "Columns",
     columnsTitle: "Show columns",
     columnsAll: "Show all",
+    columnsDefault: "Default",
+    columnsDrag: (label) => `Move ${label} (drag or arrow keys)`,
     showN: (n, total) => `Show ${n} of ${total} clients`,
     footer: (n, total, time) => `${n} of ${total} clients shown · as of ${time}`,
     footerHint: "Tap a row for details",
@@ -288,9 +292,11 @@ const CONN_FILTERS = ["all", "wired", "wireless"];
 const SEEN_FILTERS = ["all", "1h", "24h", "7d"];
 // Spalten mit Textfilter (Schlüssel = Feld bzw. Sortierschlüssel).
 const TEXT_FILTER_KEYS = ["name", "linked", "ip", "mac", "essid", "ap_name"];
-// Ausblendbare Spalten mit Beschriftung und Position in der Tabelle
-// (1-basiert, für nth-child). Alias (1) und das Menü (10) bleiben immer
-// sichtbar: ohne Alias fehlte der Einstieg in die Geräteansicht.
+// Ausblend- und verschiebbare Spalten in Standardreihenfolge, mit
+// Beschriftung. Alias (immer vorn) und das Menü (immer hinten) sind fest:
+// ohne Alias fehlte der Einstieg in die Geräteansicht, und auf dem Handy
+// ist Alias die fixierte erste Spalte. Die dritte Angabe (frühere
+// nth-child-Position) wird nicht mehr gebraucht.
 const HIDEABLE_COLUMNS = [
   ["linked", "colLinked", 2],
   ["ip", "colIp", 3],
@@ -319,6 +325,7 @@ const ICONS = {
   open: "M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z",
   trash: "M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z",
   columns: "M16,5V18H21V5M4,18H9V5H4M10,18H15V5H10V18Z",
+  drag: "M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z",
   close: "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z",
   device: "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z",
   entity: "M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7Z",
@@ -346,6 +353,9 @@ const DEFAULT_PREFS = {
   // "Filter zurücksetzen" lässt sie stehen.
   hiddenColsWide: [],
   hiddenColsNarrow: [],
+  // Spaltenreihenfolge (ohne Alias und Menü), ebenfalls je Layout.
+  colOrderWide: [...HIDEABLE_KEYS],
+  colOrderNarrow: [...HIDEABLE_KEYS],
   // Geräteauswahl: bei anderen Clients schon verknüpfte Geräte ausblenden
   // statt nur markieren. Gilt nur für die Auswahl, nicht für die Tabelle.
   hideLinked: false,
@@ -359,6 +369,19 @@ function sanitizePrefs(raw) {
   const cols = (list) =>
     Array.isArray(list) ? HIDEABLE_KEYS.filter((k) => list.includes(k)) : null;
   const legacy = cols(p.hiddenCols) || [];
+  // Reihenfolge: bekannte Schlüssel in gespeicherter Folge, doppelte und
+  // unbekannte verworfen, fehlende (z.B. neue Spalten) hinten angehängt.
+  const order = (list) => {
+    const seen = new Set();
+    const out = [];
+    for (const k of Array.isArray(list) ? list : []) {
+      if (HIDEABLE_KEYS.includes(k) && !seen.has(k)) {
+        seen.add(k);
+        out.push(k);
+      }
+    }
+    return out.concat(HIDEABLE_KEYS.filter((k) => !seen.has(k)));
+  };
   return {
     onlineFilter: ONLINE_FILTERS.includes(p.onlineFilter) ? p.onlineFilter : "all",
     connFilter: CONN_FILTERS.includes(p.connFilter) ? p.connFilter : "all",
@@ -366,6 +389,8 @@ function sanitizePrefs(raw) {
     sortDir: p.sortDir === "desc" ? "desc" : "asc",
     hiddenColsWide: cols(p.hiddenColsWide) || legacy,
     hiddenColsNarrow: cols(p.hiddenColsNarrow) || legacy,
+    colOrderWide: order(p.colOrderWide),
+    colOrderNarrow: order(p.colOrderNarrow),
     hideLinked: p.hideLinked === true,
     // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
     // Kopie oder der Stand von HA neuer ist.
@@ -455,6 +480,8 @@ class UnifiDynamicPanel extends HTMLElement {
     this._sortDir = prefs.sortDir;
     this._hiddenColsWide = new Set(prefs.hiddenColsWide);
     this._hiddenColsNarrow = new Set(prefs.hiddenColsNarrow);
+    this._colOrderWide = [...prefs.colOrderWide];
+    this._colOrderNarrow = [...prefs.colOrderNarrow];
     this._hideLinked = prefs.hideLinked;
   }
 
@@ -466,8 +493,24 @@ class UnifiDynamicPanel extends HTMLElement {
       sortDir: this._sortDir,
       hiddenColsWide: HIDEABLE_KEYS.filter((k) => this._hiddenColsWide.has(k)),
       hiddenColsNarrow: HIDEABLE_KEYS.filter((k) => this._hiddenColsNarrow.has(k)),
+      colOrderWide: [...this._colOrderWide],
+      colOrderNarrow: [...this._colOrderNarrow],
       hideLinked: this._hideLinked,
     };
+  }
+
+  _isNarrow() {
+    return this._narrowQuery ? this._narrowQuery.matches : false;
+  }
+
+  // Spaltenreihenfolge des gerade aktiven Layouts (ohne Alias und Menü).
+  get _colOrder() {
+    return this._isNarrow() ? this._colOrderNarrow : this._colOrderWide;
+  }
+
+  set _colOrder(order) {
+    if (this._isNarrow()) this._colOrderNarrow = order;
+    else this._colOrderWide = order;
   }
 
   // Ausgeblendete Spalten des gerade aktiven Layouts (schmal/breit).
@@ -526,11 +569,7 @@ class UnifiDynamicPanel extends HTMLElement {
       this._applyPrefs(prefs);
       this._lastSavedPrefs = JSON.stringify(this._currentPrefs());
       savePrefs(prefs);
-      if (this._built) {
-        this._renderHeader();
-        this._applyColumnVisibility();
-        this._renderRows();
-      }
+      if (this._built) this._rebuildColumns();
       return;
     }
     await this._saveUserPrefs();
@@ -1439,25 +1478,56 @@ class UnifiDynamicPanel extends HTMLElement {
   _headerCellHtml(key, label) {
     const active = this._sortKey === key;
     const arrow = active ? (this._sortDir === "desc" ? "▼" : "▲") : "";
-    return `<th class="sortable" data-sort-key="${key}">${this._escape(
+    return `<th class="sortable c-${key === "seen_at" ? "seen_at" : key}" data-sort-key="${key}">${this._escape(
       label
     )}<span class="sort-arrow">${arrow}</span></th>`;
   }
 
+  _columnLabel(key) {
+    const def = HIDEABLE_COLUMNS.find(([k]) => k === key);
+    return def ? this._t(def[1]) : this._t("colName");
+  }
+
   _headerRowHtml() {
+    return `${this._headerCellHtml("name", this._t("colName"))}${this._colOrder
+      .map((key) => this._headerCellHtml(key, this._columnLabel(key)))
+      .join("")}<th class="c-actions">${this._escape(this._t("colActions"))}</th>`;
+  }
+
+  // Filterzeile in derselben Reihenfolge wie die Titelzeile.
+  _filterRowHtml() {
     const t = (k) => this._t(k);
-    return `
-      ${this._headerCellHtml("name", t("colName"))}
-      ${this._headerCellHtml("linked", t("colLinked"))}
-      ${this._headerCellHtml("ip", t("colIp"))}
-      ${this._headerCellHtml("mac", t("colMac"))}
-      ${this._headerCellHtml("essid", t("colSsid"))}
-      ${this._headerCellHtml("ap_name", t("colAp"))}
-      ${this._headerCellHtml("conn", t("colConn"))}
-      ${this._headerCellHtml("seen_at", t("colSeen"))}
-      ${this._headerCellHtml("status", t("colStatus"))}
-      <th>${this._escape(t("colActions"))}</th>
-    `;
+    const cell = {
+      linked: this._textFilterHtml("linked"),
+      ip: this._textFilterHtml("ip", t("ipPlaceholder")),
+      mac: this._textFilterHtml("mac"),
+      essid: this._textFilterHtml("essid"),
+      ap_name: this._textFilterHtml("ap_name"),
+      conn: `<select class="col-filter filter-conn" data-col="conn" aria-label="${this._escape(
+        t("colConn")
+      )}">${this._connOptionsHtml()}</select>`,
+      seen_at: `<select class="col-filter filter-seen" data-col="seen" aria-label="${this._escape(
+        t("colSeen")
+      )}">${this._seenOptionsHtml()}</select>`,
+      status: `<select class="col-filter filter-status" data-col="status" aria-label="${this._escape(
+        t("colStatus")
+      )}">${this._statusOptionsHtml()}</select>`,
+    };
+    return `<th class="c-name">${this._textFilterHtml("name")}</th>${this._colOrder
+      .map((key) => `<th class="c-${key}">${cell[key]}</th>`)
+      .join("")}<th class="c-actions"></th>`;
+  }
+
+  // Titel- und Filterzeile nach einer Änderung der Reihenfolge neu aufbauen
+  // (die Filterwerte kommen aus dem Zustand), dann die Zeilen.
+  _rebuildColumns() {
+    const root = this.shadowRoot;
+    const fr = root && root.querySelector("thead tr.filter-row");
+    if (!fr) return;
+    this._renderHeader();
+    fr.innerHTML = this._filterRowHtml();
+    this._applyColumnVisibility();
+    this._renderRows();
   }
 
   // Nur die Titelzeile neu aufbauen (Pfeil-Indikator). Die Filterzeile
@@ -1595,8 +1665,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const root = this.shadowRoot;
     const style = root.querySelector("style.colvis");
     if (!style) return;
-    const css = HIDEABLE_COLUMNS.filter(([key]) => this._hiddenCols.has(key))
-      .map(([, , n]) => `table tr > :nth-child(${n}) { display: none; }`)
+    const css = HIDEABLE_KEYS.filter((key) => this._hiddenCols.has(key))
+      .map((key) => `table .c-${key} { display: none; }`)
       .join("\n");
     if (style.textContent !== css) style.textContent = css;
     const badge = root.querySelector(".cols-btn .count-badge");
@@ -1614,13 +1684,118 @@ class UnifiDynamicPanel extends HTMLElement {
     this._savePrefs();
   }
 
+  // Spaltenliste in aktueller Reihenfolge: Griff zum Verschieben,
+  // Beschriftung, Schalter zum Ein-/Ausblenden.
   _columnTogglesHtml(attr) {
-    return HIDEABLE_COLUMNS.map(
-      ([key, label]) => `<label class="col-toggle">${this._escape(this._t(label))}
-        <input type="checkbox" class="switch" ${attr}="${key}" ${
-          this._hiddenCols.has(key) ? "" : "checked"
-        } /></label>`
-    ).join("");
+    return `<div class="col-list">${this._colOrder
+      .map((key) => {
+        const label = this._escape(this._columnLabel(key));
+        return `<div class="col-row" data-colkey="${key}">
+          <button class="col-handle" data-colmove="${key}" title="${this._escape(
+            this._t("columnsDrag")(this._columnLabel(key))
+          )}" aria-label="${this._escape(this._t("columnsDrag")(this._columnLabel(key)))}">${icon(
+            "drag"
+          )}</button>
+          <label class="col-toggle">${label}
+          <input type="checkbox" class="switch" ${attr}="${key}" ${
+            this._hiddenCols.has(key) ? "" : "checked"
+          } /></label></div>`;
+      })
+      .join("")}</div>`;
+  }
+
+  _setColumnOrder(order) {
+    this._colOrder = order;
+    this._rebuildColumns();
+    this._savePrefs();
+  }
+
+  // Liste nach Verschieben neu aufbauen, Fokus auf dem Griff der bewegten
+  // Spalte halten (Tastaturbedienung).
+  _refreshColumnLists(focusKey) {
+    if (this._colsOpen) this._renderColumnsPopover();
+    const sheet = this.shadowRoot.querySelector("dialog.filters");
+    if (sheet && sheet.open) {
+      const box = sheet.querySelector(".sheet-cols");
+      if (box) box.innerHTML = this._columnTogglesHtml("data-fcolvis");
+    }
+    if (focusKey) {
+      const scope = this._colsOpen
+        ? this.shadowRoot.querySelector(".cols-pop")
+        : this.shadowRoot.querySelector("dialog.filters");
+      const h = scope && scope.querySelector(`[data-colmove="${focusKey}"]`);
+      if (h) h.focus();
+    }
+  }
+
+  // Ziehen per Pointer-Events (Maus, Finger, Stift gleich). HTML-Drag-and-
+  // Drop scheidet aus: es funktioniert auf Touch-Geräten nicht.
+  _bindColumnDrag(container) {
+    container.addEventListener("pointerdown", (ev) => {
+      const handle = ev.target.closest(".col-handle");
+      if (!handle || (ev.pointerType === "mouse" && ev.button !== 0)) return;
+      const row = handle.closest(".col-row");
+      const list = row.parentElement;
+      const rows = [...list.querySelectorAll(".col-row")];
+      const from = rows.indexOf(row);
+      const rects = rows.map((r) => r.getBoundingClientRect());
+      const height = rects[from].height;
+      const startY = ev.clientY;
+      let to = from;
+      ev.preventDefault();
+      handle.setPointerCapture(ev.pointerId);
+      row.classList.add("dragging");
+      const move = (e) => {
+        const dy = e.clientY - startY;
+        row.style.transform = `translateY(${dy}px)`;
+        const center = rects[from].top + height / 2 + dy;
+        to = from;
+        rects.forEach((r, i) => {
+          if (i < from && center < r.top + r.height / 2) to = Math.min(to, i);
+          if (i > from && center > r.top + r.height / 2) to = Math.max(to, i);
+        });
+        rows.forEach((r, i) => {
+          if (i === from) return;
+          let shift = 0;
+          if (from < to && i > from && i <= to) shift = -height;
+          if (from > to && i < from && i >= to) shift = height;
+          r.style.transform = shift ? `translateY(${shift}px)` : "";
+        });
+      };
+      const end = () => {
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", end);
+        handle.removeEventListener("pointercancel", end);
+        rows.forEach((r) => {
+          r.style.transform = "";
+        });
+        row.classList.remove("dragging");
+        if (to !== from) {
+          const order = [...this._colOrder];
+          const [key] = order.splice(from, 1);
+          order.splice(to, 0, key);
+          this._setColumnOrder(order);
+          this._refreshColumnLists();
+        }
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", end);
+      handle.addEventListener("pointercancel", end);
+    });
+    // Tastatur: Pfeil hoch/runter auf dem Griff verschiebt um eine Stelle.
+    container.addEventListener("keydown", (ev) => {
+      const handle = ev.target.closest && ev.target.closest(".col-handle");
+      if (!handle || (ev.key !== "ArrowUp" && ev.key !== "ArrowDown")) return;
+      ev.preventDefault();
+      const key = handle.dataset.colmove;
+      const order = [...this._colOrder];
+      const i = order.indexOf(key);
+      const j = ev.key === "ArrowUp" ? i - 1 : i + 1;
+      if (j < 0 || j >= order.length) return;
+      [order[i], order[j]] = [order[j], order[i]];
+      this._setColumnOrder(order);
+      this._refreshColumnLists(key);
+    });
   }
 
   _renderColumnsPopover() {
@@ -1628,7 +1803,9 @@ class UnifiDynamicPanel extends HTMLElement {
     if (!pop) return;
     const t = (k) => this._t(k);
     pop.innerHTML = `<div class="cols-head">${this._escape(t("columnsTitle"))}
-        <button data-cols-all>${this._escape(t("columnsAll"))}</button></div>
+        <span><button data-cols-all>${this._escape(t("columnsAll"))}</button><button data-cols-default>${this._escape(
+          t("columnsDefault")
+        )}</button></span></div>
       ${this._columnTogglesHtml("data-colvis")}`;
   }
 
@@ -2504,6 +2681,10 @@ class UnifiDynamicPanel extends HTMLElement {
           letter-spacing: 0.04em;
           text-transform: uppercase;
         }
+        .cols-head span {
+          display: flex;
+          gap: 4px;
+        }
         .cols-head button {
           border: none;
           background: none;
@@ -2514,6 +2695,54 @@ class UnifiDynamicPanel extends HTMLElement {
           text-transform: none;
           cursor: pointer;
           padding: 2px 4px;
+        }
+        .col-list {
+          position: relative;
+        }
+        .col-row {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          border-radius: 8px;
+          background: var(--udc-card);
+          transition: transform 0.12s ease;
+        }
+        .col-row.dragging {
+          position: relative;
+          z-index: 1;
+          transition: none;
+          box-shadow: var(--udc-shadow);
+        }
+        .col-handle {
+          flex: 0 0 auto;
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 36px;
+          padding: 0;
+          border: none;
+          border-radius: 8px;
+          background: none;
+          color: var(--udc-text3);
+          cursor: grab;
+          /* Sonst scrollt der Finger das Blatt statt die Zeile zu ziehen. */
+          touch-action: none;
+        }
+        .col-row.dragging .col-handle {
+          cursor: grabbing;
+        }
+        .col-handle svg {
+          width: 18px;
+          height: 18px;
+        }
+        .col-handle:hover,
+        .col-handle:focus-visible {
+          color: var(--udc-text);
+          background: var(--udc-hover);
+          outline: none;
+        }
+        .col-row .col-toggle {
+          flex: 1 1 auto;
         }
         .col-toggle {
           display: flex;
@@ -2577,10 +2806,8 @@ class UnifiDynamicPanel extends HTMLElement {
           letter-spacing: 0.04em;
           text-transform: uppercase;
         }
-        .sheet-cols {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          column-gap: 12px;
+        .sheet-cols .col-row {
+          background: var(--udc-card);
         }
         .sheet-cols .col-toggle {
           padding: 8px 4px;
@@ -3325,24 +3552,7 @@ class UnifiDynamicPanel extends HTMLElement {
         <table>
           <thead>
             <tr class="head-row">${this._headerRowHtml()}</tr>
-            <tr class="filter-row">
-              <th>${this._textFilterHtml("name")}</th>
-              <th>${this._textFilterHtml("linked")}</th>
-              <th>${this._textFilterHtml("ip", t("ipPlaceholder"))}</th>
-              <th>${this._textFilterHtml("mac")}</th>
-              <th>${this._textFilterHtml("essid")}</th>
-              <th>${this._textFilterHtml("ap_name")}</th>
-              <th><select class="col-filter filter-conn" data-col="conn" aria-label="${this._escape(
-                t("colConn")
-              )}">${this._connOptionsHtml()}</select></th>
-              <th><select class="col-filter filter-seen" data-col="seen" aria-label="${this._escape(
-                t("colSeen")
-              )}">${this._seenOptionsHtml()}</select></th>
-              <th><select class="col-filter filter-status" data-col="status" aria-label="${this._escape(
-                t("colStatus")
-              )}">${this._statusOptionsHtml()}</select></th>
-              <th></th>
-            </tr>
+            <tr class="filter-row">${this._filterRowHtml()}</tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -3448,8 +3658,14 @@ class UnifiDynamicPanel extends HTMLElement {
         this._applyColumnVisibility();
         this._savePrefs();
         this._renderColumnsPopover();
+      } else if (ev.target.closest("[data-cols-default]")) {
+        // Standard: alle sichtbar, ursprüngliche Reihenfolge.
+        this._hiddenCols.clear();
+        this._setColumnOrder([...HIDEABLE_KEYS]);
+        this._renderColumnsPopover();
       }
     });
+    this._bindColumnDrag(colsPop);
     // Schliessen bei Klick ausserhalb oder Esc.
     root.addEventListener("click", () => {
       if (this._colsOpen) this._toggleColumnsPopover(false);
@@ -3470,6 +3686,7 @@ class UnifiDynamicPanel extends HTMLElement {
       if (typeof sheet.showModal === "function") sheet.showModal();
       else sheet.setAttribute("open", "");
     });
+    this._bindColumnDrag(sheet);
     sheet.addEventListener("change", (ev) => {
       const key = ev.target.dataset && ev.target.dataset.fcolvis;
       if (key) this._setColumnVisible(key, ev.target.checked);
@@ -3513,7 +3730,7 @@ class UnifiDynamicPanel extends HTMLElement {
     // Spaltenauswahl des anderen Layouts anwenden.
     if (this._narrowQuery && this._narrowQuery.addEventListener) {
       this._narrowQuery.addEventListener("change", () => {
-        this._applyColumnVisibility();
+        this._rebuildColumns();
         if (this._colsOpen) this._renderColumnsPopover();
       });
     }
@@ -3792,12 +4009,13 @@ class UnifiDynamicPanel extends HTMLElement {
     const foot = root.querySelector(".foot-count");
     if (this._loading) {
       // Platzhalterzeilen in etwa der Breite echter Inhalte.
-      const widths = [150, 110, 95, 120, 70, 90, 80, 90, 60, 20];
+      const widths = { name: 150, linked: 110, ip: 95, mac: 120, essid: 70, ap_name: 90, conn: 80, seen_at: 90, status: 60, actions: 20 };
+      const keys = ["name", ...this._colOrder, "actions"];
       tbody.innerHTML = Array.from(
         { length: 8 },
         () =>
-          `<tr class="skeleton-row">${widths
-            .map((w) => `<td><div class="skeleton" style="width:${w}px"></div></td>`)
+          `<tr class="skeleton-row">${keys
+            .map((k) => `<td class="c-${k}"><div class="skeleton" style="width:${widths[k]}px"></div></td>`)
             .join("")}</tr>`
       ).join("");
       foot.textContent = t("loading");
@@ -3816,6 +4034,7 @@ class UnifiDynamicPanel extends HTMLElement {
     }
 
     const multiHost = this._hostCount > 1;
+    const order = this._colOrder;
 
     tbody.innerHTML = rows
       .map((c) => {
@@ -3844,6 +4063,28 @@ class UnifiDynamicPanel extends HTMLElement {
             )}</small></span>`
           : `<span class="muted">${esc(t("seenNever"))}</span>`;
         const dash = `<span class="muted">–</span>`;
+        // Eine Funktion pro verschiebbarer Spalte; die Reihenfolge kommt aus
+        // den Einstellungen (_colOrder).
+        const cells = {
+          linked: () =>
+            `<td class="c-linked">${
+              c.linked_device
+                ? `<button class="linked-link" data-action="open-linked" data-linked-id="${esc(
+                    c.linked_device.id
+                  )}" title="${esc(t("linkOpen")(c.linked_device.name))}">${icon("link")}${esc(
+                    c.linked_device.name
+                  )}</button>`
+                : dash
+            }</td>`,
+          ip: () => `<td class="mono c-ip">${c.ip ? esc(c.ip) : dash}</td>`,
+          mac: () => `<td class="mono c-mac">${esc(c.mac)}</td>`,
+          essid: () => `<td class="c-essid">${c.essid ? esc(c.essid) : dash}</td>`,
+          ap_name: () => `<td class="c-ap_name">${c.ap_name ? esc(c.ap_name) : dash}</td>`,
+          conn: () =>
+            `<td class="c-conn"><span class="conn">${icon(kind)}${esc(connText)}${barsHtml}</span></td>`,
+          seen_at: () => `<td class="c-seen_at">${seen}</td>`,
+          status: () => `<td class="c-status">${status}</td>`,
+        };
 
         const menuOpen = this._openMenuKey === key;
         const menu = menuOpen
@@ -3869,7 +4110,7 @@ class UnifiDynamicPanel extends HTMLElement {
               data-mac="${esc(c.mac)}"
               data-name="${esc(c.name)}"
               data-device-id="${esc(c.device_id || "")}">
-            <td class="name-cell"><div class="name">
+            <td class="name-cell c-name"><div class="name">
               <span class="avatar">${icon(kind)}</span>
               <span class="name-text"><span class="t"><span class="dot ${
                 c.online ? "online" : "offline"
@@ -3877,23 +4118,8 @@ class UnifiDynamicPanel extends HTMLElement {
                 multiHost ? `<small>${esc(c.host || "")}</small>` : ""
               }<small class="mob-sub">${esc(mobSub)}</small></span>
             </div></td>
-            <td>${
-              c.linked_device
-                ? `<button class="linked-link" data-action="open-linked" data-linked-id="${esc(
-                    c.linked_device.id
-                  )}" title="${esc(t("linkOpen")(c.linked_device.name))}">${icon("link")}${esc(
-                    c.linked_device.name
-                  )}</button>`
-                : dash
-            }</td>
-            <td class="mono">${c.ip ? esc(c.ip) : dash}</td>
-            <td class="mono">${esc(c.mac)}</td>
-            <td>${c.essid ? esc(c.essid) : dash}</td>
-            <td>${c.ap_name ? esc(c.ap_name) : dash}</td>
-            <td><span class="conn">${icon(kind)}${esc(connText)}${barsHtml}</span></td>
-            <td>${seen}</td>
-            <td>${status}</td>
-            <td class="actions-cell">
+            ${order.map((k) => cells[k](c)).join("")}
+            <td class="actions-cell c-actions">
               <button class="menu-btn" title="⋮" aria-label="⋮">${icon("kebab")}</button>
               ${menu}
             </td>
