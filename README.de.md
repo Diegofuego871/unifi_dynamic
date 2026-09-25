@@ -190,19 +190,29 @@ Filter), der ein Blatt mit denselben Feldern und dem Button „12 von 40
 Clients anzeigen" öffnet; die Alias-Spalte bleibt beim seitlichen Scrollen
 stehen und zeigt Status-Punkt sowie Verbindung/Access Point unter dem Namen.
 
+„Spalten" in der Werkzeugleiste öffnet eine kleine Liste mit einem Schalter
+pro Spalte, um nicht benötigte auszublenden — HA-Gerät, IP, MAC, SSID,
+Access Point, Verbindung, zuletzt gesehen und Status; der Alias bleibt
+immer, weil er der Einstieg in die Geräteansicht ist. „Alle einblenden"
+holt alles zurück, ein Zähler am Button zeigt die Zahl ausgeblendeter
+Spalten. Auf dem Handy stehen dieselben Schalter im Filter-Blatt. Der Filter
+einer ausgeblendeten Spalte wirkt weiter und bleibt als Chip sichtbar.
+
 Ein Klick auf eine Spaltenüberschrift sortiert die Tabelle aufsteigend
 danach, ein erneuter Klick dreht auf absteigend um. Ein kleiner Pfeil
 markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der sortierten
 Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig von der
 Richtung.
 
-Suchtext, alle Filter sowie Sortierspalte und -richtung werden im
+Suchtext, alle Filter, die ausgeblendeten Spalten sowie Sortierspalte und
+-richtung werden im
 `localStorage` des Browsers gemerkt und überstehen ein Neuladen der Seite
 oder sogar einen kompletten Home-Assistant-Neustart — `localStorage` hat
 mit dem HA-Prozess nichts zu tun, bleibt also in beiden Fällen unberührt.
 Das gilt pro Browser/Gerät, nicht geräteübergreifend synchronisiert.
 „Filter zurücksetzen" in der Werkzeugleiste (mit der Zahl aktiver Filter)
-setzt alles mit einem Klick auf die Standardansicht zurück.
+setzt Filter, Suche und Sortierung mit einem Klick zurück; ausgeblendete
+Spalten bleiben ausgeblendet, sie gehören zum Layout, nicht zu den Filtern.
 
 Jede Zeile hat ein ⋮-Menü mit „Details", „Vor automatischem Löschen schützen" (trägt
 den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt

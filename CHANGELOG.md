@@ -5,6 +5,23 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.4.0] - 2026-09-25
+
+### Added
+
+- Hide columns: "Columns" in the toolbar opens a list with a switch per
+  column (HA device, IP, MAC, SSID, access point, connection, last seen,
+  status); the alias always stays. "Show all" brings everything back, and a
+  badge counts the hidden columns. On a phone the same switches sit in the
+  filter sheet. The choice is remembered per browser like the filters;
+  "Reset filters" leaves it alone. A hidden column's filter keeps applying
+  and stays visible as a chip.
+
+### Fixed
+
+- The time choices in the phone's filter sheet ("< 1 h", "> 7 days") no
+  longer wrap onto two lines.
+
 ## [2.3.1] - 2026-09-25
 
 ### Changed
@@ -966,6 +983,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.4.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.4.0
 [2.3.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.1
 [2.3.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.0
 [2.2.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.2.3

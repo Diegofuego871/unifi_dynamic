@@ -38,6 +38,9 @@ const STRINGS = {
     activeFilters: "Aktive Filter:",
     clearAll: "Alle entfernen",
     filtersTitle: "Spaltenfilter",
+    columnsBtn: "Spalten",
+    columnsTitle: "Spalten anzeigen",
+    columnsAll: "Alle einblenden",
     showN: (n, total) => `${n} von ${total} Clients anzeigen`,
     footer: (n, total, time) => `${n} von ${total} Clients angezeigt · Stand ${time}`,
     footerHint: "Zeile antippen für Details",
@@ -138,6 +141,9 @@ const STRINGS = {
     activeFilters: "Active filters:",
     clearAll: "Clear all",
     filtersTitle: "Column filters",
+    columnsBtn: "Columns",
+    columnsTitle: "Show columns",
+    columnsAll: "Show all",
     showN: (n, total) => `Show ${n} of ${total} clients`,
     footer: (n, total, time) => `${n} of ${total} clients shown · as of ${time}`,
     footerHint: "Tap a row for details",
@@ -273,6 +279,20 @@ const CONN_FILTERS = ["all", "wired", "wireless"];
 const SEEN_FILTERS = ["all", "1h", "24h", "7d"];
 // Spalten mit Textfilter (Schlüssel = Feld bzw. Sortierschlüssel).
 const TEXT_FILTER_KEYS = ["name", "linked", "ip", "mac", "essid", "ap_name"];
+// Ausblendbare Spalten mit Beschriftung und Position in der Tabelle
+// (1-basiert, für nth-child). Alias (1) und das Menü (10) bleiben immer
+// sichtbar: ohne Alias fehlte der Einstieg in die Geräteansicht.
+const HIDEABLE_COLUMNS = [
+  ["linked", "colLinked", 2],
+  ["ip", "colIp", 3],
+  ["mac", "colMac", 4],
+  ["essid", "colSsid", 5],
+  ["ap_name", "colAp", 6],
+  ["conn", "colConn", 7],
+  ["seen_at", "colSeen", 8],
+  ["status", "colStatus", 9],
+];
+const HIDEABLE_KEYS = HIDEABLE_COLUMNS.map(([key]) => key);
 
 // Material Design Icons als Pfade; das iframe kennt HAs ha-icon nicht.
 const ICONS = {
@@ -289,6 +309,7 @@ const ICONS = {
   info: "M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
   open: "M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z",
   trash: "M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z",
+  columns: "M16,5V18H21V5M4,18H9V5H4M10,18H15V5H10V18Z",
   close: "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z",
   device: "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z",
   entity: "M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7Z",
@@ -315,6 +336,9 @@ const DEFAULT_PREFS = {
   // onlineFilter - dieselben Zustände wie früher, nur mit neuem Bedienort.
   colFilters: {},
   seenFilter: "all",
+  // Ausgeblendete Spalten (Schlüssel aus HIDEABLE_COLUMNS). Gehört zur
+  // Ansicht, nicht zu den Filtern: "Filter zurücksetzen" lässt sie stehen.
+  hiddenCols: [],
   sortKey: null,
   sortDir: "asc",
   // Geräteauswahl: bei anderen Clients schon verknüpfte Geräte ausblenden
@@ -344,6 +368,9 @@ function loadPrefs() {
         ).map((k) => [k, parsed.colFilters[k]])
       ),
       seenFilter: SEEN_FILTERS.includes(parsed.seenFilter) ? parsed.seenFilter : "all",
+      hiddenCols: Array.isArray(parsed.hiddenCols)
+        ? HIDEABLE_KEYS.filter((k) => parsed.hiddenCols.includes(k))
+        : [],
       sortKey: SORT_KEYS.includes(parsed.sortKey) ? parsed.sortKey : DEFAULT_PREFS.sortKey,
       sortDir: parsed.sortDir === "desc" ? "desc" : DEFAULT_PREFS.sortDir,
       hideLinked: parsed.hideLinked === true,
@@ -378,6 +405,8 @@ class UnifiDynamicPanel extends HTMLElement {
     this._connFilter = prefs.connFilter;
     this._colFilters = { ...prefs.colFilters };
     this._seenFilter = prefs.seenFilter;
+    this._hiddenCols = new Set(prefs.hiddenCols);
+    this._colsOpen = false;
     this._sortKey = prefs.sortKey;
     this._sortDir = prefs.sortDir;
     this._hideLinked = prefs.hideLinked;
@@ -415,6 +444,7 @@ class UnifiDynamicPanel extends HTMLElement {
       connFilter: this._connFilter,
       colFilters: this._colFilters,
       seenFilter: this._seenFilter,
+      hiddenCols: HIDEABLE_KEYS.filter((k) => this._hiddenCols.has(k)),
       sortKey: this._sortKey,
       sortDir: this._sortDir,
       hideLinked: this._hideLinked,
@@ -1472,6 +1502,68 @@ class UnifiDynamicPanel extends HTMLElement {
       .join("")}<button class="chips-clear">${this._escape(t("clearAll"))}</button>`;
   }
 
+  // Sichtbarkeit per dynamischer Style-Regel statt Klassen an jeder Zelle:
+  // eine Regel pro ausgeblendeter Spalte blendet Titel, Filterfeld und
+  // alle Zeilen auf einmal aus und übersteht jeden Neuaufbau des tbody.
+  _applyColumnVisibility() {
+    const root = this.shadowRoot;
+    const style = root.querySelector("style.colvis");
+    if (!style) return;
+    const css = HIDEABLE_COLUMNS.filter(([key]) => this._hiddenCols.has(key))
+      .map(([, , n]) => `table tr > :nth-child(${n}) { display: none; }`)
+      .join("\n");
+    if (style.textContent !== css) style.textContent = css;
+    const badge = root.querySelector(".cols-btn .count-badge");
+    if (badge) {
+      badge.textContent = String(this._hiddenCols.size);
+      badge.hidden = this._hiddenCols.size === 0;
+    }
+  }
+
+  _setColumnVisible(key, visible) {
+    if (!HIDEABLE_KEYS.includes(key)) return;
+    if (visible) this._hiddenCols.delete(key);
+    else this._hiddenCols.add(key);
+    this._applyColumnVisibility();
+    this._savePrefs();
+  }
+
+  _columnTogglesHtml(attr) {
+    return HIDEABLE_COLUMNS.map(
+      ([key, label]) => `<label class="col-toggle">${this._escape(this._t(label))}
+        <input type="checkbox" class="switch" ${attr}="${key}" ${
+          this._hiddenCols.has(key) ? "" : "checked"
+        } /></label>`
+    ).join("");
+  }
+
+  _renderColumnsPopover() {
+    const pop = this.shadowRoot.querySelector(".cols-pop");
+    if (!pop) return;
+    const t = (k) => this._t(k);
+    pop.innerHTML = `<div class="cols-head">${this._escape(t("columnsTitle"))}
+        <button data-cols-all>${this._escape(t("columnsAll"))}</button></div>
+      ${this._columnTogglesHtml("data-colvis")}`;
+  }
+
+  _toggleColumnsPopover(open) {
+    const root = this.shadowRoot;
+    const pop = root.querySelector(".cols-pop");
+    const btn = root.querySelector(".cols-btn");
+    this._colsOpen = open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (!open) {
+      pop.hidden = true;
+      return;
+    }
+    this._renderColumnsPopover();
+    pop.hidden = false;
+    // Unter dem Button, rechtsbündig; fixed, damit nichts abschneidet.
+    const r = btn.getBoundingClientRect();
+    pop.style.top = `${r.bottom + 6}px`;
+    pop.style.right = `${Math.max(8, window.innerWidth - r.right)}px`;
+  }
+
   // Filter-Blatt (Handy): Felder aus dem aktuellen Zustand aufbauen.
   _renderFilterSheet() {
     const sheet = this.shadowRoot.querySelector("dialog.filters");
@@ -1503,6 +1595,8 @@ class UnifiDynamicPanel extends HTMLElement {
       ${text("ap_name", t("colAp"))}
       ${seg("conn", t("colConn"), [["all", t("optAll")], ["wireless", t("connWireless")], ["wired", t("connWired")]], this._connFilter)}
       ${seg("seen", t("colSeen"), [["all", t("optAll")], ["1h", t("seen1h")], ["24h", t("seen24h")], ["7d", t("seen7d")]], this._seenFilter)}
+      <div class="sheet-sec">${esc(t("columnsTitle"))}</div>
+      <div class="sheet-cols">${this._columnTogglesHtml("data-fcolvis")}</div>
       <button class="sheet-apply" data-fapply></button>`;
     this._updateSheetApply();
   }
@@ -2298,6 +2392,113 @@ class UnifiDynamicPanel extends HTMLElement {
           border-top: 1px solid var(--udc-divider);
           margin: 4px 6px;
         }
+        /* Spalten ein-/ausblenden: Popover unter dem Button (Desktop). */
+        .cols-pop {
+          position: fixed;
+          z-index: 10;
+          min-width: 230px;
+          padding: 8px;
+          background: var(--udc-card);
+          border: 1px solid var(--udc-divider);
+          border-radius: 14px;
+          box-shadow: var(--udc-shadow);
+        }
+        .cols-pop[hidden] {
+          display: none;
+        }
+        .cols-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 4px 6px 8px;
+          color: var(--udc-text2);
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .cols-head button {
+          border: none;
+          background: none;
+          color: var(--udc-primary);
+          font: inherit;
+          font-size: 13px;
+          letter-spacing: 0;
+          text-transform: none;
+          cursor: pointer;
+          padding: 2px 4px;
+        }
+        .col-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 8px 6px;
+          border-radius: 8px;
+          font-size: 14px;
+          cursor: pointer;
+          user-select: none;
+        }
+        .col-toggle:hover {
+          background: var(--udc-hover);
+        }
+        /* Schalter wie in der Geräteauswahl; bleibt eine echte Checkbox. */
+        .switch {
+          -webkit-appearance: none;
+          appearance: none;
+          position: relative;
+          flex: 0 0 auto;
+          width: 34px;
+          height: 20px;
+          margin: 0;
+          border-radius: 99px;
+          background: var(--udc-text3);
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .switch::before {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #fff;
+          transition: transform 0.15s;
+        }
+        .switch:checked {
+          background: var(--udc-primary);
+        }
+        .switch:checked::before {
+          transform: translateX(14px);
+        }
+        .switch:focus-visible {
+          outline: 2px solid var(--udc-primary);
+          outline-offset: 2px;
+        }
+        @media (max-width: 600px) {
+          .cols-btn {
+            display: none;
+          }
+        }
+        .sheet-sec {
+          margin: 18px 0 6px;
+          color: var(--udc-text2);
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .sheet-cols {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          column-gap: 12px;
+        }
+        .sheet-cols .col-toggle {
+          padding: 8px 4px;
+        }
         /* Filter-Blatt (Handy): natives <dialog>, von unten. */
         dialog.filters {
           width: 100%;
@@ -2356,14 +2557,15 @@ class UnifiDynamicPanel extends HTMLElement {
           background: var(--udc-subtle);
         }
         .seg button {
-          flex: 1 1 0;
-          padding: 7px 4px;
+          flex: 1 1 auto;
+          white-space: nowrap;
+          padding: 7px 6px;
           border: none;
           border-radius: 8px;
           background: none;
           color: var(--udc-text2);
           font: inherit;
-          font-size: 14px;
+          font-size: 13px;
           cursor: pointer;
         }
         .seg button.active {
@@ -3018,6 +3220,9 @@ class UnifiDynamicPanel extends HTMLElement {
           </button>
         </div>
         <span class="toolbar-spacer"></span>
+        <button class="tool-btn cols-btn" aria-haspopup="true" aria-expanded="false">
+          ${icon("columns")}${this._escape(t("columnsBtn"))}<span class="count-badge" hidden></span>
+        </button>
         <button class="tool-btn reset-btn">
           ${icon("reset")}${this._escape(t("resetFilters"))}<span class="count-badge" hidden></span>
         </button>
@@ -3060,6 +3265,8 @@ class UnifiDynamicPanel extends HTMLElement {
         )}</span></div>
       </div>
 
+      <div class="cols-pop" hidden></div>
+      <style class="colvis"></style>
       <dialog class="device"></dialog>
       <dialog class="filters"></dialog>
     `;
@@ -3137,6 +3344,37 @@ class UnifiDynamicPanel extends HTMLElement {
       this._savePrefs();
     });
 
+    // Spalten-Popover (Desktop).
+    root.querySelector(".cols-btn").addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this._openMenuKey = null;
+      this._toggleColumnsPopover(!this._colsOpen);
+    });
+    const colsPop = root.querySelector(".cols-pop");
+    colsPop.addEventListener("change", (ev) => {
+      const key = ev.target.dataset && ev.target.dataset.colvis;
+      if (key) this._setColumnVisible(key, ev.target.checked);
+    });
+    colsPop.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (ev.target.closest("[data-cols-all]")) {
+        this._hiddenCols.clear();
+        this._applyColumnVisibility();
+        this._savePrefs();
+        this._renderColumnsPopover();
+      }
+    });
+    // Schliessen bei Klick ausserhalb oder Esc.
+    root.addEventListener("click", () => {
+      if (this._colsOpen) this._toggleColumnsPopover(false);
+    });
+    root.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && this._colsOpen) {
+        this._toggleColumnsPopover(false);
+        root.querySelector(".cols-btn").focus();
+      }
+    });
+
     // Filter-Blatt (Handy).
     const sheet = root.querySelector("dialog.filters");
     root.querySelector(".filter-btn").addEventListener("click", () => {
@@ -3145,6 +3383,10 @@ class UnifiDynamicPanel extends HTMLElement {
       this._renderFilterSheet();
       if (typeof sheet.showModal === "function") sheet.showModal();
       else sheet.setAttribute("open", "");
+    });
+    sheet.addEventListener("change", (ev) => {
+      const key = ev.target.dataset && ev.target.dataset.fcolvis;
+      if (key) this._setColumnVisible(key, ev.target.checked);
     });
     sheet.addEventListener("input", (ev) => {
       const el = ev.target;
@@ -3179,6 +3421,8 @@ class UnifiDynamicPanel extends HTMLElement {
       }
       if (ev.target.closest("[data-fapply]")) sheet.close();
     });
+
+    this._applyColumnVisibility();
 
     this.shadowRoot.querySelector(".retry-btn").addEventListener("click", () => {
       this._loading = true;
@@ -3319,6 +3563,8 @@ class UnifiDynamicPanel extends HTMLElement {
     // Ist ein Zeilenmenü offen, schliesst der erste Tipp nur dieses (der
     // Handler am shadowRoot erledigt das), statt gleich einen Dialog zu öffnen.
     if (this._openMenuKey !== null) return;
+    // Dasselbe für die offene Spaltenauswahl.
+    if (this._colsOpen) return;
     if (Date.now() - this._lastScrollAt < SCROLL_CLICK_GUARD_MS) return;
     const selection = window.getSelection ? String(window.getSelection() || "") : "";
     if (selection) return;

@@ -185,17 +185,27 @@ a sheet with the same fields and a "Show 12 of 40 clients" button; the alias
 column stays put when scrolling sideways and shows the status dot and
 connection/access point below the name.
 
+"Columns" in the toolbar opens a small list with a switch per column to
+hide the ones you don't need — HA device, IP, MAC, SSID, access point,
+connection, last seen and status; the alias always stays, since it is the
+way into the device view. "Show all" brings everything back, and a badge on
+the button counts the hidden columns. On a phone the same switches sit in
+the filter sheet. A hidden column's filter keeps applying and stays visible
+as a chip.
+
 Clicking a column header sorts the table by that column, ascending;
 clicking it again reverses to descending. A small arrow marks the active
 column and direction. Rows with a missing value for the sorted column (no
 IP, never seen) always sort to the end, regardless of direction.
 
-The search text, all filters, and the sort column and direction are
+The search text, all filters, the hidden columns, and the sort column and
+direction are
 remembered in the browser's `localStorage` and survive a page reload or
 even a full Home Assistant restart — `localStorage` has nothing to do with
 the HA process, so it is unaffected either way. This is per browser/device,
 not synced between them. "Reset filters" in the toolbar (with the number of
-active filters) clears all of it back to the default view in one click.
+active filters) clears filters, search and sorting in one click; hidden
+columns stay hidden, as they are part of the layout rather than a filter.
 
 Each row has a ⋮ menu with "Details", "Protect from automatic removal" (adds the
 client to the exclusion list), "Remove" (asks for confirmation, then
