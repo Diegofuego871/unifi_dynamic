@@ -5,6 +5,23 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-09-25
+
+### Changed
+
+- Panel settings are now saved per Home Assistant user instead of per
+  browser, in Home Assistant's own storage for frontend settings: the
+  online/offline choice, the connection filter, the sort column and
+  direction, the hidden columns and the "Hide already linked" switch. They
+  apply on every device and browser, including the companion app. Hidden
+  columns are kept separately for phone-width and wider screens.
+- The search text, the text filters per column and "last seen" are no
+  longer saved; they only apply while the panel is open.
+- Existing settings from the browser are taken over once. Each browser
+  keeps a local copy for an instant start; the newer state wins, so a
+  change right before a reload isn't lost, and if Home Assistant doesn't
+  offer the storage, the local copy is used.
+
 ## [2.4.0] - 2026-09-25
 
 ### Added
@@ -983,6 +1000,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.5.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.0
 [2.4.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.4.0
 [2.3.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.1
 [2.3.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.3.0

@@ -204,15 +204,24 @@ markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der sortierten
 Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig von der
 Richtung.
 
-Suchtext, alle Filter, die ausgeblendeten Spalten sowie Sortierspalte und
--richtung werden im
-`localStorage` des Browsers gemerkt und überstehen ein Neuladen der Seite
-oder sogar einen kompletten Home-Assistant-Neustart — `localStorage` hat
-mit dem HA-Prozess nichts zu tun, bleibt also in beiden Fällen unberührt.
-Das gilt pro Browser/Gerät, nicht geräteübergreifend synchronisiert.
-„Filter zurücksetzen" in der Werkzeugleiste (mit der Zahl aktiver Filter)
-setzt Filter, Suche und Sortierung mit einem Klick zurück; ausgeblendete
-Spalten bleiben ausgeblendet, sie gehören zum Layout, nicht zu den Filtern.
+Online/Offline-Auswahl, Verbindungsfilter, Sortierspalte und -richtung, die
+ausgeblendeten Spalten und der Schalter „Bereits verknüpfte ausblenden"
+werden pro Home-Assistant-Benutzer gespeichert, im eigenen Speicher von
+Home Assistant für Frontend-Einstellungen — dort, wo Home Assistant auch
+seine eigenen Tabelleneinstellungen ablegt. Sie gelten damit auf allen
+Geräten und Browsern, mit denen du dich anmeldest, auch in der
+Companion-App, und überstehen Neuladen und Neustarts. Ausgeblendete Spalten
+werden getrennt für Handy-Breite (bis 600px) und breitere Bildschirme
+gespeichert, damit eine am Handy ausgeblendete Spalte am Desktop nicht fehlt.
+Suchtext, Textfilter pro Spalte und „zuletzt gesehen" werden bewusst nicht
+gespeichert: sie gelten nur, solange das Panel offen ist. Jeder Browser hält
+zusätzlich eine lokale Kopie für einen sofortigen Start; es gewinnt jeweils
+der neuere Stand, und bietet Home Assistant den Speicher nicht an, gilt die
+lokale Kopie. Einstellungen aus 2.4.0 und früher werden einmalig
+übernommen. „Filter zurücksetzen" in der Werkzeugleiste (mit der Zahl
+aktiver Filter) setzt Filter, Suche und Sortierung mit einem Klick zurück;
+ausgeblendete Spalten bleiben ausgeblendet, sie gehören zum Layout, nicht zu
+den Filtern.
 
 Jede Zeile hat ein ⋮-Menü mit „Details", „Vor automatischem Löschen schützen" (trägt
 den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt
@@ -251,7 +260,7 @@ tragen den Hinweis „Bereits verknüpft mit: …" mit dessen Namen und stehen n
 den freien Geräten; sie bleiben wählbar, weil ein Home-Assistant-Gerät zu
 mehreren Clients gehören kann (etwa LAN- und WLAN-Anschluss desselben Geräts).
 Der Schalter „Bereits verknüpfte ausblenden" in der Liste blendet sie
-stattdessen aus; die Einstellung merkt sich der Browser, und das Gerät des
+stattdessen aus; die Einstellung wird pro Benutzer gespeichert, und das Gerät des
 gerade bearbeiteten Clients bleibt immer sichtbar. Danach zeigt die Ansicht das verknüpfte Gerät mit Bereich und
 Modell, „Ändern" und „Verknüpfung entfernen", ein Klick auf den Namen öffnet
 seine Geräteseite. Die Tabelle hat eine Spalte „HA-Gerät" mit dem Namen des

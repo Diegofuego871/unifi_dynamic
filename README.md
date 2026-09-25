@@ -198,13 +198,20 @@ clicking it again reverses to descending. A small arrow marks the active
 column and direction. Rows with a missing value for the sorted column (no
 IP, never seen) always sort to the end, regardless of direction.
 
-The search text, all filters, the hidden columns, and the sort column and
-direction are
-remembered in the browser's `localStorage` and survive a page reload or
-even a full Home Assistant restart — `localStorage` has nothing to do with
-the HA process, so it is unaffected either way. This is per browser/device,
-not synced between them. "Reset filters" in the toolbar (with the number of
-active filters) clears filters, search and sorting in one click; hidden
+The online/offline choice, the connection filter, the sort column and
+direction, the hidden columns and the "Hide already linked" switch are
+saved per Home Assistant user, in Home Assistant's own storage for frontend
+settings — the same place Home Assistant keeps its own table settings. They
+therefore apply on every device and browser you sign in with, including the
+companion app, and survive reloads and restarts. Hidden columns are kept
+separately for phone-width screens (up to 600px) and wider ones, so hiding
+a column on the phone doesn't hide it on the desktop. The search text, the
+text filters per column and "last seen" are deliberately not saved: they
+only apply while the panel is open. Each browser also keeps a local copy
+for an instant start; whichever state is newer wins, and if Home Assistant
+doesn't offer the storage, the local copy is used. Settings from 2.4.0 and
+earlier are taken over once. "Reset filters" in the toolbar (with the number
+of active filters) clears filters, search and sorting in one click; hidden
 columns stay hidden, as they are part of the layout rather than a filter.
 
 Each row has a ⋮ menu with "Details", "Protect from automatic removal" (adds the
@@ -242,8 +249,8 @@ already linked to another client are marked "Already linked to: …" with that
 client's name and listed after the free ones; they stay selectable, since one
 Home Assistant device can belong to several clients (for example the wired
 and the wireless interface of the same device). The "Hide already linked"
-switch in the list hides them instead; the setting is remembered per
-browser, and the device linked to the client you are editing always stays
+switch in the list hides them instead; the setting is saved per Home
+Assistant user, and the device linked to the client you are editing always stays
 visible. The linked
 device then shows with its area and model, "Change" and "Remove link", and a
 click on its name opens its device page. The table has an "HA device" column

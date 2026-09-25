@@ -268,11 +268,20 @@ const ICON_CHECK = "M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z";
 // ein kaputtes Bild-Icon zu zeigen.
 const BRAND_ICON_URL = "/unifi_dynamic/icon.png";
 
-// Suche, Filter und Sortierung überleben einen Browser-Neuladen und auch
-// einen HA-Neustart, weil localStorage rein clientseitig ist und nichts mit
-// dem HA-Prozess zu tun hat - kein eigener Server-Speicher nötig. Bewusst
-// pro Browser/Gerät, nicht geräteübergreifend synchronisiert.
+// Ansichtseinstellungen (Online/Offline, Verbindung, Sortierung,
+// ausgeblendete Spalten, "Bereits verknüpfte ausblenden") speichert Home
+// Assistant pro Benutzer (frontend/set_user_data) - damit gelten sie auf
+// allen Geräten und in der App. localStorage hält nur eine lokale Kopie für
+// das sofortige Anzeigen beim Start und als Rückfall, falls HA den Speicher
+// nicht anbietet. Suchtext, Textfilter und "Zuletzt gesehen" werden bewusst
+// gar nicht gespeichert: sie gelten nur, solange das Panel offen ist.
 const STORAGE_KEY = "unifi_dynamic_panel_prefs";
+const USER_DATA_KEY = "unifi_dynamic_panel";
+const USER_DATA_SAVE_DELAY_MS = 400;
+// Schmal = Handy-Layout (gleiche Grenze wie im CSS). Ausgeblendete Spalten
+// gibt es getrennt für schmal und breit, sonst fehlte eine am Handy
+// ausgeblendete Spalte auch am Desktop.
+const NARROW_QUERY = "(max-width: 600px)";
 const SORT_KEYS = ["name", "linked", "ip", "mac", "essid", "ap_name", "conn", "seen_at", "status"];
 const ONLINE_FILTERS = ["all", "online", "offline"];
 const CONN_FILTERS = ["all", "wired", "wireless"];
@@ -328,23 +337,41 @@ function signalBars(dbm) {
 }
 
 const DEFAULT_PREFS = {
-  search: "",
   onlineFilter: "all",
   connFilter: "all",
-  // Spaltenfilter: Text pro Spalte (siehe TEXT_FILTER_KEYS) und die Auswahl
-  // bei "Zuletzt gesehen". Verbindung und Status nutzen connFilter bzw.
-  // onlineFilter - dieselben Zustände wie früher, nur mit neuem Bedienort.
-  colFilters: {},
-  seenFilter: "all",
-  // Ausgeblendete Spalten (Schlüssel aus HIDEABLE_COLUMNS). Gehört zur
-  // Ansicht, nicht zu den Filtern: "Filter zurücksetzen" lässt sie stehen.
-  hiddenCols: [],
   sortKey: null,
   sortDir: "asc",
+  // Ausgeblendete Spalten (Schlüssel aus HIDEABLE_COLUMNS), getrennt für
+  // breites und schmales Layout. Gehört zur Ansicht, nicht zu den Filtern:
+  // "Filter zurücksetzen" lässt sie stehen.
+  hiddenColsWide: [],
+  hiddenColsNarrow: [],
   // Geräteauswahl: bei anderen Clients schon verknüpfte Geräte ausblenden
   // statt nur markieren. Gilt nur für die Auswahl, nicht für die Tabelle.
   hideLinked: false,
 };
+
+// Gespeicherte Einstellungen prüfen (lokal wie von HA): Unbekanntes oder
+// Kaputtes fällt auf den Standard zurück, statt das Panel zu stören. Liest
+// auch das Format bis 2.4.0 (hiddenCols für beide Layouts).
+function sanitizePrefs(raw) {
+  const p = raw && typeof raw === "object" ? raw : {};
+  const cols = (list) =>
+    Array.isArray(list) ? HIDEABLE_KEYS.filter((k) => list.includes(k)) : null;
+  const legacy = cols(p.hiddenCols) || [];
+  return {
+    onlineFilter: ONLINE_FILTERS.includes(p.onlineFilter) ? p.onlineFilter : "all",
+    connFilter: CONN_FILTERS.includes(p.connFilter) ? p.connFilter : "all",
+    sortKey: SORT_KEYS.includes(p.sortKey) ? p.sortKey : null,
+    sortDir: p.sortDir === "desc" ? "desc" : "asc",
+    hiddenColsWide: cols(p.hiddenColsWide) || legacy,
+    hiddenColsNarrow: cols(p.hiddenColsNarrow) || legacy,
+    hideLinked: p.hideLinked === true,
+    // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
+    // Kopie oder der Stand von HA neuer ist.
+    updated: typeof p.updated === "number" ? p.updated : 0,
+  };
+}
 
 // Fehler beim Lesen/Schreiben werden bewusst nur geloggt, nie geworfen:
 // private Browserfenster, blockierter Storage-Zugriff oder ein voller
@@ -352,29 +379,7 @@ const DEFAULT_PREFS = {
 function loadPrefs() {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_PREFS };
-    const parsed = JSON.parse(raw);
-    return {
-      search: typeof parsed.search === "string" ? parsed.search : DEFAULT_PREFS.search,
-      onlineFilter: ONLINE_FILTERS.includes(parsed.onlineFilter)
-        ? parsed.onlineFilter
-        : DEFAULT_PREFS.onlineFilter,
-      connFilter: CONN_FILTERS.includes(parsed.connFilter)
-        ? parsed.connFilter
-        : DEFAULT_PREFS.connFilter,
-      colFilters: Object.fromEntries(
-        TEXT_FILTER_KEYS.filter(
-          (k) => parsed.colFilters && typeof parsed.colFilters[k] === "string" && parsed.colFilters[k]
-        ).map((k) => [k, parsed.colFilters[k]])
-      ),
-      seenFilter: SEEN_FILTERS.includes(parsed.seenFilter) ? parsed.seenFilter : "all",
-      hiddenCols: Array.isArray(parsed.hiddenCols)
-        ? HIDEABLE_KEYS.filter((k) => parsed.hiddenCols.includes(k))
-        : [],
-      sortKey: SORT_KEYS.includes(parsed.sortKey) ? parsed.sortKey : DEFAULT_PREFS.sortKey,
-      sortDir: parsed.sortDir === "desc" ? "desc" : DEFAULT_PREFS.sortDir,
-      hideLinked: parsed.hideLinked === true,
-    };
+    return raw ? sanitizePrefs(JSON.parse(raw)) : { ...DEFAULT_PREFS };
   } catch (err) {
     console.warn("unifi-dynamic-panel: Einstellungen konnten nicht geladen werden", err);
     return { ...DEFAULT_PREFS };
@@ -399,17 +404,22 @@ class UnifiDynamicPanel extends HTMLElement {
     this._loading = true;
     this._error = null;
 
-    const prefs = loadPrefs();
-    this._search = prefs.search;
-    this._onlineFilter = prefs.onlineFilter;
-    this._connFilter = prefs.connFilter;
-    this._colFilters = { ...prefs.colFilters };
-    this._seenFilter = prefs.seenFilter;
-    this._hiddenCols = new Set(prefs.hiddenCols);
+    // Nicht gespeichert: gelten nur, solange das Panel offen ist.
+    this._search = "";
+    this._colFilters = {};
+    this._seenFilter = "all";
     this._colsOpen = false;
-    this._sortKey = prefs.sortKey;
-    this._sortDir = prefs.sortDir;
-    this._hideLinked = prefs.hideLinked;
+    // Gespeichert: zuerst die lokale Kopie, dann (siehe _loadUserPrefs) der
+    // Stand von Home Assistant.
+    this._applyPrefs(loadPrefs());
+    this._narrowQuery = window.matchMedia ? window.matchMedia(NARROW_QUERY) : null;
+    this._userPrefsLoaded = false;
+    this._userPrefsDirty = false;
+    // Stand der geladenen lokalen Kopie als "bereits gespeichert" merken:
+    // sonst zählte die erste Eingabe (z.B. im Suchfeld) als Änderung und
+    // könnte einen neueren Stand von HA mit der alten Kopie überschreiben.
+    this._lastSavedPrefs = JSON.stringify(this._currentPrefs());
+    this._userSaveTimer = null;
 
     this._openMenuKey = null;
     this._pollTimer = null;
@@ -437,18 +447,93 @@ class UnifiDynamicPanel extends HTMLElement {
     this._onParentLocation = () => this._checkDeepLink();
   }
 
-  _savePrefs() {
-    savePrefs({
-      search: this._search,
+  _applyPrefs(prefs) {
+    this._prefsUpdated = prefs.updated || 0;
+    this._onlineFilter = prefs.onlineFilter;
+    this._connFilter = prefs.connFilter;
+    this._sortKey = prefs.sortKey;
+    this._sortDir = prefs.sortDir;
+    this._hiddenColsWide = new Set(prefs.hiddenColsWide);
+    this._hiddenColsNarrow = new Set(prefs.hiddenColsNarrow);
+    this._hideLinked = prefs.hideLinked;
+  }
+
+  _currentPrefs() {
+    return {
       onlineFilter: this._onlineFilter,
       connFilter: this._connFilter,
-      colFilters: this._colFilters,
-      seenFilter: this._seenFilter,
-      hiddenCols: HIDEABLE_KEYS.filter((k) => this._hiddenCols.has(k)),
       sortKey: this._sortKey,
       sortDir: this._sortDir,
+      hiddenColsWide: HIDEABLE_KEYS.filter((k) => this._hiddenColsWide.has(k)),
+      hiddenColsNarrow: HIDEABLE_KEYS.filter((k) => this._hiddenColsNarrow.has(k)),
       hideLinked: this._hideLinked,
-    });
+    };
+  }
+
+  // Ausgeblendete Spalten des gerade aktiven Layouts (schmal/breit).
+  get _hiddenCols() {
+    const narrow = this._narrowQuery ? this._narrowQuery.matches : false;
+    return narrow ? this._hiddenColsNarrow : this._hiddenColsWide;
+  }
+
+  // Wird bei jeder Änderung aufgerufen, auch bei nicht gespeicherten wie
+  // dem Suchtext - geschrieben wird nur, wenn sich an den gespeicherten
+  // Werten etwas geändert hat. An HA verzögert und gebündelt, damit schnelle
+  // Klickfolgen nicht je einen Schreibvorgang auslösen.
+  _savePrefs() {
+    const json = JSON.stringify(this._currentPrefs());
+    if (json === this._lastSavedPrefs) return;
+    this._lastSavedPrefs = json;
+    this._prefsUpdated = Date.now();
+    savePrefs({ ...this._currentPrefs(), updated: this._prefsUpdated });
+    this._userPrefsDirty = true;
+    window.clearTimeout(this._userSaveTimer);
+    this._userSaveTimer = window.setTimeout(() => this._saveUserPrefs(), USER_DATA_SAVE_DELAY_MS);
+  }
+
+  async _saveUserPrefs() {
+    if (!this._hass || !this._userPrefsLoaded) return;
+    try {
+      await this._hass.callWS({
+        type: "frontend/set_user_data",
+        key: USER_DATA_KEY,
+        value: { ...this._currentPrefs(), updated: this._prefsUpdated },
+      });
+      this._userPrefsDirty = false;
+    } catch (err) {
+      console.warn("unifi-dynamic-panel: Einstellungen nicht bei HA gespeichert", err);
+    }
+  }
+
+  // Stand von Home Assistant holen. Es gewinnt der neuere Stand: Ist die
+  // lokale Kopie neuer (Änderung kurz vor dem Neuladen, die HA noch nicht
+  // erreicht hat, oder vor dem Eintreffen geändert) oder hat HA noch nichts
+  // (Übernahme aus 2.4.0 und früher), geht sie an HA. Ohne HA-Speicher
+  // bleibt es bei der lokalen Kopie.
+  async _loadUserPrefs() {
+    let value = null;
+    try {
+      const result = await this._hass.callWS({ type: "frontend/get_user_data", key: USER_DATA_KEY });
+      value = result ? result.value : null;
+    } catch (err) {
+      console.warn("unifi-dynamic-panel: Einstellungen von HA nicht verfügbar", err);
+      return;
+    }
+    this._userPrefsLoaded = true;
+    const remote = value ? sanitizePrefs(value) : null;
+    if (remote && !this._userPrefsDirty && remote.updated >= this._prefsUpdated) {
+      const prefs = remote;
+      this._applyPrefs(prefs);
+      this._lastSavedPrefs = JSON.stringify(this._currentPrefs());
+      savePrefs(prefs);
+      if (this._built) {
+        this._renderHeader();
+        this._applyColumnVisibility();
+        this._renderRows();
+      }
+      return;
+    }
+    await this._saveUserPrefs();
   }
 
   // Wird von panel.html gesetzt: das hass-Objekt des Elternfensters, beim
@@ -461,6 +546,7 @@ class UnifiDynamicPanel extends HTMLElement {
       this._built = true;
     }
     if (firstRun) {
+      this._loadUserPrefs();
       this._fetchClients();
       this._startPolling();
     }
@@ -3423,6 +3509,14 @@ class UnifiDynamicPanel extends HTMLElement {
     });
 
     this._applyColumnVisibility();
+    // Wechsel zwischen schmal und breit (Fenster, Tablet drehen): die
+    // Spaltenauswahl des anderen Layouts anwenden.
+    if (this._narrowQuery && this._narrowQuery.addEventListener) {
+      this._narrowQuery.addEventListener("change", () => {
+        this._applyColumnVisibility();
+        if (this._colsOpen) this._renderColumnsPopover();
+      });
+    }
 
     this.shadowRoot.querySelector(".retry-btn").addEventListener("click", () => {
       this._loading = true;
