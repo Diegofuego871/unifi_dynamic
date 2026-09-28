@@ -5,6 +5,17 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.11.1] - 2026-09-28
+
+### Fixed
+
+- "Update" no longer fails with "The version … can not be used with HACS"
+  when GitHub already has a release that HACS hasn't loaded yet. The panel
+  now has HACS reload the repository's versions (also on "Check for
+  updates") and only offers "Update" once HACS knows the version; until
+  then the row shows a note. Errors from the update appear only in the
+  row, no longer as additional pop-up messages.
+
 ## [2.11.0] - 2026-09-28
 
 ### Added
@@ -26,12 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   checking for updates, which briefly revealed the filters behind it. The
   "Check for updates" button keeps its label (only the icon turns into a
   spinner), and the settings sheet now has a fixed height.
-- "Update" no longer fails with "The version … can not be used with HACS"
-  when GitHub already has a release that HACS hasn't loaded yet. The panel
-  now has HACS reload the repository's versions (also on "Check for
-  updates") and only offers "Update" once HACS knows the version; until
-  then the row shows a note. Errors from the update appear only in the
-  row, no longer as additional pop-up messages.
 
 ## [2.10.0] - 2026-09-28
 
@@ -1156,6 +1161,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.11.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.1
 [2.11.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.0
 [2.10.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.10.0
 [2.9.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.9.1
