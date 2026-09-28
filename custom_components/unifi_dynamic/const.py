@@ -38,6 +38,8 @@ STORE_DEVICE_LINKS = "device_links"
 # der häufig geschriebene Client-Cache nicht mitwächst.
 AVAIL_STORE_SUFFIX = "availability"
 AVAIL_KEEP_DAYS = 31
+# Schlüssel des Controllers im Verfügbarkeitsprotokoll (neben den Client-MACs).
+AVAIL_CONTROLLER = "controller"
 AVAIL_SAVE_DELAY = 120  # Sekunden; Wechsel sind selten, Verlust kurz vor Absturz verkraftbar
 
 # Internes Cache-Feld: Epoch-Sekunden (UTC), zu denen die Integration den
@@ -196,7 +198,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "27"
+PANEL_VERSION = "28"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"

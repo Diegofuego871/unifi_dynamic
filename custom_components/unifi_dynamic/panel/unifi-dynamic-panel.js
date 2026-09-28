@@ -211,6 +211,8 @@ const STRINGS = {
     optPersistentControllerShort: "Solange der Controller nicht antwortet.",
     optPersistentControllerInfo: "Verschwindet automatisch, sobald er wieder erreichbar ist.",
     secAvail: "Verfügbarkeit",
+    secCtlAvail: "Controller-Verfügbarkeit",
+    availCtlNoData: "Noch keine Daten – die Aufzeichnung läuft seit dem Update auf 2.9.0.",
     availRanges: { "24h": "24 Std.", "7d": "7 Tage", "30d": "30 Tage" },
     availRangeGroup: "Zeitraum",
     availLoading: "Verlauf wird geladen…",
@@ -443,6 +445,8 @@ const STRINGS = {
     optPersistentControllerShort: "While the controller doesn't respond.",
     optPersistentControllerInfo: "Disappears automatically once it is reachable again.",
     secAvail: "Availability",
+    secCtlAvail: "Controller availability",
+    availCtlNoData: "No data yet – recording started with the update to 2.9.0.",
     availRanges: { "24h": "24 h", "7d": "7 days", "30d": "30 days" },
     availRangeGroup: "Time range",
     availLoading: "Loading history…",
@@ -1283,6 +1287,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const titles = { polling: "secPolling", cleanup: "secCleanup", push: "secPush", persistent: "secPersistent" };
     const reload = changes.has("scan_interval") || changes.has("purge_time");
     return (
+      `<div class="avail-slot">${this._settingsAvailHtml()}</div>` +
       this._settingsSections()
         .map(([id, keys]) => {
           const open = st.open.has(id);
@@ -1303,8 +1308,63 @@ class UnifiDynamicPanel extends HTMLElement {
     );
   }
 
+  // Zeitstrahl des Controllers oben im Einstellungsdialog.
+  _settingsAvailSrc() {
+    const st = this._settings;
+    if (!st || !st.data) return null;
+    return {
+      id: `controller:${st.entryId}`,
+      entryId: st.entryId,
+      mac: "controller",
+      entityId: st.data.controller_entity_id || null,
+      controller: true,
+    };
+  }
+
+  _settingsAvailHtml() {
+    const src = this._settingsAvailSrc();
+    return src ? this._availSectionHtml(null, src) : "";
+  }
+
+  // Nur den Zeitstrahl ersetzen (Verlauf nachgeladen, Zeitraum gewechselt):
+  // Eingaben und Aufklappzustand im Rest des Dialogs bleiben unberührt.
+  _renderSettingsAvail() {
+    const slot = this.shadowRoot && this.shadowRoot.querySelector("dialog.settings .avail-slot");
+    if (!slot) return;
+    const html = this._settingsAvailHtml();
+    if (slot.innerHTML !== html) slot.innerHTML = html;
+  }
+
   _bindSettings(dialog) {
+    // Tooltip über Unterbrüchen, wie in der Geräteansicht.
+    dialog.addEventListener("pointerover", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      const seg = ev.target.closest && ev.target.closest(".avail-bar .seg");
+      if (seg) this._showAvailTip(seg.classList.contains("off") ? seg : null);
+    });
+    dialog.addEventListener("pointerout", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      const bar = ev.target.closest && ev.target.closest(".avail-bar");
+      if (bar && !(ev.relatedTarget && bar.contains(ev.relatedTarget))) this._showAvailTip(null);
+    });
     dialog.addEventListener("click", (ev) => {
+      const seg = ev.target.closest(".avail-bar .seg");
+      if (seg) {
+        if (ev.pointerType !== "mouse") {
+          this._showAvailTip(seg.classList.contains("off") && !seg.classList.contains("hover") ? seg : null);
+        }
+        return;
+      }
+      if (!ev.target.closest(".avail-tip")) this._showAvailTip(null);
+      const range = ev.target.closest('[data-dlg="avail-range"]');
+      if (range) {
+        if (range.dataset.range !== this._availRange) {
+          this._availRange = range.dataset.range;
+          this._savePrefs();
+          this._renderSettingsAvail();
+        }
+        return;
+      }
       if (ev.target === dialog) {
         const r = dialog.getBoundingClientRect();
         if (ev.clientY < r.top || ev.clientY > r.bottom || ev.clientX < r.left || ev.clientX > r.right) {
@@ -1652,14 +1712,17 @@ class UnifiDynamicPanel extends HTMLElement {
   // veralteter Stand da ist. Das Ende ist der Abfragezeitpunkt, nicht
   // "jetzt" beim Rendern: sonst änderte sich das HTML bei jedem hass-Update
   // und der Dialog würde ständig neu aufgebaut.
-  _ensureHistory(c, entityId) {
-    const key = `${entityId}|${this._availRange}`;
+  // src: { id, entryId, mac, entityId } - ein Client oder der Controller
+  // (mac = "controller"). entityId nur für den Recorder-Verlauf vor Beginn
+  // des eigenen Protokolls; ohne Entität bleibt diese Zeit "keine Daten".
+  _ensureHistory(src) {
+    const key = `${src.id}|${this._availRange}`;
     const h = this._history;
     if (h && h.key === key && (h.loading || (!h.error && Date.now() - h.at < AVAIL_MAX_AGE_MS))) {
       return;
     }
     if (h && h.key === key && h.error && Date.now() - h.at < AVAIL_MAX_AGE_MS) return;
-    this._fetchHistory(c, entityId, this._availRange);
+    this._fetchHistory(src, this._availRange);
   }
 
   // Recorder-Verlauf im Kurzformat für [start, end] (ms).
@@ -1681,13 +1744,13 @@ class UnifiDynamicPanel extends HTMLElement {
   // davor, den es noch nicht abdeckt (erste Tage nach dem Update auf 2.7.0),
   // aus dem Recorder holen - der ist bei langen Zeiträumen langsam, darum
   // wird dieser ältere Teil zwischengespeichert: er ändert sich nicht mehr.
-  async _loadAvailability(c, entityId, range, start, end) {
+  async _loadAvailability(src, range, start, end) {
     let log = null;
     try {
       log = await this._hass.callWS({
         type: "unifi_dynamic/availability",
-        entry_id: c.entry_id,
-        mac: c.mac,
+        entry_id: src.entryId,
+        mac: src.mac,
         start: start / 1000,
       });
     } catch (err) {
@@ -1698,6 +1761,8 @@ class UnifiDynamicPanel extends HTMLElement {
       ? (log.events || []).map(([t, s]) => ({ s: s === 1 ? "on" : s === 0 ? "off" : "unavailable", lu: t }))
       : [];
     if (since !== null && since <= start + 60000) return own;
+    const entityId = src.entityId;
+    if (!entityId) return own;
     const until = since !== null ? since : end;
     const ckey = `${entityId}|${range}`;
     this._recorderCache = this._recorderCache || {};
@@ -1713,8 +1778,8 @@ class UnifiDynamicPanel extends HTMLElement {
     return older.concat(own);
   }
 
-  async _fetchHistory(c, entityId, range) {
-    const key = `${entityId}|${range}`;
+  async _fetchHistory(src, range) {
+    const key = `${src.id}|${range}`;
     const end = Date.now();
     const start = end - AVAIL_RANGES[range] * 1000;
     // Alten Stand derselben Abfrage beim Nachladen weiter zeigen.
@@ -1726,7 +1791,7 @@ class UnifiDynamicPanel extends HTMLElement {
     let states = null;
     let error = null;
     try {
-      states = await this._loadAvailability(c, entityId, range, start, end);
+      states = await this._loadAvailability(src, range, start, end);
     } catch (err) {
       error = (err && err.message) || String(err);
     }
@@ -1736,6 +1801,7 @@ class UnifiDynamicPanel extends HTMLElement {
       ? { key, loading: false, error, states: null, start, end, at: Date.now() }
       : { key, loading: false, error: null, states, start, end, at: Date.now() };
     this._renderDialog();
+    this._renderSettingsAvail();
   }
 
   // Zustände (Kurzformat von HA: s = Zustand, lu/lc = Zeit in Sekunden) in
@@ -1836,7 +1902,9 @@ class UnifiDynamicPanel extends HTMLElement {
       .filter((tk) => tk.pos > 5 && tk.pos < 82);
   }
 
-  _availSectionHtml(c) {
+  // Zeitstrahl eines Clients (Geräteansicht) bzw. des Controllers
+  // (Einstellungen, src.controller). Gleicher Zeitraum für beide.
+  _availSectionHtml(c, src = null) {
     const t = (k) => this._t(k);
     const esc = (v) => this._escape(v);
     const range = this._availRange;
@@ -1850,14 +1918,17 @@ class UnifiDynamicPanel extends HTMLElement {
           }" class="${r === range ? "active" : ""}">${esc(t("availRanges")[r])}</button>`
       )
       .join("")}</span>`;
-    const head = `<h3 class="avail-h3"><span>${esc(t("secAvail"))}</span>${switchHtml}</h3>`;
+    const head = `<h3 class="avail-h3"><span>${esc(t(src && src.controller ? "secCtlAvail" : "secAvail"))}</span>${switchHtml}</h3>`;
     const note = (text, extra = "") => `${head}<div class="avail"><p class="dlg-note">${esc(text)}${extra}</p></div>`;
 
-    const entityId = this._onlineEntityId(c.device_id);
-    if (!entityId) return note(t("availNoEntity"));
-    this._ensureHistory(c, entityId);
+    if (!src) {
+      const entityId = this._onlineEntityId(c.device_id);
+      if (!entityId) return note(t("availNoEntity"));
+      src = { id: entityId, entryId: c.entry_id, mac: c.mac, entityId };
+    }
+    this._ensureHistory(src);
     const h = this._history;
-    if (!h || h.key !== `${entityId}|${range}` || (!h.states && h.loading)) {
+    if (!h || h.key !== `${src.id}|${range}` || (!h.states && h.loading)) {
       return `${head}${this._availLoaderHtml()}`;
     }
     if (h.error) return note(`${t("availError")} ${h.error}`);
@@ -1868,7 +1939,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const sum = (kind) => segs.filter((s) => s.kind === kind).reduce((a, s) => a + s.to - s.from, 0);
     const on = sum("on");
     const off = sum("off");
-    if (!on && !off) return note(t("availNoData"));
+    if (!on && !off) return note(t(src.controller ? "availCtlNoData" : "availNoData"));
 
     const withDate = range !== "24h";
     const outages = segs.filter((s) => s.kind === "off");
@@ -1990,15 +2061,15 @@ class UnifiDynamicPanel extends HTMLElement {
 
   // Tooltip über einem Unterbruch (Maus: beim Überfahren, Touch: Antippen).
   _showAvailTip(seg) {
-    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.device");
-    if (!dialog) return;
-    dialog.querySelectorAll(".avail-bar .seg.hover").forEach((el) => el.classList.remove("hover"));
-    const tip = dialog.querySelector(".avail-tip");
-    if (!tip) return;
+    const root = this.shadowRoot;
+    if (!root) return;
+    root.querySelectorAll(".avail-bar .seg.hover").forEach((el) => el.classList.remove("hover"));
     if (!seg || !seg.dataset.tip) {
-      tip.hidden = true;
+      root.querySelectorAll(".avail-tip").forEach((el) => (el.hidden = true));
       return;
     }
+    const tip = seg.closest(".avail-barwrap").querySelector(".avail-tip");
+    if (!tip) return;
     seg.classList.add("hover");
     tip.innerHTML = `${this._escape(this._t("availTip"))} <b>${this._escape(seg.dataset.tip)}</b> · ${this._escape(
       seg.dataset.dur

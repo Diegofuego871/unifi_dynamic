@@ -14,6 +14,10 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
 - Legt pro Client ein Gerät mit Sensoren an: IP, MAC, SSID, Access Point,
   Verbindungsart und „Last seen" sowie einen Binary-Sensor „Online".
+- Pro Hub ein Dienst-Gerät „<Hub> Controller" mit dem Binary-Sensor
+  `binary_sensor.unifi_dynamic_controller_<host>` (Verbindung): an, solange
+  der UniFi-Controller antwortet. Für Automationen und den Verlauf; im Panel
+  erscheint es nicht, weil es kein Client ist.
 - Persistenter Client-Cache: Werte offline gegangener Clients bleiben nach
   Neustart, Reload und Options-Änderung erhalten.
 - Automatisches, konfigurierbares Entfernen („Purge") nach X Tagen ohne
@@ -247,6 +251,17 @@ neu, worauf der Dialog vorher hinweist. Bei „Alle Hubs" ist das Zahnrad
 gesperrt, weil die Einstellungen pro Hub gelten; mit nur einem Hub gibt es
 keine Auswahl, nur das Zahnrad. Host, API-Key und SSL-Prüfung bleiben
 bewusst dem Einrichtungsdialog von Home Assistant vorbehalten.
+
+Zuoberst in den Einstellungen steht die **Controller-Verfügbarkeit**:
+derselbe Zeitstrahl wie in der Geräteansicht, aber für den UniFi-Controller
+des Hubs — wann er erreichbar war und wann nicht, mit Prozent,
+Unterbrüchen und Liste. Der Zeitraum (24 Std. / 7 Tage / 30 Tage) ist mit der
+Geräteansicht geteilt. Als Unterbruch zählt die Zeit von der letzten
+erfolgreichen bis zur ersten wieder erfolgreichen Abfrage, sobald die
+Schwelle „Als ausgefallen nach" erreicht war; kürzere Aussetzer erscheinen
+nicht. Die Daten stammen aus dem eigenen Verfügbarkeitsprotokoll der
+Integration und beginnen mit dem Update auf 2.9.0; Zeiten, in denen Home
+Assistant nicht lief, sind schraffiert.
 
 Jede Zeile hat ein ⋮-Menü mit „Details", „Vor automatischem Löschen schützen" (trägt
 den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt

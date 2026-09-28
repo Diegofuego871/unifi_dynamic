@@ -14,6 +14,10 @@ the client has not been reported by the UniFi controller for a while.
 
 - Creates one device per client with sensors for IP, MAC, SSID, access point,
   connection type and "Last seen", plus an "Online" binary sensor.
+- One service device "<hub> Controller" per hub with the binary sensor
+  `binary_sensor.unifi_dynamic_controller_<host>` (connectivity): on while
+  the UniFi controller responds. For automations and history; it doesn't
+  show up in the panel since it isn't a client.
 - Persistent client cache: values of clients that went offline survive
   restarts, reloads and option changes.
 - Configurable automatic removal ("purge") after X days without a sighting,
@@ -236,6 +240,15 @@ integration briefly reloads, which the dialog points out beforehand. With
 "All hubs" the gear is disabled, since settings apply per hub; with only
 one hub there is no switch, just the gear. Host, API key and SSL
 verification deliberately stay in Home Assistant's setup dialog.
+
+At the top of the settings is the **controller availability**: the same
+timeline as in the device view, but for the hub's UniFi controller — when it
+was reachable and when not, with percentage, outages and list. The time
+range (24 h / 7 days / 30 days) is shared with the device view. An outage
+counts from the last successful to the first successful poll again, once
+the "Offline after" threshold was reached; shorter hiccups don't show. The
+data comes from the integration's own availability log and starts with the
+update to 2.9.0; periods while Home Assistant wasn't running are hatched.
 
 Each row has a ⋮ menu with "Details", "Protect from automatic removal" (adds the
 client to the exclusion list), "Remove" (asks for confirmation, then

@@ -37,6 +37,7 @@ from .const import (
     DEFAULT_PURGE_DAYS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_VERIFY_SSL,
+    AVAIL_CONTROLLER,
     AVAIL_KEEP_DAYS,
     AVAIL_SAVE_DELAY,
     AVAIL_STORE_SUFFIX,
@@ -391,7 +392,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     @callback
     def _avail_record(self, now: float) -> None:
         """Nach einem erfolgreichen Poll: Zustandswechsel aller Clients festhalten."""
-        changed = False
+        changed = self._avail_append(AVAIL_CONTROLLER, now, 1)
         for mac in self._client_cache:
             online = self.is_client_online(mac)
             events = self._avail.get(mac)
@@ -418,7 +419,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         cutoff = now - AVAIL_KEEP_DAYS * 86400
         changed = False
         for mac in list(self._avail):
-            if mac not in self._client_cache:
+            if mac != AVAIL_CONTROLLER and mac not in self._client_cache:
                 del self._avail[mac]
                 changed = True
                 continue
@@ -684,8 +685,12 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         self._offline = True
         self._offline_since = self._anchor
-        # Ohne Controller ist der Zustand der Clients unbekannt.
-        self._avail_mark_all(None, self._anchor or time.time())
+        # Ohne Controller ist der Zustand der Clients unbekannt; der Controller
+        # selbst gilt ab dem letzten erfolgreichen Poll als nicht erreichbar.
+        at = self._anchor or time.time()
+        self._avail_mark_all(None, at)
+        self._avail_append(AVAIL_CONTROLLER, at, 0)
+        self._schedule_avail_save()
         gap = None if self._anchor is None else time.time() - self._anchor
 
         _LOGGER.warning(

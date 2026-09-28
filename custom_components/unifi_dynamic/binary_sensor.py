@@ -10,12 +10,13 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 
-from .const import DOMAIN
+from .const import AVAIL_CONTROLLER, DOMAIN
 from .coordinator import (
     UnifiDynamicCoordinator,
     client_slug,
@@ -29,6 +30,12 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: UnifiDynamicCoordinator = hass.data[DOMAIN][entry.entry_id]
+
+    # Erreichbarkeit des Controllers: eine Entität pro Hub, an einem eigenen
+    # Dienst-Gerät. Kein Client, taucht also im Panel nicht auf.
+    controller = UnifiControllerOnlineBinarySensor(coordinator, entry)
+    controller.entity_id = f"binary_sensor.{DOMAIN}_controller_{slugify(coordinator.host)}"
+    async_add_entities([controller])
 
     known: set[str] = set()
 
@@ -118,3 +125,42 @@ class UnifiClientOnlineBinarySensor(
             "ap": self.coordinator.access_point_name(data.get("ap_mac")),
             "ap_mac": data.get("ap_mac"),
         }
+
+
+def controller_device_identifier(entry_id: str) -> tuple[str, str]:
+    """Identifier des Controller-Geräts; bewusst keine MAC."""
+    return (DOMAIN, f"{AVAIL_CONTROLLER}_{entry_id}")
+
+
+class UnifiControllerOnlineBinarySensor(
+    CoordinatorEntity[UnifiDynamicCoordinator], BinarySensorEntity
+):
+    """
+    An, solange der Controller antwortet; aus, sobald er nach der
+    eingestellten Zahl fehlgeschlagener Abfragen als ausgefallen gilt.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Online"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+
+    def __init__(self, coordinator: UnifiDynamicCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{DOMAIN}.{entry.entry_id}.{AVAIL_CONTROLLER}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={controller_device_identifier(entry.entry_id)},
+            name=f"{entry.title} Controller",
+            manufacturer="Ubiquiti",
+            model="UniFi Controller",
+            entry_type=DeviceEntryType.SERVICE,
+            configuration_url=f"https://{coordinator.host}",
+        )
+
+    @property
+    def available(self) -> bool:
+        # Der Zustand selbst sagt, ob der Controller erreichbar ist.
+        return True
+
+    @property
+    def is_on(self) -> bool:
+        return not self.coordinator.offline

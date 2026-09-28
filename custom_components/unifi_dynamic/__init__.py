@@ -37,6 +37,7 @@ from .const import (
     ATTR_DRY_RUN,
     ATTR_ENTRY_ID,
     ATTR_MAC,
+    AVAIL_CONTROLLER,
     BRAND_DIR,
     CONF_NOTIFY_SERVICE,
     CONF_PURGE_EXCLUDE,
@@ -836,6 +837,12 @@ def _ws_get_options(
             "protected": options_api.protected_clients(
                 hass, coordinator.entry, values[CONF_PURGE_EXCLUDE]
             ),
+            # Für den Recorder-Verlauf; None, solange die Entität fehlt.
+            "controller_entity_id": er.async_get(hass).async_get_entity_id(
+                "binary_sensor",
+                DOMAIN,
+                f"{DOMAIN}.{coordinator.entry.entry_id}.{AVAIL_CONTROLLER}",
+            ),
             "limits": {
                 "scan_interval": options_api.SCAN_INTERVAL_RANGE,
                 "offline_after_failures": options_api.OFFLINE_AFTER_RANGE,
@@ -1236,7 +1243,8 @@ def _mac_from_device(hass: HomeAssistant, device_id: str) -> tuple[str, str] | N
     mac = next(
         (value for domain, value in device.identifiers if domain == DOMAIN), None
     )
-    if mac is None:
+    # Das Controller-Gerät ist kein Client.
+    if mac is None or str(mac).startswith(f"{AVAIL_CONTROLLER}_"):
         return None
 
     entry_id = next(
