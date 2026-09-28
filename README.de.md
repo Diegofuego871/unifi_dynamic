@@ -208,8 +208,8 @@ Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig von der
 Richtung.
 
 Online/Offline-Auswahl, Verbindungsfilter, Sortierspalte und -richtung, die
-ausgeblendeten Spalten samt Reihenfolge und der Schalter „Bereits verknüpfte ausblenden"
-werden pro Home-Assistant-Benutzer gespeichert, im eigenen Speicher von
+ausgeblendeten Spalten samt Reihenfolge, der Schalter „Bereits verknüpfte ausblenden"
+und der Zeitraum des Verfügbarkeits-Zeitstrahls werden pro Home-Assistant-Benutzer gespeichert, im eigenen Speicher von
 Home Assistant für Frontend-Einstellungen — dort, wo Home Assistant auch
 seine eigenen Tabelleneinstellungen ablegt. Sie gelten damit auf allen
 Geräten und Browsern, mit denen du dich anmeldest, auch in der
@@ -241,8 +241,23 @@ schützen", um ihn wieder davon zu entfernen. Der erste Menüpunkt,
 Die Geräteansicht ist ein Dialog über der Tabelle (auf dem Handy ein Blatt,
 das von unten hereinfährt). Der Kopf zeigt Name, Status und Schutz als
 Pillen sowie den Hostnamen; direkt darunter stehen die Schnellaktionen
-„HA-Geräteseite öffnen" und „Schützen" bzw. „Schutz aufheben". Der Abschnitt
-„Netzwerk" zeigt alles, was die Integration über den Client weiss, als
+„HA-Geräteseite öffnen" und „Schützen" bzw. „Schutz aufheben".
+
+Der Abschnitt „Verfügbarkeit" zeigt als Zeitstrahl, wann der Client
+erreichbar war (grün) und wann nicht (orange) — wahlweise für die letzten
+24 Stunden, 7 Tage oder 30 Tage (die Wahl wird pro Benutzer gespeichert).
+Darüber stehen die Verfügbarkeit in Prozent, die Anzahl Unterbrüche, ihre
+Gesamtdauer und der längste; Überfahren oder Antippen eines Unterbruchs
+zeigt Beginn, Ende und Dauer, darunter sind alle Unterbrüche aufgelistet
+(neueste zuerst). Die Daten stammen aus dem Recorder-Verlauf der
+Online-Entität des Clients. Zeiten ohne Daten (bevor der Client bekannt war
+oder älter als die Aufbewahrungsdauer des Recorders, standardmässig 10 Tage)
+sind schraffiert und zählen nicht mit. Einschränkungen: Unterbrüche, die
+kürzer sind als Abfrageintervall plus Offline-Schwelle, sind nicht
+sichtbar, und solange der UniFi-Controller selbst nicht erreichbar ist,
+behält der Client seinen letzten Zustand.
+
+Der Abschnitt „Netzwerk" zeigt alles, was die Integration über den Client weiss, als
 Kacheln: IP, MAC, Hostname, SSID, Access Point, Signal (dBm, der RSSI-Wert
 des Controllers und Balken, bei einem Offline-Client als „zuletzt gemessen"
 markiert), zuerst und zuletzt gesehen mit relativer Zeitangabe sowie die

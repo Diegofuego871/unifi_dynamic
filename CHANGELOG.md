@@ -5,6 +5,23 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.6.0] - 2026-09-28
+
+### Added
+
+- Availability timeline in the device view: a bar above "Network" shows
+  when the client was reachable (green) and when it was offline (orange)
+  over the last 24 hours, 7 days or 30 days, with the availability in
+  percent, the number of outages, their total and the longest one. Hover
+  or tap an outage for its start, end and duration; all outages are listed
+  below the bar, newest first. Periods without data (before the client was
+  known, or older than the recorder keeps) are hatched and don't count.
+  The chosen time range is saved per Home Assistant user.
+- The data comes from the recorder history of the client's "Online"
+  entity; nothing extra is stored. Outages shorter than the update
+  interval plus the offline threshold aren't visible, and while the UniFi
+  controller itself is unreachable the client keeps its last state.
+
 ## [2.5.1] - 2026-09-25
 
 ### Added
@@ -1011,6 +1028,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.6.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.6.0
 [2.5.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.1
 [2.5.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.0
 [2.4.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.4.0

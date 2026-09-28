@@ -202,7 +202,8 @@ column and direction. Rows with a missing value for the sorted column (no
 IP, never seen) always sort to the end, regardless of direction.
 
 The online/offline choice, the connection filter, the sort column and
-direction, the hidden columns and their order, and the "Hide already linked" switch are
+direction, the hidden columns and their order, the "Hide already linked" switch and
+the time range of the availability timeline are
 saved per Home Assistant user, in Home Assistant's own storage for frontend
 settings — the same place Home Assistant keeps its own table settings. They
 therefore apply on every device and browser you sign in with, including the
@@ -231,7 +232,22 @@ opens the device view — as does tapping the row itself.
 The device view is a dialog over the table (on a phone a sheet sliding up
 from the bottom). Its header shows the name, status and protection as pills
 and the hostname; right below sit the quick actions "Open HA device page"
-and "Protect" / "Stop protecting". The "Network" section shows everything
+and "Protect" / "Stop protecting".
+
+The "Availability" section shows as a timeline when the client was
+reachable (green) and when it wasn't (orange) — for the last 24 hours,
+7 days or 30 days (the choice is saved per user). Above it are the
+availability in percent, the number of outages, their total and the
+longest one; hovering or tapping an outage shows its start, end and
+duration, and all outages are listed below (newest first). The data comes
+from the recorder history of the client's online entity. Periods without
+data (before the client was known, or older than the recorder keeps,
+10 days by default) are hatched and don't count. Limitations: outages
+shorter than the update interval plus the offline threshold aren't
+visible, and while the UniFi controller itself is unreachable the client
+keeps its last state.
+
+The "Network" section shows everything
 the integration knows about the client as tiles: IP, MAC, hostname, SSID,
 access point, signal (dBm, the controller's RSSI value and bars, marked
 "last measured" while the client is offline), first seen and last seen with

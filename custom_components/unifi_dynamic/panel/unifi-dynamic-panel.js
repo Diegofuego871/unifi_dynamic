@@ -112,6 +112,29 @@ const STRINGS = {
     copyFailed: "Kopieren nicht möglich - der Browser erlaubt keinen Zugriff auf die Zwischenablage.",
     secLinked: "Verknüpftes Gerät",
     secNetwork: "Netzwerk",
+    secAvail: "Verfügbarkeit",
+    availRanges: { "24h": "24 Std.", "7d": "7 Tage", "30d": "30 Tage" },
+    availRangeGroup: "Zeitraum",
+    availLoading: "Verlauf wird geladen…",
+    availError: "Verlauf nicht verfügbar:",
+    availNoEntity: "Keine Online-Entität gefunden - ohne HA-Gerät gibt es keinen Verlauf.",
+    availNoData: "Keine Verlaufsdaten im Recorder für diesen Zeitraum.",
+    availAlways: "Durchgehend erreichbar",
+    availNever: "Im ganzen Zeitraum nicht erreichbar",
+    availOutages: (n) => (n === 1 ? "1 Unterbruch" : `${n} Unterbrüche`),
+    availTotal: (d) => `zusammen ${d}`,
+    availLongest: (d) => `längster ${d}`,
+    availSince: (time) => `erst seit ${time} Daten`,
+    availOnline: "Erreichbar",
+    availOffline: "Unterbruch",
+    availNone: "Keine Daten",
+    availNow: "jetzt",
+    availOngoing: "läuft",
+    availMore: (n) => `${n} ältere Unterbrüche nicht aufgelistet.`,
+    availTip: "Offline",
+    durMin: (n) => `${n} Min.`,
+    durHour: (h, m) => (m ? `${h} Std. ${m} Min.` : `${h} Std.`),
+    durDay: (d, h) => (h ? `${d} T. ${h} Std.` : `${d} T.`),
     quickOpenDevice: "HA-Geräteseite",
     quickProtect: "Schützen",
     quickUnprotect: "Schutz aufheben",
@@ -217,6 +240,29 @@ const STRINGS = {
     copyFailed: "Could not copy - the browser does not allow access to the clipboard.",
     secLinked: "Linked device",
     secNetwork: "Network",
+    secAvail: "Availability",
+    availRanges: { "24h": "24 h", "7d": "7 days", "30d": "30 days" },
+    availRangeGroup: "Time range",
+    availLoading: "Loading history…",
+    availError: "History not available:",
+    availNoEntity: "No online entity found - without a HA device there is no history.",
+    availNoData: "No history data in the recorder for this time range.",
+    availAlways: "Reachable the whole time",
+    availNever: "Not reachable during the whole time range",
+    availOutages: (n) => (n === 1 ? "1 outage" : `${n} outages`),
+    availTotal: (d) => `${d} in total`,
+    availLongest: (d) => `longest ${d}`,
+    availSince: (time) => `data only since ${time}`,
+    availOnline: "Reachable",
+    availOffline: "Outage",
+    availNone: "No data",
+    availNow: "now",
+    availOngoing: "ongoing",
+    availMore: (n) => `${n} older outages not listed.`,
+    availTip: "Offline",
+    durMin: (n) => `${n} min`,
+    durHour: (h, m) => (m ? `${h} h ${m} min` : `${h} h`),
+    durDay: (d, h) => (h ? `${d} d ${h} h` : `${d} d`),
     quickOpenDevice: "HA device page",
     quickProtect: "Protect",
     quickUnprotect: "Stop protecting",
@@ -359,7 +405,16 @@ const DEFAULT_PREFS = {
   // Geräteauswahl: bei anderen Clients schon verknüpfte Geräte ausblenden
   // statt nur markieren. Gilt nur für die Auswahl, nicht für die Tabelle.
   hideLinked: false,
+  // Zeitraum des Verfügbarkeits-Zeitstrahls in der Geräteansicht.
+  availRange: "24h",
 };
+
+// Zeitraum -> Dauer in Sekunden.
+const AVAIL_RANGES = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400 };
+// Verlauf höchstens so lange aus dem Zwischenspeicher zeigen, dann neu holen.
+const AVAIL_MAX_AGE_MS = 60000;
+// So viele Unterbrüche listet der Dialog höchstens auf (neueste zuerst).
+const AVAIL_LIST_MAX = 10;
 
 // Gespeicherte Einstellungen prüfen (lokal wie von HA): Unbekanntes oder
 // Kaputtes fällt auf den Standard zurück, statt das Panel zu stören. Liest
@@ -392,6 +447,7 @@ function sanitizePrefs(raw) {
     colOrderWide: order(p.colOrderWide),
     colOrderNarrow: order(p.colOrderNarrow),
     hideLinked: p.hideLinked === true,
+    availRange: Object.prototype.hasOwnProperty.call(AVAIL_RANGES, p.availRange) ? p.availRange : "24h",
     // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
     // Kopie oder der Stand von HA neuer ist.
     updated: typeof p.updated === "number" ? p.updated : 0,
@@ -469,6 +525,9 @@ class UnifiDynamicPanel extends HTMLElement {
     this._pickerQuery = "";
     this._devices = null;
     this._devicesError = null;
+    // Verlauf der Online-Entität für den Zeitstrahl: zuletzt geholter Stand
+    // { key: "entity|zeitraum", loading, error, states, start, end, at }.
+    this._history = null;
     this._onParentLocation = () => this._checkDeepLink();
   }
 
@@ -483,6 +542,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._colOrderWide = [...prefs.colOrderWide];
     this._colOrderNarrow = [...prefs.colOrderNarrow];
     this._hideLinked = prefs.hideLinked;
+    this._availRange = prefs.availRange || "24h";
   }
 
   _currentPrefs() {
@@ -496,6 +556,7 @@ class UnifiDynamicPanel extends HTMLElement {
       colOrderWide: [...this._colOrderWide],
       colOrderNarrow: [...this._colOrderNarrow],
       hideLinked: this._hideLinked,
+      availRange: this._availRange,
     };
   }
 
@@ -827,6 +888,301 @@ class UnifiDynamicPanel extends HTMLElement {
         return { entityId: e.entity_id, name, value: this._formatEntityState(stateObj) };
       })
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  }
+
+  // Die Online-Entität (binary_sensor dieser Integration) des HA-Geräts.
+  _onlineEntityId(deviceId) {
+    const hass = this._hass;
+    if (!deviceId || !hass || !hass.entities) return null;
+    const hit = Object.values(hass.entities).find(
+      (e) =>
+        e &&
+        e.device_id === deviceId &&
+        e.platform === "unifi_dynamic" &&
+        String(e.entity_id).startsWith("binary_sensor.")
+    );
+    return hit ? hit.entity_id : null;
+  }
+
+  // Verlauf holen, wenn für Entität und Zeitraum noch nichts oder nur ein
+  // veralteter Stand da ist. Das Ende ist der Abfragezeitpunkt, nicht
+  // "jetzt" beim Rendern: sonst änderte sich das HTML bei jedem hass-Update
+  // und der Dialog würde ständig neu aufgebaut.
+  _ensureHistory(entityId) {
+    const key = `${entityId}|${this._availRange}`;
+    const h = this._history;
+    if (h && h.key === key && (h.loading || (!h.error && Date.now() - h.at < AVAIL_MAX_AGE_MS))) {
+      return;
+    }
+    if (h && h.key === key && h.error && Date.now() - h.at < AVAIL_MAX_AGE_MS) return;
+    this._fetchHistory(entityId, this._availRange);
+  }
+
+  async _fetchHistory(entityId, range) {
+    const key = `${entityId}|${range}`;
+    const end = Date.now();
+    const start = end - AVAIL_RANGES[range] * 1000;
+    // Alten Stand derselben Abfrage beim Nachladen weiter zeigen.
+    const prev = this._history && this._history.key === key && this._history.states ? this._history : null;
+    this._history = prev
+      ? { ...prev, loading: true }
+      : { key, loading: true, error: null, states: null, start, end, at: end };
+    let states = null;
+    let error = null;
+    try {
+      const result = await this._hass.callWS({
+        type: "history/history_during_period",
+        start_time: new Date(start).toISOString(),
+        end_time: new Date(end).toISOString(),
+        entity_ids: [entityId],
+        include_start_time_state: true,
+        significant_changes_only: false,
+        minimal_response: true,
+        no_attributes: true,
+      });
+      states = (result && result[entityId]) || [];
+    } catch (err) {
+      error = (err && err.message) || String(err);
+    }
+    // Inzwischen anderer Client oder Zeitraum gewählt: Ergebnis verwerfen.
+    if (!this._history || this._history.key !== key) return;
+    this._history = error
+      ? { key, loading: false, error, states: null, start, end, at: Date.now() }
+      : { key, loading: false, error: null, states, start, end, at: Date.now() };
+    this._renderDialog();
+  }
+
+  // Zustände (Kurzformat von HA: s = Zustand, lu/lc = Zeit in Sekunden) in
+  // lückenlose Abschnitte "on"/"off"/"none" über den Zeitraum umrechnen.
+  // Vor dem ersten Eintrag und bei unavailable/unknown: keine Daten.
+  _availSegments(states, start, end) {
+    const points = [];
+    for (const st of states || []) {
+      const secs = typeof st.lu === "number" ? st.lu : typeof st.lc === "number" ? st.lc : null;
+      let ms = secs != null ? secs * 1000 : Date.parse(st.last_changed || st.last_updated || "");
+      if (!Number.isFinite(ms)) continue;
+      const s = st.s != null ? st.s : st.state;
+      points.push([Math.max(ms, start), s === "on" ? "on" : s === "off" ? "off" : "none"]);
+    }
+    points.sort((a, b) => a[0] - b[0]);
+    const segs = [];
+    const push = (from, to, kind) => {
+      if (to <= from) return;
+      const last = segs[segs.length - 1];
+      if (last && last.kind === kind && last.to === from) last.to = to;
+      else segs.push({ from, to, kind });
+    };
+    let cursor = start;
+    let kind = "none";
+    for (const [t, k] of points) {
+      if (t >= end) break;
+      push(cursor, t, kind);
+      cursor = Math.max(cursor, t);
+      kind = k;
+    }
+    push(cursor, end, kind);
+    return segs;
+  }
+
+  _formatDuration(ms) {
+    const t = this._t.bind(this);
+    const min = Math.max(1, Math.round(ms / 60000));
+    if (min < 60) return t("durMin")(min);
+    if (min < 1440) return t("durHour")(Math.floor(min / 60), min % 60);
+    const hours = Math.round(min / 60);
+    return t("durDay")(Math.floor(hours / 24), hours % 24);
+  }
+
+  // Uhrzeit, bei längeren Zeiträumen mit Wochentag und Datum.
+  _formatAvailTime(ms, withDate) {
+    const locale = pickLang(this._hass) === "de" ? "de-CH" : "en-US";
+    const opts = withDate
+      ? { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }
+      : { hour: "2-digit", minute: "2-digit" };
+    try {
+      return new Date(ms).toLocaleString(locale, opts);
+    } catch (err) {
+      return new Date(ms).toISOString();
+    }
+  }
+
+  // Beschriftete Markierungen auf ganzen Stunden bzw. Mitternacht. "minor"
+  // blendet das schmale Layout aus, damit sich nichts überlappt.
+  _availTicks(start, end, range) {
+    const locale = pickLang(this._hass) === "de" ? "de-CH" : "en-US";
+    const ticks = [];
+    const d = new Date(start);
+    if (range === "24h") {
+      d.setMinutes(0, 0, 0);
+      d.setHours(d.getHours() + 1);
+      for (; d.getTime() < end; d.setHours(d.getHours() + 1)) {
+        const h = d.getHours();
+        if (h % 3) continue;
+        ticks.push({
+          at: d.getTime(),
+          label: `${String(h).padStart(2, "0")}:00`,
+          minor: h % 6 !== 0,
+        });
+      }
+    } else {
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 1);
+      for (let i = 0; d.getTime() < end; d.setDate(d.getDate() + 1), i++) {
+        if (range === "7d") {
+          ticks.push({
+            at: d.getTime(),
+            label: d.toLocaleDateString(locale, { weekday: "short" }),
+            minor: false,
+          });
+        } else if (d.getDate() % 5 === 0 && d.getDate() !== 30) {
+          ticks.push({
+            at: d.getTime(),
+            label: d.toLocaleDateString(locale, { day: "numeric", month: "numeric" }),
+            minor: d.getDate() % 10 !== 0,
+          });
+        }
+      }
+    }
+    const span = end - start;
+    // Nicht zu nah an "jetzt" (rechter Rand) und am linken Rand.
+    return ticks
+      .map((tk) => ({ ...tk, pos: ((tk.at - start) / span) * 100 }))
+      .filter((tk) => tk.pos > 3 && tk.pos < 90);
+  }
+
+  _availSectionHtml(c) {
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const range = this._availRange;
+    const switchHtml = `<span class="avail-range" role="group" aria-label="${esc(t("availRangeGroup"))}">${Object.keys(
+      AVAIL_RANGES
+    )
+      .map(
+        (r) =>
+          `<button type="button" data-dlg="avail-range" data-range="${r}" aria-pressed="${
+            r === range
+          }" class="${r === range ? "active" : ""}">${esc(t("availRanges")[r])}</button>`
+      )
+      .join("")}</span>`;
+    const head = `<h3 class="avail-h3"><span>${esc(t("secAvail"))}</span>${switchHtml}</h3>`;
+    const note = (text, extra = "") => `${head}<div class="avail"><p class="dlg-note">${esc(text)}${extra}</p></div>`;
+
+    const entityId = this._onlineEntityId(c.device_id);
+    if (!entityId) return note(t("availNoEntity"));
+    this._ensureHistory(entityId);
+    const h = this._history;
+    if (!h || h.key !== `${entityId}|${range}` || (!h.states && h.loading)) {
+      return note(t("availLoading"));
+    }
+    if (h.error) return note(`${t("availError")} ${h.error}`);
+
+    const { start, end } = h;
+    const span = end - start;
+    const segs = this._availSegments(h.states, start, end);
+    const sum = (kind) => segs.filter((s) => s.kind === kind).reduce((a, s) => a + s.to - s.from, 0);
+    const on = sum("on");
+    const off = sum("off");
+    if (!on && !off) return note(t("availNoData"));
+
+    const withDate = range !== "24h";
+    const outages = segs.filter((s) => s.kind === "off");
+    const pct = (on / (on + off)) * 100;
+    // Nie 100 % anzeigen, wenn es einen Unterbruch gab (Rundung).
+    const pctText = (outages.length && pct > 99.9 ? 99.9 : pct).toLocaleString(
+      pickLang(this._hass) === "de" ? "de-CH" : "en-US",
+      { minimumFractionDigits: 1, maximumFractionDigits: 1 }
+    );
+    const facts = [];
+    if (!on) facts.push(`<b>${esc(t("availNever"))}</b>`);
+    else if (!outages.length) facts.push(esc(t("availAlways")));
+    else {
+      const longest = outages.reduce((a, s) => Math.max(a, s.to - s.from), 0);
+      facts.push(`<b>${esc(t("availOutages")(outages.length))}</b>`);
+      facts.push(esc(t("availTotal")(this._formatDuration(off))));
+      facts.push(esc(t("availLongest")(this._formatDuration(longest))));
+    }
+    const firstData = segs.find((s) => s.kind !== "none");
+    if (firstData && firstData.from > start + span * 0.01) {
+      facts.push(esc(t("availSince")(this._formatAvailTime(firstData.from, true))));
+    }
+
+    const endLabel = (s) => (s.to >= end ? t("availOngoing") : this._formatAvailTime(s.to, false));
+    const segHtml = segs
+      .map((s) => {
+        const left = ((s.from - start) / span) * 100;
+        const width = ((s.to - s.from) / span) * 100;
+        const tip =
+          s.kind === "off"
+            ? ` data-tip="${esc(
+                `${this._formatAvailTime(s.from, withDate)}–${endLabel(s)}`
+              )}" data-dur="${esc(this._formatDuration(s.to - s.from))}"`
+            : "";
+        return `<span class="seg ${s.kind}" style="left:${left.toFixed(3)}%;width:${width.toFixed(3)}%"${tip}></span>`;
+      })
+      .join("");
+    const ticks = this._availTicks(start, end, range)
+      .map(
+        (tk) => `<span class="${tk.minor ? "minor" : ""}" style="left:${tk.pos.toFixed(2)}%">${esc(tk.label)}</span>`
+      )
+      .join("");
+    const hasNone = segs.some((s) => s.kind === "none");
+    const legend = `<div class="avail-legend"><span><i class="on"></i>${esc(t("availOnline"))}</span><span><i class="off"></i>${esc(
+      t("availOffline")
+    )}</span>${hasNone ? `<span><i class="none"></i>${esc(t("availNone"))}</span>` : ""}</div>`;
+
+    let list = "";
+    if (outages.length) {
+      const newest = outages.slice().reverse();
+      list = `<div class="avail-list">${newest
+        .slice(0, AVAIL_LIST_MAX)
+        .map(
+          (s) =>
+            `<div><span>${esc(this._formatAvailTime(s.from, withDate))} – ${esc(endLabel(s))}</span><span class="d">${esc(
+              this._formatDuration(s.to - s.from)
+            )}</span></div>`
+        )
+        .join("")}${
+        newest.length > AVAIL_LIST_MAX
+          ? `<p class="avail-more">${esc(t("availMore")(newest.length - AVAIL_LIST_MAX))}</p>`
+          : ""
+      }</div>`;
+    }
+
+    return `${head}<div class="avail">
+        <div class="avail-top"><span class="avail-pct">${esc(pctText)}<small>%</small></span><span class="avail-facts">${facts.join(
+          " · "
+        )}</span></div>
+        <div class="avail-barwrap"><div class="avail-bar">${segHtml}<span class="avail-now"></span></div><div class="avail-tip" hidden></div></div>
+        <div class="avail-ticks">${ticks}<span class="now-label">${esc(t("availNow"))}</span></div>
+        ${legend}
+        ${list}
+      </div>`;
+  }
+
+  // Tooltip über einem Unterbruch (Maus: beim Überfahren, Touch: Antippen).
+  _showAvailTip(seg) {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.device");
+    if (!dialog) return;
+    dialog.querySelectorAll(".avail-bar .seg.hover").forEach((el) => el.classList.remove("hover"));
+    const tip = dialog.querySelector(".avail-tip");
+    if (!tip) return;
+    if (!seg || !seg.dataset.tip) {
+      tip.hidden = true;
+      return;
+    }
+    seg.classList.add("hover");
+    tip.innerHTML = `${this._escape(this._t("availTip"))} <b>${this._escape(seg.dataset.tip)}</b> · ${this._escape(
+      seg.dataset.dur
+    )}`;
+    tip.hidden = false;
+    const wrap = tip.parentElement.getBoundingClientRect();
+    const r = seg.getBoundingClientRect();
+    const center = r.left + r.width / 2 - wrap.left;
+    const half = tip.offsetWidth / 2;
+    // Am Rand einklemmen, der Pfeil zeigt trotzdem auf den Abschnitt.
+    const left = Math.min(Math.max(center, half), Math.max(half, wrap.width - half));
+    tip.style.left = `${left}px`;
+    tip.style.setProperty("--arrow", `${center - left}px`);
   }
 
   // HAs eigene Formatierung (Übersetzung, Einheit, Zeitstempel), sofern das
@@ -1276,6 +1632,7 @@ class UnifiDynamicPanel extends HTMLElement {
         </div>
         <div class="dlg-body">
           ${errorHtml}
+          ${this._availSectionHtml(c)}
           <h3>${esc(t("secNetwork"))}</h3>
           <div class="tiles">${tiles.join("")}</div>
           <h3>${esc(t("secLinked"))}</h3>
@@ -1337,6 +1694,14 @@ class UnifiDynamicPanel extends HTMLElement {
       if (!inside) this._closeDialog();
       return;
     }
+    const seg = ev.target.closest(".avail-bar .seg");
+    if (seg) {
+      // Maus: Tooltip folgt dem Zeiger (pointerover), Klick ändert nichts.
+      if (ev.pointerType === "mouse") return;
+      this._showAvailTip(seg.classList.contains("off") && !seg.classList.contains("hover") ? seg : null);
+      return;
+    }
+    if (!ev.target.closest(".avail-tip")) this._showAvailTip(null);
     const btn = ev.target.closest("[data-dlg]");
     if (!btn || btn.disabled) return;
     const action = btn.dataset.dlg;
@@ -1373,6 +1738,14 @@ class UnifiDynamicPanel extends HTMLElement {
       this._hideLinked = btn.checked;
       this._savePrefs();
       this._renderDialog();
+      return;
+    }
+    if (action === "avail-range") {
+      if (btn.dataset.range !== this._availRange) {
+        this._availRange = btn.dataset.range;
+        this._savePrefs();
+        this._renderDialog();
+      }
       return;
     }
     if (action === "link-retry") {
@@ -3098,6 +3471,212 @@ class UnifiDynamicPanel extends HTMLElement {
           color: var(--udc-text2);
           font-size: 14px;
         }
+        /* Verfügbarkeit (Zeitstrahl) */
+        .dlg-body h3.avail-h3 {
+          justify-content: space-between;
+          flex-wrap: wrap;
+        }
+        .avail-range {
+          display: inline-flex;
+          padding: 2px;
+          border-radius: 99px;
+          background: var(--udc-subtle);
+          text-transform: none;
+          letter-spacing: 0;
+        }
+        .avail-range button {
+          height: 26px;
+          padding: 0 11px;
+          border: none;
+          border-radius: 99px;
+          background: none;
+          color: var(--udc-text2);
+          font: inherit;
+          font-size: 12px;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+        .avail-range button.active {
+          background: var(--udc-card);
+          color: var(--udc-text);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        .avail {
+          padding: 12px 14px 10px;
+          border-radius: 14px;
+          background: var(--udc-subtle);
+        }
+        .avail .dlg-note {
+          margin: 0;
+        }
+        .avail-top {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: 4px 10px;
+          margin-bottom: 12px;
+        }
+        .avail-pct {
+          font-size: 22px;
+          font-weight: 500;
+          font-variant-numeric: tabular-nums;
+        }
+        .avail-pct small {
+          margin-left: 2px;
+          color: var(--udc-text2);
+          font-size: 14px;
+          font-weight: 400;
+        }
+        .avail-facts {
+          color: var(--udc-text2);
+          font-size: 13px;
+        }
+        .avail-facts b {
+          color: var(--udc-warning);
+          font-weight: 500;
+        }
+        .avail-barwrap {
+          position: relative;
+        }
+        .avail-bar {
+          position: relative;
+          height: 22px;
+          border-radius: 6px;
+          overflow: hidden;
+          background: color-mix(in srgb, var(--udc-text) 12%, var(--udc-card));
+        }
+        .avail-bar .seg {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+        }
+        .avail-bar .seg.on {
+          background: var(--udc-success);
+        }
+        .avail-bar .seg.off {
+          /* Über den Nachbarn, auch wenn die Mindestbreite überlappt. */
+          z-index: 1;
+          min-width: 3px;
+          background: var(--udc-warning);
+          cursor: pointer;
+        }
+        .avail-bar .seg.none,
+        .avail-legend i.none {
+          background: repeating-linear-gradient(
+            45deg,
+            color-mix(in srgb, var(--udc-text) 18%, var(--udc-card)) 0 4px,
+            transparent 4px 8px
+          );
+        }
+        .avail-bar .seg.hover {
+          filter: brightness(1.2);
+          box-shadow: inset 0 0 0 2px var(--udc-card);
+        }
+        .avail-now {
+          position: absolute;
+          top: 0;
+          right: 0;
+          bottom: 0;
+          width: 2px;
+          background: var(--udc-text);
+        }
+        .avail-tip {
+          position: absolute;
+          bottom: calc(100% + 8px);
+          z-index: 2;
+          transform: translateX(-50%);
+          padding: 7px 10px;
+          border-radius: 8px;
+          background: #323232;
+          color: #fff;
+          font-size: 12px;
+          white-space: nowrap;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+          pointer-events: none;
+        }
+        .avail-tip[hidden] {
+          display: none;
+        }
+        .avail-tip b {
+          color: #ffb74d;
+          font-weight: 500;
+        }
+        .avail-tip::after {
+          content: "";
+          position: absolute;
+          left: calc(50% + var(--arrow, 0px));
+          bottom: -5px;
+          width: 10px;
+          height: 10px;
+          background: #323232;
+          transform: translateX(-50%) rotate(45deg);
+        }
+        .avail-ticks {
+          position: relative;
+          height: 16px;
+          margin-top: 4px;
+          color: var(--udc-text3);
+          font-size: 11px;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .avail-ticks span {
+          position: absolute;
+          transform: translateX(-50%);
+        }
+        .avail-ticks .now-label {
+          right: 0;
+          transform: none;
+        }
+        @media (max-width: 600px) {
+          .avail-ticks .minor {
+            display: none;
+          }
+        }
+        .avail-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px 14px;
+          margin-top: 6px;
+          color: var(--udc-text2);
+          font-size: 12px;
+        }
+        .avail-legend i {
+          display: inline-block;
+          width: 10px;
+          height: 10px;
+          margin-right: 5px;
+          border-radius: 3px;
+          vertical-align: -1px;
+        }
+        .avail-legend i.on {
+          background: var(--udc-success);
+        }
+        .avail-legend i.off {
+          background: var(--udc-warning);
+        }
+        .avail-list {
+          margin-top: 10px;
+          padding-top: 8px;
+          border-top: 1px solid var(--udc-divider);
+          font-size: 13px;
+        }
+        .avail-list div {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 3px 0;
+          font-variant-numeric: tabular-nums;
+        }
+        .avail-list .d {
+          color: var(--udc-warning);
+          white-space: nowrap;
+        }
+        .avail-more {
+          margin: 4px 0 0;
+          color: var(--udc-text3);
+          font-size: 12px;
+        }
         .dlg-error {
           margin: 8px 0;
           padding: 10px 12px;
@@ -3788,6 +4367,18 @@ class UnifiDynamicPanel extends HTMLElement {
 
     const dialog = this.shadowRoot.querySelector("dialog.device");
     dialog.addEventListener("click", (ev) => this._handleDialogClick(ev));
+    // Zeitstrahl: Tooltip beim Überfahren eines Unterbruchs mit der Maus
+    // (Touch: Antippen, siehe _handleDialogClick).
+    dialog.addEventListener("pointerover", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      const seg = ev.target.closest && ev.target.closest(".avail-bar .seg");
+      if (seg) this._showAvailTip(seg.classList.contains("off") ? seg : null);
+    });
+    dialog.addEventListener("pointerout", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      const bar = ev.target.closest && ev.target.closest(".avail-bar");
+      if (bar && !(ev.relatedTarget && bar.contains(ev.relatedTarget))) this._showAvailTip(null);
+    });
     // Entitätszeilen sind keine echten Buttons (siehe _renderDialog), also
     // Enter/Leertaste selbst in einen Klick übersetzen.
     dialog.addEventListener("keydown", (ev) => {
