@@ -630,6 +630,11 @@ const DEFAULT_PREFS = {
 const AVAIL_RANGES = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400 };
 // Verlauf höchstens so lange aus dem Zwischenspeicher zeigen, dann neu holen.
 const AVAIL_MAX_AGE_MS = 60000;
+// Kurze Lücken ohne Daten zwischen zwei gleichen Zuständen gelten als
+// durchgehend: typisch ein Neustart von Home Assistant, während dem weder
+// das eigene Protokoll noch der Recorder etwas aufzeichnen. Längere Lücken
+// bleiben als "keine Daten" sichtbar.
+const AVAIL_BRIDGE_MS = 30 * 60 * 1000;
 // So viele Unterbrüche listet der Dialog höchstens auf (neueste zuerst).
 const AVAIL_LIST_MAX = 10;
 
@@ -1833,7 +1838,21 @@ class UnifiDynamicPanel extends HTMLElement {
       kind = k;
     }
     push(cursor, end, kind);
-    return segs;
+    // Neustart-Lücken überbrücken (siehe AVAIL_BRIDGE_MS).
+    const out = [];
+    for (let i = 0; i < segs.length; i++) {
+      const s = segs[i];
+      const prev = out[out.length - 1];
+      const next = segs[i + 1];
+      if (s.kind === "none" && prev && next && prev.kind === next.kind && s.to - s.from <= AVAIL_BRIDGE_MS) {
+        prev.to = next.to;
+        i++;
+        continue;
+      }
+      if (prev && prev.kind === s.kind && prev.to === s.from) prev.to = s.to;
+      else out.push({ ...s });
+    }
+    return out;
   }
 
   _formatDuration(ms) {

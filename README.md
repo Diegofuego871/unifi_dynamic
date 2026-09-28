@@ -250,7 +250,10 @@ range (24 h / 7 days / 30 days) is shared with the device view. An outage
 counts from the last successful to the first successful poll again, once
 the "Offline after" threshold was reached; shorter hiccups don't show. The
 data comes from the integration's own availability log and starts with the
-update to 2.9.0; periods while Home Assistant wasn't running are hatched.
+update to 2.9.0; periods while Home Assistant wasn't running are hatched
+(a normal restart of up to 30 minutes isn't). If the controller only fails
+after a restart, the outage starts when Home Assistant started, not before
+the restart.
 
 The sections in detail:
 
@@ -299,7 +302,10 @@ after updating to 2.7.0), the panel adds the recorder history of the online
 entity; for long ranges that can take a few seconds — meanwhile an
 elephant balances on a ball across the timeline. Periods without data (before the client
 was known, while Home Assistant wasn't running or the UniFi controller was
-unreachable) are hatched and don't count. Limitation: outages shorter than
+unreachable) are hatched and don't count. A Home Assistant restart doesn't
+show up as an outage: gaps of up to 30 minutes between two identical states
+count as continuous; only longer Home Assistant downtimes are hatched.
+Limitation: outages shorter than
 the update interval plus the offline threshold aren't visible.
 
 The "Network" section shows everything

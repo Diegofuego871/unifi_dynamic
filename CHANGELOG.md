@@ -5,6 +5,20 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.9.1] - 2026-09-28
+
+### Fixed
+
+- Home Assistant restarts no longer look like outages on the availability
+  timelines. Gaps without data of up to 30 minutes between two identical
+  states (typically a restart, in the integration's own log as well as in
+  the recorder history) now count as continuous; longer Home Assistant
+  downtimes stay hatched as "no data".
+- If the controller is only detected as unreachable after a restart, its
+  outage now starts when Home Assistant started instead of at the last
+  successful poll before the restart, so the restart time isn't counted as
+  a controller outage.
+
 ## [2.9.0] - 2026-09-28
 
 ### Added
@@ -1099,6 +1113,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.9.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.9.1
 [2.9.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.9.0
 [2.8.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.8.0
 [2.7.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.7.1

@@ -288,6 +288,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # Letzter Lauf von _async_update_data: zeigt nach einem Neustart, seit
         # wann HA nicht mehr lief.
         self._avail_tick: float | None = None
+        # Start dieser Home-Assistant-Sitzung: ein Controller-Ausfall, der
+        # erst nach einem Neustart erkannt wird, beginnt frühestens hier und
+        # nicht beim letzten erfolgreichen Poll vor dem Neustart.
+        self._started_at = time.time()
         self._avail_pruned_at = 0.0
         self._avail_store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_{AVAIL_STORE_SUFFIX}"
@@ -687,7 +691,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._offline_since = self._anchor
         # Ohne Controller ist der Zustand der Clients unbekannt; der Controller
         # selbst gilt ab dem letzten erfolgreichen Poll als nicht erreichbar.
-        at = self._anchor or time.time()
+        at = max(self._anchor or 0.0, self._started_at)
         self._avail_mark_all(None, at)
         self._avail_append(AVAIL_CONTROLLER, at, 0)
         self._schedule_avail_save()
