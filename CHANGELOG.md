@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   settings. It applies to the whole integration as long as it is on for at
   least one hub.
 
+### Fixed
+
+- On phones, the settings sheet no longer shrinks and grows again while
+  checking for updates, which briefly revealed the filters behind it. The
+  "Check for updates" button keeps its label (only the icon turns into a
+  spinner), and the settings sheet now has a fixed height.
+
 ## [2.10.0] - 2026-09-28
 
 ### Added

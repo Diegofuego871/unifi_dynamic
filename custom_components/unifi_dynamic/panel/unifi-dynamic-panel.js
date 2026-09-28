@@ -1524,9 +1524,12 @@ class UnifiDynamicPanel extends HTMLElement {
       "verOk",
       t("verName")(installed || "?"),
       sub,
-      `<button type="button" class="ver-btn" data-ver="check" ${v.checking ? "disabled" : ""}>${
-        v.checking ? `<span class="ver-spin"></span>${esc(t("verChecking"))}` : `${icon("verCheck")}${esc(t("verCheck"))}`
-      }</button>`
+      // Beschriftung bleibt während der Prüfung gleich, nur das Symbol wird
+      // zum Spinner: so ändert sich die Breite nicht, und die Zeile bricht
+      // nicht anders um (sonst springt die Höhe des Blatts auf dem Handy).
+      `<button type="button" class="ver-btn" data-ver="check" ${v.checking ? `disabled aria-busy="true" title="${esc(t("verChecking"))}"` : ""}>${
+        v.checking ? `<span class="ver-spin"></span>` : icon("verCheck")
+      }${esc(t("verCheck"))}</button>`
     );
   }
 
@@ -4565,6 +4568,22 @@ class UnifiDynamicPanel extends HTMLElement {
           background: rgba(0,0,0,0.5);
         }
         @media (max-width: 600px) {
+          /* Einstellungen: feste Höhe statt Höhe nach Inhalt. Sonst springt
+             das unten verankerte Blatt bei jeder Änderung des Inhalts
+             (Prüfung, Abschnitt auf/zu) und gibt kurz den Hintergrund frei. */
+          dialog.settings {
+            height: 92%;
+          }
+          dialog.settings[open] {
+            display: flex;
+            flex-direction: column;
+          }
+          dialog.settings[open] > * {
+            flex-shrink: 0;
+          }
+          dialog.settings[open] > .dlg-body {
+            flex-grow: 1;
+          }
           dialog.device,
           dialog.settings {
             width: 100%;
@@ -5932,8 +5951,10 @@ class UnifiDynamicPanel extends HTMLElement {
           color: var(--udc-warning);
         }
         .ver-spin {
-          width: 14px;
-          height: 14px;
+          flex: 0 0 auto;
+          box-sizing: border-box;
+          width: 16px;
+          height: 16px;
           border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
           border-top-color: currentColor;
           border-radius: 50%;
