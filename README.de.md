@@ -264,7 +264,7 @@ Schwelle „Als ausgefallen nach" erreicht war; kürzere Aussetzer erscheinen
 nicht. Die Daten stammen aus dem eigenen Verfügbarkeitsprotokoll der
 Integration und beginnen mit dem Update auf 2.9.0; Zeiten, in denen Home
 Assistant nicht lief, sind schraffiert (ein normaler Neustart bis
-30 Minuten nicht). Fällt der Controller erst nach einem Neustart aus, beginnt
+5 Minuten nicht). Fällt der Controller erst nach einem Neustart aus, beginnt
 der Unterbruch beim Start von Home Assistant, nicht schon vor dem Neustart.
 
 Die Abschnitte im Einzelnen:
@@ -317,8 +317,9 @@ währenddessen balanciert ein Elefant auf einem Ball über den Zeitstrahl. Zeite
 (bevor der Client bekannt war, während Home Assistant nicht lief oder der
 UniFi-Controller nicht erreichbar war) sind schraffiert und zählen nicht
 mit. Ein Neustart von Home Assistant erscheint nicht als Unterbruch: Lücken
-bis 30 Minuten zwischen zwei gleichen Zuständen gelten als durchgehend,
-erst längere Ausfälle von Home Assistant werden schraffiert. Einschränkung: Unterbrüche, die kürzer sind als Abfrageintervall plus
+bis 5 Minuten zwischen zwei gleichen Zuständen gelten als durchgehend,
+erst längere Ausfälle von Home Assistant werden schraffiert. Echte
+Unterbrüche sind davon nie betroffen, nur Zeiten ohne Daten. Einschränkung: Unterbrüche, die kürzer sind als Abfrageintervall plus
 Offline-Schwelle, sind nicht sichtbar.
 
 Der Abschnitt „Netzwerk" zeigt alles, was die Integration über den Client weiss, als

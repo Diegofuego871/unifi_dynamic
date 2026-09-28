@@ -632,9 +632,9 @@ const AVAIL_RANGES = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400 };
 const AVAIL_MAX_AGE_MS = 60000;
 // Kurze Lücken ohne Daten zwischen zwei gleichen Zuständen gelten als
 // durchgehend: typisch ein Neustart von Home Assistant, während dem weder
-// das eigene Protokoll noch der Recorder etwas aufzeichnen. Längere Lücken
-// bleiben als "keine Daten" sichtbar.
-const AVAIL_BRIDGE_MS = 30 * 60 * 1000;
+// das eigene Protokoll noch der Recorder etwas aufzeichnen. Betrifft nur
+// "keine Daten", nie echte Unterbrüche; längere Lücken bleiben sichtbar.
+const AVAIL_BRIDGE_MS = 5 * 60 * 1000;
 // So viele Unterbrüche listet der Dialog höchstens auf (neueste zuerst).
 const AVAIL_LIST_MAX = 10;
 
@@ -1838,20 +1838,25 @@ class UnifiDynamicPanel extends HTMLElement {
       kind = k;
     }
     push(cursor, end, kind);
-    // Neustart-Lücken überbrücken (siehe AVAIL_BRIDGE_MS).
+    return this._bridgeGaps(segs);
+  }
+
+  // Neustart-Lücken überbrücken (siehe AVAIL_BRIDGE_MS): eine kurze Lücke
+  // übernimmt den Zustand ihrer Nachbarn, danach werden gleiche Abschnitte
+  // zusammengelegt. Nachbarn einer Lücke sind nie selbst Lücken (push legt
+  // gleiche Zustände schon zusammen).
+  _bridgeGaps(segs) {
     const out = [];
-    for (let i = 0; i < segs.length; i++) {
-      const s = segs[i];
-      const prev = out[out.length - 1];
+    segs.forEach((s, i) => {
+      const prev = segs[i - 1];
       const next = segs[i + 1];
-      if (s.kind === "none" && prev && next && prev.kind === next.kind && s.to - s.from <= AVAIL_BRIDGE_MS) {
-        prev.to = next.to;
-        i++;
-        continue;
-      }
-      if (prev && prev.kind === s.kind && prev.to === s.from) prev.to = s.to;
-      else out.push({ ...s });
-    }
+      const bridge =
+        s.kind === "none" && prev && next && prev.kind === next.kind && s.to - s.from <= AVAIL_BRIDGE_MS;
+      const kind = bridge ? prev.kind : s.kind;
+      const last = out[out.length - 1];
+      if (last && last.kind === kind) last.to = s.to;
+      else out.push({ from: s.from, to: s.to, kind });
+    });
     return out;
   }
 

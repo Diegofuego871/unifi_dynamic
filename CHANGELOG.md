@@ -10,10 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 
 - Home Assistant restarts no longer look like outages on the availability
-  timelines. Gaps without data of up to 30 minutes between two identical
+  timelines. Gaps without data of up to 5 minutes between two identical
   states (typically a restart, in the integration's own log as well as in
   the recorder history) now count as continuous; longer Home Assistant
-  downtimes stay hatched as "no data".
+  downtimes stay hatched as "no data". Real outages are never bridged, so
+  short outages remain visible.
 - If the controller is only detected as unreachable after a restart, its
   outage now starts when Home Assistant started instead of at the last
   successful poll before the restart, so the restart time isn't counted as
