@@ -362,6 +362,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 ]
                 if clean:
                     self._avail[str(mac).lower()] = clean
+        # Scheinbare Unterbrüche aus 2.7.0 bis 2.11.2 entfernen (siehe
+        # _drop_phantom_outages); danach wieder speichern.
+        if self._drop_phantom_outages():
+            self._schedule_avail_save()
         tick = as_epoch_seconds(stored.get("tick"))
         # Lief HA länger nicht, ist über diese Zeit nichts bekannt: ab dem
         # letzten Lauf "keine Daten" statt den letzten Zustand weiterzuziehen.
@@ -369,6 +373,48 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         if tick is not None and time.time() - tick > gap_limit:
             self._avail_mark_all(None, tick)
         self._avail_tick = tick
+
+    def _drop_phantom_outages(self) -> bool:
+        """
+        Entfernt Scheinunterbrüche aus einem Fehler bis 2.11.2: der erste
+        Poll nach jedem Start zeichnete alle Clients für genau ein
+        Abfrageintervall als offline auf.
+
+        Echte Unterbrüche sind immer länger: offline gilt ein Client erst,
+        wenn sein letzter Kontakt länger als OFFLINE_AFTER_SECONDS zurückliegt
+        (also frühestens beim übernächsten Poll), und der Unterbruch beginnt
+        bei diesem letzten Kontakt. Grenze deshalb 60 s bzw. 1,5 Intervalle.
+        """
+        interval = self.update_interval.total_seconds() if self.update_interval else 0
+        limit = max(OFFLINE_AFTER_SECONDS, 1.5 * interval)
+        changed = False
+        for mac, events in list(self._avail.items()):
+            if mac == AVAIL_CONTROLLER:
+                continue
+            out: list[list[Any]] = []
+            i = 0
+            while i < len(events):
+                ev = events[i]
+                nxt = events[i + 1] if i + 1 < len(events) else None
+                if (
+                    ev[1] == 0
+                    and nxt is not None
+                    and nxt[1] == 1
+                    and nxt[0] - ev[0] < limit
+                ):
+                    # Nur den Offline-Eintrag weglassen; der folgende
+                    # "online"-Eintrag wird normal übernommen bzw. mit einem
+                    # davorliegenden "online" zusammengelegt.
+                    changed = True
+                    i += 1
+                    continue
+                if out and out[-1][1] == ev[1]:
+                    i += 1
+                    continue
+                out.append(ev)
+                i += 1
+            self._avail[mac] = out
+        return changed
 
     @callback
     def _avail_append(self, mac: str, at: float, state: int | None) -> bool:
@@ -397,19 +443,22 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     def _avail_record(self, now: float) -> None:
         """Nach einem erfolgreichen Poll: Zustandswechsel aller Clients festhalten."""
         changed = self._avail_append(AVAIL_CONTROLLER, now, 1)
-        for mac in self._client_cache:
-            online = self.is_client_online(mac)
+        for mac, data in self._client_cache.items():
+            # Direkt aus dem Cache, nicht über is_client_online: das liest
+            # self.data, und das stammt noch vom vorherigen Poll - beim ersten
+            # Poll nach einem Start ist es leer, und alle Clients erschienen
+            # einen Poll lang als offline.
+            seen = as_epoch_seconds(data.get(FIELD_SEEN_AT))
+            online = seen is not None and (now - seen) <= OFFLINE_AFTER_SECONDS
             events = self._avail.get(mac)
             last = events[-1][1] if events else "missing"
             state = 1 if online else 0
             if last == state:
                 continue
             at = now
-            if state == 0 and last == 1:
+            if state == 0 and last == 1 and seen is not None:
                 # Offline ab dem letzten Kontakt, nicht erst ab der Erkennung.
-                seen = self.seen_at(mac)
-                if seen is not None:
-                    at = min(now, seen)
+                at = min(now, seen)
             changed |= self._avail_append(mac, at, state)
         if now - self._avail_pruned_at > 3600:
             self._avail_pruned_at = now

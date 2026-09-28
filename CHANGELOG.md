@@ -5,6 +5,20 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.11.3] - 2026-09-28
+
+### Fixed
+
+- Restarting Home Assistant no longer records a short outage for every
+  client on the availability timeline. The first poll after a start read
+  the online state from data that was still empty at that point, so every
+  client was logged as offline for one update interval. The log now uses
+  the freshly updated client cache.
+- These phantom outages already recorded since 2.7.0 are removed
+  automatically on the next start. Real outages are never that short (a
+  client only counts as offline once its last contact is more than a
+  minute old), so they stay untouched.
+
 ## [2.11.2] - 2026-09-28
 
 ### Fixed
@@ -1170,6 +1184,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.11.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.3
 [2.11.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.2
 [2.11.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.1
 [2.11.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.0
