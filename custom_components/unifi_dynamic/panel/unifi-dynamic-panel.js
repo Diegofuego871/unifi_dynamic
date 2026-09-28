@@ -1099,9 +1099,21 @@ class UnifiDynamicPanel extends HTMLElement {
   // als nackte Zahl, typischerweise wenn iOS/Android die App im Hintergrund
   // eingefroren hat und die Verbindung beim Öffnen noch nicht wieder steht.
   // Kein echter Fehler: still erneut versuchen, bestehende Daten behalten.
+  //
+  // Je nach Version und Zeitpunkt kommt der Fehler in anderer Form: als
+  // Zahl, als {code, message} oder als ganzes Ergebnis
+  // {type: "result", success: false, error: {code, message}}.
+  _errorCode(err) {
+    if (typeof err === "number") return err;
+    if (!err || typeof err !== "object") return null;
+    if (err.code !== undefined) return err.code;
+    if (err.error && typeof err.error === "object" && err.error.code !== undefined) return err.error.code;
+    return null;
+  }
+
   _isConnectionError(err) {
-    if (err === 1 || err === 3) return true;
-    if (err && (err.code === 1 || err.code === 3)) return true;
+    const code = this._errorCode(err);
+    if (code === 1 || code === 3 || code === "connection_lost") return true;
     return Boolean(this._hass && this._hass.connected === false);
   }
 
@@ -1127,7 +1139,18 @@ class UnifiDynamicPanel extends HTMLElement {
   _errorText(err) {
     if (this._isConnectionError(err)) return this._t("errorConnection");
     if (typeof err === "number") return `${this._t("errorCode")} ${err}`;
-    return (err && err.message) || String(err);
+    if (err && typeof err === "object") {
+      const inner = err.error && typeof err.error === "object" ? err.error : err;
+      if (inner.message) return String(inner.message);
+      const code = this._errorCode(err);
+      if (code !== null) return `${this._t("errorCode")} ${code}`;
+      try {
+        return JSON.stringify(err);
+      } catch (e) {
+        // fällt unten auf String() zurück
+      }
+    }
+    return String(err);
   }
 
   async _fetchClients() {

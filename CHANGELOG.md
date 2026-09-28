@@ -5,6 +5,19 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.12.1] - 2026-09-28
+
+### Fixed
+
+- After reopening the Home Assistant app, the panel could show "Failed to
+  load the client list: [object Object]". The 2.12.0 fix only recognised
+  the lost connection when it arrived as a bare number; depending on the
+  Home Assistant version and timing it arrives as an object that wraps the
+  code (`{error: {code: 3, message: "Connection lost"}}`). All forms are
+  now recognised and bridged quietly with automatic retries. Other errors
+  without a readable message now show their error code instead of
+  "[object Object]".
+
 ## [2.12.0] - 2026-09-28
 
 ### Added
@@ -1229,6 +1242,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.12.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.1
 [2.12.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.0
 [2.11.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.4
 [2.11.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.3
