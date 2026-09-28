@@ -5,6 +5,15 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.11.2] - 2026-09-28
+
+### Fixed
+
+- The version row in the panel settings no longer gets stuck when an
+  update is shown: "Check for updates" is now available in every state
+  (next to "Update" as a compact round button). A new check clears an
+  earlier error message and shows the newest version.
+
 ## [2.11.1] - 2026-09-28
 
 ### Fixed
@@ -1161,6 +1170,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.11.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.2
 [2.11.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.1
 [2.11.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.0
 [2.10.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.10.0

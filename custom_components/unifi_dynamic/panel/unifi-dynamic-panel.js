@@ -1429,7 +1429,11 @@ class UnifiDynamicPanel extends HTMLElement {
   async _loadVersion(force = false) {
     this._version = this._version || {};
     const v = this._version;
-    if (force) v.checking = true;
+    if (force) {
+      v.checking = true;
+      // Neue Prüfung: alte Meldungen verwerfen, der neue Stand zählt.
+      v.installError = null;
+    }
     v.error = null;
     this._renderSettingsVersion();
     const jobs = [
@@ -1541,19 +1545,23 @@ class UnifiDynamicPanel extends HTMLElement {
         : canInstall
         ? t("verInstalledVia")(installed, true)
         : `${t("verInstalledVia")(installed, true)} · ${t("verHacsPending")}`;
-      const checkBtn = `<button type="button" class="ver-btn" data-ver="check" ${
-        v.checking ? `disabled aria-busy="true" title="${esc(t("verChecking"))}"` : ""
-      }>${v.checking ? `<span class="ver-spin"></span>` : icon("verCheck")}${esc(t("verCheck"))}</button>`;
+      // Erneut prüfen geht immer: neben "Aktualisieren" als kompakter
+      // Symbolknopf, sonst mit Beschriftung.
+      const busy = v.checking ? `disabled aria-busy="true"` : "";
+      const spinOrIcon = v.checking ? `<span class="ver-spin"></span>` : icon("verCheck");
+      const checkBtn = canInstall
+        ? `<button type="button" class="ver-btn icon" data-ver="check" ${busy} title="${esc(t("verCheck"))}" aria-label="${esc(
+            t("verCheck")
+          )}">${spinOrIcon}</button>`
+        : `<button type="button" class="ver-btn" data-ver="check" ${busy}>${spinOrIcon}${esc(t("verCheck"))}</button>`;
       return row(
         "upd",
         "verUp",
         t("verAvailable")(latest),
         sub,
-        `${notes}${
+        `${notes}${checkBtn}${
           canInstall
             ? `<button type="button" class="ver-btn primary" data-ver="install">${icon("verDownload")}${esc(t("verUpdate"))}</button>`
-            : hacs
-            ? checkBtn
             : ""
         }`
       );
@@ -5947,6 +5955,11 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         .ver-btn:disabled {
           cursor: default;
+        }
+        .ver-btn.icon {
+          justify-content: center;
+          width: 34px;
+          padding: 0;
         }
         .ver-btn.primary {
           border-color: var(--udc-primary);
