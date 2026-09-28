@@ -30,7 +30,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.util import dt as dt_util
 
-from . import options_api
+from . import options_api, update_check
 from .const import (
     ACTION_EXCLUDE,
     ATTR_DEVICE_ID,
@@ -70,6 +70,7 @@ from .const import (
     WS_TYPE_GET_OPTIONS,
     WS_TYPE_LIST_HUBS,
     WS_TYPE_SET_OPTIONS,
+    WS_TYPE_VERSION,
     WS_TYPE_LIST_CLIENTS,
     WS_TYPE_REMOVE_CLIENT,
     WS_TYPE_LINK_DEVICE,
@@ -881,6 +882,20 @@ def _ws_set_options(
     )
 
 
+@websocket_api.websocket_command(
+    {vol.Required("type"): WS_TYPE_VERSION, vol.Optional("force", default=False): bool}
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def _ws_version(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Installierte und neueste veröffentlichte Version (GitHub)."""
+    installed = await update_check.async_installed_version(hass)
+    release = await update_check.async_latest_release(hass, force=msg["force"])
+    connection.send_result(msg["id"], {"installed": installed, **release})
+
+
 def _is_own_device(device: dr.DeviceEntry) -> bool:
     """Gerät dieser Integration (ein UniFi-Client), nicht verknüpfbar."""
     return any(domain == DOMAIN for domain, *_ in device.identifiers)
@@ -1013,6 +1028,7 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_list_hubs)
     websocket_api.async_register_command(hass, _ws_get_options)
     websocket_api.async_register_command(hass, _ws_set_options)
+    websocket_api.async_register_command(hass, _ws_version)
 
 
 # ---------------------------------------------------------------------------

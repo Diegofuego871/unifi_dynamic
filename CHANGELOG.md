@@ -5,6 +5,20 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.0] - 2026-09-28
+
+### Added
+
+- Version and updates in the panel settings: the top row shows the
+  installed version with a "Check for updates" button. The integration
+  queries the published GitHub releases itself (also without HACS, at most
+  every 6 hours unless asked) and has HACS re-check its update entity too.
+  If a newer version exists, the row shows it with a link to the release
+  notes and, when installed via HACS, an "Update" button that installs
+  through HACS with a progress bar. Afterwards it asks for a Home Assistant
+  restart ("Restart now", with confirmation). Without HACS only the note
+  and the link are shown.
+
 ## [2.9.1] - 2026-09-28
 
 ### Fixed
@@ -1114,6 +1128,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.10.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.10.0
 [2.9.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.9.1
 [2.9.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.9.0
 [2.8.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.8.0

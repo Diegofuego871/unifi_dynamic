@@ -243,7 +243,19 @@ verification deliberately stay in Home Assistant's setup dialog.
 
 ![Settings in the panel: controller availability over 7 days, "Polling" expanded with a changed interval, reaction time and expanded ⓘ text](docs/panel-settings-en.png)
 
-At the top of the settings is the **controller availability**: the same
+At the very top of the settings is the integration's **version** with a
+"Check for updates" button. The integration queries the published releases
+on GitHub itself (also without HACS; without a button press at most every
+6 hours) and, if present, has HACS re-check its update entity as well. If a
+newer version exists, "Version x available", a link to the release notes
+and — if the integration was installed via HACS — an "Update" button
+appear. It installs through HACS (the same way as Settings → Updates), and
+a bar shows the running installation. Afterwards the row reports "restart
+required" with a "Restart now" button that asks first; the new version
+only becomes active after Home Assistant restarts. Without HACS there is
+just the note with the link, and you update manually.
+
+Below it is the **controller availability**: the same
 timeline as in the device view, but for the hub's UniFi controller — when it
 was reachable and when not, with percentage, outages and list. The time
 range (24 h / 7 days / 30 days) is shared with the device view. An outage

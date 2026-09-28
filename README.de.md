@@ -254,7 +254,20 @@ bewusst dem Einrichtungsdialog von Home Assistant vorbehalten.
 
 ![Einstellungen im Panel: Controller-Verfügbarkeit über 7 Tage, Abschnitt „Abfrage" aufgeklappt mit geändertem Intervall, Reaktionszeit und aufgeklapptem ⓘ-Text](docs/panel-settings.png)
 
-Zuoberst in den Einstellungen steht die **Controller-Verfügbarkeit**:
+Ganz oben in den Einstellungen steht die **Version** der Integration mit
+dem Knopf „Nach Updates suchen". Die Integration fragt dafür selbst die
+veröffentlichten Releases auf GitHub ab (auch ohne HACS; ohne Knopfdruck
+höchstens alle 6 Stunden) und lässt, falls vorhanden, zugleich die
+Update-Entität von HACS neu prüfen. Gibt es eine neuere Version, erscheinen
+„Version x verfügbar", ein Link zu den Release Notes und — wenn die
+Integration über HACS installiert ist — der Knopf „Aktualisieren". Er
+installiert über HACS (derselbe Weg wie Einstellungen → Updates), ein
+Balken zeigt die laufende Installation. Danach meldet die Zeile „Neustart
+nötig" mit dem Knopf „Jetzt neu starten", der vorher nachfragt; erst nach
+dem Neustart von Home Assistant ist die neue Version aktiv. Ohne HACS gibt
+es nur den Hinweis mit Link, installiert wird dann manuell.
+
+Darunter steht die **Controller-Verfügbarkeit**:
 derselbe Zeitstrahl wie in der Geräteansicht, aber für den UniFi-Controller
 des Hubs — wann er erreichbar war und wann nicht, mit Prozent,
 Unterbrüchen und Liste. Der Zeitraum (24 Std. / 7 Tage / 30 Tage) ist mit der

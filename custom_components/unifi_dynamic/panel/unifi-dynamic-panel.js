@@ -212,6 +212,26 @@ const STRINGS = {
     optPersistentControllerInfo: "Verschwindet automatisch, sobald er wieder erreichbar ist.",
     secAvail: "Verfügbarkeit",
     secCtlAvail: "Controller-Verfügbarkeit",
+    verName: (v) => `UniFi Dynamic Clients ${v}`,
+    verCurrent: "Aktuell",
+    verChecked: (rel) => `zuletzt geprüft ${rel}`,
+    verCheck: "Nach Updates suchen",
+    verChecking: "Prüft…",
+    verCheckingSub: "Suche nach Updates…",
+    verCheckError: "Prüfung fehlgeschlagen:",
+    verAvailable: (v) => `Version ${v} verfügbar`,
+    verInstalledVia: (v, hacs) => `Installiert: ${v}${hacs ? " · über HACS" : ""}`,
+    verNoHacs: "Installation über HACS oder manuell (siehe Release Notes).",
+    verReleaseNotes: "Release Notes",
+    verUpdate: "Aktualisieren",
+    verInstalling: (v) => `Wird aktualisiert auf ${v}…`,
+    verInstallingSub: "HACS lädt die neue Version herunter",
+    verInstallError: "Aktualisieren fehlgeschlagen:",
+    verRestartNeeded: (v) => `${v} installiert – Neustart nötig`,
+    verRestartSub: "Aktiv wird die neue Version erst nach einem Neustart von Home Assistant.",
+    verRestart: "Jetzt neu starten",
+    verRestartConfirm: "Home Assistant jetzt neu starten? Alle Integrationen sind dabei kurz nicht verfügbar.",
+    verRestarting: "Home Assistant startet neu…",
     availCtlNoData: "Noch keine Daten – die Aufzeichnung läuft seit dem Update auf 2.9.0.",
     availRanges: { "24h": "24 Std.", "7d": "7 Tage", "30d": "30 Tage" },
     availRangeGroup: "Zeitraum",
@@ -446,6 +466,26 @@ const STRINGS = {
     optPersistentControllerInfo: "Disappears automatically once it is reachable again.",
     secAvail: "Availability",
     secCtlAvail: "Controller availability",
+    verName: (v) => `UniFi Dynamic Clients ${v}`,
+    verCurrent: "Up to date",
+    verChecked: (rel) => `last checked ${rel}`,
+    verCheck: "Check for updates",
+    verChecking: "Checking…",
+    verCheckingSub: "Looking for updates…",
+    verCheckError: "Check failed:",
+    verAvailable: (v) => `Version ${v} available`,
+    verInstalledVia: (v, hacs) => `Installed: ${v}${hacs ? " · via HACS" : ""}`,
+    verNoHacs: "Install via HACS or manually (see release notes).",
+    verReleaseNotes: "Release notes",
+    verUpdate: "Update",
+    verInstalling: (v) => `Updating to ${v}…`,
+    verInstallingSub: "HACS is downloading the new version",
+    verInstallError: "Update failed:",
+    verRestartNeeded: (v) => `${v} installed – restart required`,
+    verRestartSub: "The new version only becomes active after restarting Home Assistant.",
+    verRestart: "Restart now",
+    verRestartConfirm: "Restart Home Assistant now? All integrations are briefly unavailable.",
+    verRestarting: "Home Assistant is restarting…",
     availCtlNoData: "No data yet – recording started with the update to 2.9.0.",
     availRanges: { "24h": "24 h", "7d": "7 days", "30d": "30 days" },
     availRangeGroup: "Time range",
@@ -585,6 +625,10 @@ const ICONS = {
   columns: "M16,5V18H21V5M4,18H9V5H4M10,18H15V5H10V18Z",
   gear: "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z",
   hub: "M4,1H20A1,1 0 0,1 21,2V6A1,1 0 0,1 20,7H4A1,1 0 0,1 3,6V2A1,1 0 0,1 4,1M4,9H20A1,1 0 0,1 21,10V14A1,1 0 0,1 20,15H4A1,1 0 0,1 3,14V10A1,1 0 0,1 4,9M4,17H20A1,1 0 0,1 21,18V22A1,1 0 0,1 20,23H4A1,1 0 0,1 3,22V18A1,1 0 0,1 4,17M9,5H10V3H9V5M9,13H10V11H9V13M9,21H10V19H9V21M5,3V5H7V3H5M5,11V13H7V11H5M5,19V21H7V19H5Z",
+  verOk: "M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z",
+  verUp: "M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M12 7L17 12H14V16H10V12H7L12 7Z",
+  verCheck: "M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z",
+  verDownload: "M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z",
   chevron: "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z",
   drag: "M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z",
   close: "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z",
@@ -888,6 +932,7 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     // Entitätszustände im offenen Dialog aktuell halten.
     this._renderDialog();
+    this._renderSettingsVersion();
   }
 
   get hass() {
@@ -1033,6 +1078,7 @@ class UnifiDynamicPanel extends HTMLElement {
       if (typeof dialog.showModal === "function") dialog.showModal();
       else dialog.setAttribute("open", "");
     }
+    this._loadVersion(false);
     try {
       const data = await this._hass.callWS({ type: "unifi_dynamic/get_options", entry_id: entryId });
       if (!this._settings || this._settings.entryId !== entryId) return;
@@ -1292,6 +1338,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const titles = { polling: "secPolling", cleanup: "secCleanup", push: "secPush", persistent: "secPersistent" };
     const reload = changes.has("scan_interval") || changes.has("purge_time");
     return (
+      `<div class="ver-slot">${this._versionHtml()}</div>` +
       `<div class="avail-slot">${this._settingsAvailHtml()}</div>` +
       this._settingsSections()
         .map(([id, keys]) => {
@@ -1311,6 +1358,193 @@ class UnifiDynamicPanel extends HTMLElement {
       (reload ? `<div class="set-note">${esc(t("settingsReloadNote"))}</div>` : "") +
       (st.saveError ? `<div class="dlg-error">${esc(t("settingsSaveError"))} ${esc(st.saveError)}</div>` : "")
     );
+  }
+
+  // ---------------------------------------------------------------------
+  // Version und Update (oben in den Einstellungen). Die neueste Version
+  // kommt von HACS (Update-Entität) und zusätzlich von GitHub
+  // (unifi_dynamic/version) - so klappt die Prüfung auch ohne HACS.
+  // Installieren geht nur über HACS (update.install).
+  // ---------------------------------------------------------------------
+
+  // Update-Entität von HACS für dieses Repository. Erkannt an der Plattform
+  // und am Link bzw. Titel, nicht an einer festen Entity-ID.
+  _hacsUpdateEntity() {
+    const hass = this._hass;
+    if (!hass || !hass.entities || !hass.states) return null;
+    for (const e of Object.values(hass.entities)) {
+      if (!e || e.platform !== "hacs" || !String(e.entity_id).startsWith("update.")) continue;
+      const st = hass.states[e.entity_id];
+      if (!st) continue;
+      const a = st.attributes || {};
+      const text = `${a.release_url || ""} ${a.title || ""} ${a.friendly_name || ""} ${e.entity_id}`.toLowerCase();
+      if (text.includes("diegofuego871/unifi_dynamic") || text.includes("unifi dynamic clients") || text.includes("unifi_dynamic")) {
+        return st;
+      }
+    }
+    return null;
+  }
+
+  // Einfacher Versionsvergleich (1.2.10 > 1.2.9, führendes v egal).
+  _cmpVersion(a, b) {
+    const parts = (v) => String(v || "").replace(/^v/i, "").split(/[.+-]/).map((x) => parseInt(x, 10) || 0);
+    const x = parts(a);
+    const y = parts(b);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      const d = (x[i] || 0) - (y[i] || 0);
+      if (d) return d > 0 ? 1 : -1;
+    }
+    return 0;
+  }
+
+  async _loadVersion(force = false) {
+    this._version = this._version || {};
+    const v = this._version;
+    if (force) v.checking = true;
+    v.error = null;
+    this._renderSettingsVersion();
+    const hacs = this._hacsUpdateEntity();
+    const jobs = [
+      this._hass.callWS({ type: "unifi_dynamic/version", force }).then(
+        (r) => (v.data = r),
+        (err) => (v.error = (err && err.message) || String(err))
+      ),
+    ];
+    // HACS prüft sonst nur periodisch: auf Knopfdruck sofort neu abfragen.
+    if (force && hacs && typeof this._hass.callService === "function") {
+      jobs.push(
+        this._hass
+          .callService("homeassistant", "update_entity", { entity_id: hacs.entity_id })
+          .catch(() => null)
+      );
+    }
+    await Promise.all(jobs);
+    v.checking = false;
+    if (v.data && v.data.error && !v.data.latest) v.error = v.data.error;
+    this._renderSettingsVersion();
+  }
+
+  _versionState() {
+    const v = this._version || {};
+    const d = v.data || {};
+    const hacs = this._hacsUpdateEntity();
+    const a = (hacs && hacs.attributes) || {};
+    const installed = d.installed || a.installed_version || null;
+    let latest = d.latest || null;
+    let url = d.release_url || null;
+    if (a.latest_version && (!latest || this._cmpVersion(a.latest_version, latest) >= 0)) {
+      latest = a.latest_version;
+      url = a.release_url || url;
+    }
+    const inProgress = Boolean(hacs && (a.in_progress === true || typeof a.in_progress === "number"));
+    // HACS hat eine neuere Version auf die Platte gelegt, als gerade läuft.
+    const restart = Boolean(hacs && a.installed_version && installed && this._cmpVersion(a.installed_version, installed) > 0);
+    return { v, d, hacs, a, installed, latest, url, inProgress, restart };
+  }
+
+  _versionHtml() {
+    const t = (k) => this._t(k);
+    const esc = (x) => this._escape(x);
+    const { v, d, hacs, a, installed, latest, url, inProgress, restart } = this._versionState();
+    if (!installed && !v.data && !v.error) return "";
+    const row = (cls, iconName, title, sub, right) => `<div class="ver ${cls}">
+        <span class="ver-ic">${icon(iconName)}</span>
+        <div class="ver-t"><b>${esc(title)}</b><small>${esc(sub)}</small></div>
+        ${right ? `<div class="ver-btns">${right}</div>` : ""}
+      </div>`;
+    const notes = url
+      ? `<a class="ver-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(t("verReleaseNotes"))}${icon("open")}</a>`
+      : "";
+    if (v.restarting) return row("rst", "reset", t("verRestarting"), t("verRestartSub"), "");
+    if (restart) {
+      return row(
+        "rst",
+        "reset",
+        t("verRestartNeeded")(a.installed_version),
+        t("verRestartSub"),
+        `<button type="button" class="ver-btn warn" data-ver="restart">${icon("reset")}${esc(t("verRestart"))}</button>`
+      );
+    }
+    if (inProgress || v.installing) {
+      return `<div class="ver upd">
+          <span class="ver-ic">${icon("verUp")}</span>
+          <div class="ver-t"><b>${esc(t("verInstalling")(v.installing || latest))}</b><small>${esc(t("verInstallingSub"))}</small></div>
+          <div class="ver-prog"><i></i></div>
+        </div>`;
+    }
+    if (latest && installed && this._cmpVersion(latest, installed) > 0) {
+      const sub = v.installError
+        ? `${t("verInstallError")} ${v.installError}`
+        : hacs
+        ? t("verInstalledVia")(installed, true)
+        : `${t("verInstalledVia")(installed, false)} · ${t("verNoHacs")}`;
+      return row(
+        "upd",
+        "verUp",
+        t("verAvailable")(latest),
+        sub,
+        `${notes}${
+          hacs ? `<button type="button" class="ver-btn primary" data-ver="install">${icon("verDownload")}${esc(t("verUpdate"))}</button>` : ""
+        }`
+      );
+    }
+    const checked = d.checked_at ? t("verChecked")(this._formatRelative(d.checked_at)) : "";
+    const sub = v.checking
+      ? t("verCheckingSub")
+      : v.error
+      ? `${t("verCheckError")} ${v.error}`
+      : [t("verCurrent"), checked].filter(Boolean).join(" · ");
+    return row(
+      "ok",
+      "verOk",
+      t("verName")(installed || "?"),
+      sub,
+      `<button type="button" class="ver-btn" data-ver="check" ${v.checking ? "disabled" : ""}>${
+        v.checking ? `<span class="ver-spin"></span>${esc(t("verChecking"))}` : `${icon("verCheck")}${esc(t("verCheck"))}`
+      }</button>`
+    );
+  }
+
+  _renderSettingsVersion() {
+    const slot = this.shadowRoot && this.shadowRoot.querySelector("dialog.settings .ver-slot");
+    if (!slot) return;
+    const html = this._versionHtml();
+    if (slot.innerHTML !== html) slot.innerHTML = html;
+  }
+
+  async _versionAction(action) {
+    const v = (this._version = this._version || {});
+    if (action === "check") {
+      await this._loadVersion(true);
+    } else if (action === "install") {
+      const { hacs, a, latest } = this._versionState();
+      if (!hacs) return;
+      const data = { entity_id: hacs.entity_id };
+      // Kennt HACS die neueste Version noch nicht (GitHub war schneller),
+      // gezielt diese installieren - sofern die Entität das unterstützt.
+      if (latest && a.latest_version && this._cmpVersion(latest, a.latest_version) > 0 && (a.supported_features & 2)) {
+        data.version = latest;
+      }
+      v.installing = latest;
+      v.installError = null;
+      this._renderSettingsVersion();
+      try {
+        await this._hass.callService("update", "install", data);
+      } catch (err) {
+        v.installError = (err && err.message) || String(err);
+      }
+      v.installing = null;
+      this._renderSettingsVersion();
+    } else if (action === "restart") {
+      if (!window.confirm(this._t("verRestartConfirm"))) return;
+      v.restarting = true;
+      this._renderSettingsVersion();
+      try {
+        await this._hass.callService("homeassistant", "restart", {});
+      } catch (err) {
+        // Die Verbindung bricht beim Neustart ab; ein Fehler hier ist normal.
+      }
+    }
   }
 
   // Zeitstrahl des Controllers oben im Einstellungsdialog.
@@ -1361,6 +1595,11 @@ class UnifiDynamicPanel extends HTMLElement {
         return;
       }
       if (!ev.target.closest(".avail-tip")) this._showAvailTip(null);
+      const verBtn = ev.target.closest("[data-ver]");
+      if (verBtn) {
+        if (!verBtn.disabled) this._versionAction(verBtn.dataset.ver);
+        return;
+      }
       const range = ev.target.closest('[data-dlg="avail-range"]');
       if (range) {
         if (range.dataset.range !== this._availRange) {
@@ -5556,6 +5795,155 @@ class UnifiDynamicPanel extends HTMLElement {
         .opt-chip button svg {
           width: 14px;
           height: 14px;
+        }
+        /* Version und Update */
+        .ver {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 10px 12px;
+          padding: 11px 12px 11px 14px;
+          border-radius: 14px;
+          background: var(--udc-subtle);
+        }
+        .ver-ic {
+          display: grid;
+          flex: 0 0 auto;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--udc-success) 18%, transparent);
+          color: var(--udc-success);
+        }
+        .ver-ic svg {
+          width: 20px;
+          height: 20px;
+        }
+        .ver-t {
+          flex: 1 1 200px;
+          min-width: 0;
+        }
+        .ver-t b {
+          font-weight: 500;
+        }
+        .ver-t small {
+          display: block;
+          margin-top: 1px;
+          color: var(--udc-text2);
+          font-size: 12px;
+        }
+        .ver-btns {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+        }
+        .ver-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          height: 34px;
+          padding: 0 13px;
+          border: 1px solid var(--udc-divider);
+          border-radius: 99px;
+          background: var(--udc-card);
+          color: var(--udc-text);
+          font: inherit;
+          font-size: 13px;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+        .ver-btn svg {
+          width: 16px;
+          height: 16px;
+        }
+        .ver-btn:hover:not(:disabled) {
+          background: var(--udc-hover);
+        }
+        .ver-btn:disabled {
+          cursor: default;
+        }
+        .ver-btn.primary {
+          border-color: var(--udc-primary);
+          background: var(--udc-primary);
+          color: #fff;
+          font-weight: 500;
+        }
+        .ver-btn.warn {
+          border-color: var(--udc-warning);
+          background: var(--udc-warning);
+          color: #fff;
+          font-weight: 500;
+        }
+        .ver-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 0 6px;
+          color: var(--udc-primary);
+          font-size: 13px;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+        .ver-link svg {
+          width: 15px;
+          height: 15px;
+        }
+        .ver.upd {
+          background: color-mix(in srgb, var(--udc-primary) 10%, var(--udc-subtle));
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--udc-primary) 35%, transparent);
+        }
+        .ver.upd .ver-ic {
+          background: color-mix(in srgb, var(--udc-primary) 18%, transparent);
+          color: var(--udc-primary);
+        }
+        .ver.rst {
+          background: color-mix(in srgb, var(--udc-warning) 12%, var(--udc-subtle));
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--udc-warning) 35%, transparent);
+        }
+        .ver.rst .ver-ic {
+          background: color-mix(in srgb, var(--udc-warning) 20%, transparent);
+          color: var(--udc-warning);
+        }
+        .ver-spin {
+          width: 14px;
+          height: 14px;
+          border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+          border-top-color: currentColor;
+          border-radius: 50%;
+          animation: ver-spin 0.8s linear infinite;
+        }
+        @keyframes ver-spin {
+          to { transform: rotate(360deg); }
+        }
+        .ver-prog {
+          flex: 1 1 100%;
+          height: 4px;
+          overflow: hidden;
+          border-radius: 99px;
+          background: color-mix(in srgb, var(--udc-primary) 18%, transparent);
+        }
+        .ver-prog i {
+          display: block;
+          width: 35%;
+          height: 100%;
+          border-radius: 99px;
+          background: var(--udc-primary);
+          animation: ver-prog 1.4s ease-in-out infinite;
+        }
+        @keyframes ver-prog {
+          from { transform: translateX(-100%); }
+          to { transform: translateX(300%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ver-spin,
+          .ver-prog i {
+            animation: none;
+          }
+        }
+        .ver-slot:empty {
+          display: none;
         }
         .set-note {
           margin-top: 12px;
