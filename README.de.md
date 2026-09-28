@@ -256,7 +256,7 @@ Aufbewahrungsdauer des Recorders. Dadurch lädt auch die 30-Tage-Ansicht
 sofort. Für die Zeit, bevor das Protokoll lief (die ersten Tage nach dem
 Update auf 2.7.0), ergänzt das Panel den Recorder-Verlauf der
 Online-Entität; das kann bei langen Zeiträumen einige Sekunden dauern —
-währenddessen blättert ein kleiner Elefant im Protokoll. Zeiten ohne Daten
+währenddessen balanciert ein Elefant auf einem Ball über den Zeitstrahl. Zeiten ohne Daten
 (bevor der Client bekannt war, während Home Assistant nicht lief oder der
 UniFi-Controller nicht erreichbar war) sind schraffiert und zählen nicht
 mit. Einschränkung: Unterbrüche, die kürzer sind als Abfrageintervall plus

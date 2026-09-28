@@ -5,6 +5,21 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.7.1] - 2026-09-28
+
+### Changed
+
+- New loading animation: instead of the cartoon elephant, a plain
+  silhouette balances on a ball across the timeline, treading with all
+  four legs, ears flapping and trunk balancing, while the bar fills in
+  behind it. Drier status words, still with a seconds counter; it stands
+  still with "reduce motion".
+
+### Fixed
+
+- On narrow screens an hour label close to "now" could overlap it on the
+  timeline axis.
+
 ## [2.7.0] - 2026-09-28
 
 ### Added
@@ -1050,6 +1065,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.7.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.7.1
 [2.7.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.7.0
 [2.6.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.6.0
 [2.5.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.1

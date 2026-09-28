@@ -245,8 +245,8 @@ keeps the changes between online and offline, for 31 days and independent
 of how long the recorder keeps its data. That's why even the 30-day view
 loads instantly. For the time before the log was running (the first days
 after updating to 2.7.0), the panel adds the recorder history of the online
-entity; for long ranges that can take a few seconds — meanwhile a small
-elephant leafs through the log. Periods without data (before the client
+entity; for long ranges that can take a few seconds — meanwhile an
+elephant balances on a ball across the timeline. Periods without data (before the client
 was known, while Home Assistant wasn't running or the UniFi controller was
 unreachable) are hatched and don't count. Limitation: outages shorter than
 the update interval plus the offline threshold aren't visible.

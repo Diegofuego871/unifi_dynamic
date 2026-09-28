@@ -117,10 +117,10 @@ const STRINGS = {
     availRangeGroup: "Zeitraum",
     availLoading: "Verlauf wird geladen…",
     availLoadingWords: [
-      "Der Elefant blättert im Protokoll…",
-      "Er vergisst keinen Unterbruch…",
-      "Zählt die Minuten nach…",
-      "Malt den Zeitstrahl…",
+      "Balanciert durch den Verlauf…",
+      "Wackelt. Fällt nicht. Wie der Controller.",
+      "Ein Elefant vergisst nichts, er rollt nur langsam.",
+      "Gleich drüben…",
     ],
     availError: "Verlauf nicht verfügbar:",
     availNoEntity: "Keine Online-Entität gefunden - ohne HA-Gerät gibt es keinen Verlauf.",
@@ -251,10 +251,10 @@ const STRINGS = {
     availRangeGroup: "Time range",
     availLoading: "Loading history…",
     availLoadingWords: [
-      "The elephant is leafing through the log…",
-      "It never forgets an outage…",
-      "Counting the minutes…",
-      "Drawing the timeline…",
+      "Balancing through the history…",
+      "Wobbles. Doesn't fall. Like the controller.",
+      "An elephant never forgets, it just rolls slowly.",
+      "Almost there…",
     ],
     availError: "History not available:",
     availNoEntity: "No online entity found - without a HA device there is no history.",
@@ -1101,7 +1101,7 @@ class UnifiDynamicPanel extends HTMLElement {
     // Nicht zu nah an "jetzt" (rechter Rand) und am linken Rand.
     return ticks
       .map((tk) => ({ ...tk, pos: ((tk.at - start) / span) * 100 }))
-      .filter((tk) => tk.pos > 3 && tk.pos < 90);
+      .filter((tk) => tk.pos > 5 && tk.pos < 82);
   }
 
   _availSectionHtml(c) {
@@ -1213,34 +1213,33 @@ class UnifiDynamicPanel extends HTMLElement {
       </div>`;
   }
 
-  // Lade-Animation: freundlicher Elefant mit schwingendem Rüssel, wechselnde
-  // Statuswörter und Sekundenzähler (siehe _tickLoader). Nur CSS-Animation;
-  // bei "Bewegung reduzieren" steht alles still.
+  // Lade-Animation: Elefant balanciert auf einem Ball über die Leiste,
+  // wechselnde Statuswörter und Sekundenzähler (siehe _tickLoader). Nur
+  // CSS-Animation; bei "Bewegung reduzieren" steht alles still.
   _availLoaderHtml() {
     const esc = (v) => this._escape(v);
     const words = this._t("availLoadingWords");
     return `<div class="avail avail-loading" role="status" aria-label="${esc(this._t("availLoading"))}">
-        <div class="ele-row">
-          <svg class="ele" viewBox="0 0 64 56" aria-hidden="true">
-            <path class="ele-star" d="M6 2l1.3 4.7L12 8l-4.7 1.3L6 14l-1.3-4.7L0 8l4.7-1.3z"/>
-            <g class="ele-body">
-              <ellipse cx="40" cy="36" rx="19" ry="13" class="ele-a"/>
-              <rect x="28" y="42" width="7" height="11" rx="3.5" class="ele-b"/>
-              <rect x="46" y="42" width="7" height="11" rx="3.5" class="ele-b"/>
-              <path d="M58 32q5 1 4 6" class="ele-tail"/>
-              <g class="ele-trunk"><path d="M16 28 C 8 32, 8 42, 12 46 q 2 2 4 0"/></g>
-              <circle cx="24" cy="24" r="11" class="ele-a"/>
-              <path class="ele-ear ele-b" d="M31 14c9-3 14 5 11 12-2 5-8 6-12 3z"/>
-              <ellipse class="ele-eye" cx="22" cy="23" rx="1.6" ry="2"/>
-              <circle cx="18" cy="27.5" r="2.2" class="ele-cheek"/>
+        <div class="ele-words">${words.map((w) => `<span class="shimmer">${esc(w)}</span>`).join("")}</div>
+        <div class="ele-sec"><span class="avail-sec">0</span> s</div>
+        <div class="ele-track">
+          <div class="ele-done"></div>
+          <div class="ele-rider"><svg viewBox="0 0 60 66" aria-hidden="true">
+            <g class="body">
+              <rect class="sil leg l1" x="13" y="26" width="5.5" height="15" rx="2.7"/>
+              <rect class="sil leg l2" x="19" y="26" width="5.5" height="15" rx="2.7"/>
+              <rect class="sil leg l3" x="33" y="26" width="5.5" height="15" rx="2.7"/>
+              <rect class="sil leg l4" x="39" y="26" width="5.5" height="15" rx="2.7"/>
+              <path class="sil" d="M8 18 C8 9, 18 6, 28 6 C38 6, 46 10, 47 18 C48 25, 44 30, 38 30 L16 30 C10 30, 8 25, 8 18 Z"/>
+              <path class="tail" d="M8 15 q-5 2 -4 8"/>
+              <circle class="sil" cx="50" cy="13" r="9"/>
+              <path class="trunk" d="M57 17 C 62 12, 63 5, 60 1"/>
+              <path class="ear" d="M47 5 C 38 3, 35 13, 38 20 C 40 25, 46 25, 48 20 C 49 15, 49 9, 47 5 Z"/>
+              <circle class="eye" cx="54" cy="10" r="1.3"/>
             </g>
-          </svg>
-          <div class="ele-txt">
-            <div class="ele-words">${words.map((w) => `<span class="shimmer">${esc(w)}</span>`).join("")}</div>
-            <div class="ele-sec"><span class="avail-sec">0</span> s</div>
-          </div>
+            <g class="roll"><circle class="ball" cx="29" cy="53" r="12"/><path class="seam" d="M18.5 50 q10.5 8 21 0"/></g>
+          </svg></div>
         </div>
-        <div class="ele-track"></div>
       </div>`;
   }
 
@@ -3754,85 +3753,10 @@ class UnifiDynamicPanel extends HTMLElement {
           background: color-mix(in srgb, var(--udc-warning) 40%, var(--udc-card));
           box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--udc-warning) 80%, var(--udc-card));
         }
-        /* Lade-Animation (Elefant) */
-        .ele-row {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .ele {
-          flex: 0 0 auto;
-          width: 64px;
-          height: 56px;
-          overflow: visible;
-        }
-        .ele .ele-a,
-        .ele .ele-trunk path {
-          fill: #a9bccf;
-        }
-        .ele .ele-trunk path {
-          fill: none;
-          stroke: #a9bccf;
-          stroke-width: 6;
-          stroke-linecap: round;
-        }
-        .ele .ele-b {
-          fill: #8aa0b6;
-        }
-        .ele .ele-tail {
-          fill: none;
-          stroke: #8aa0b6;
-          stroke-width: 2;
-          stroke-linecap: round;
-        }
-        .ele .ele-eye {
-          fill: #2b2f36;
-          transform-origin: 22px 23px;
-          animation: ele-blink 4.2s infinite;
-        }
-        .ele .ele-cheek {
-          fill: #f4a3a8;
-          opacity: 0.55;
-        }
-        .ele .ele-star {
-          fill: var(--udc-warning);
-          transform-origin: 6px 8px;
-          animation: ele-twinkle 1.4s ease-in-out infinite;
-        }
-        .ele .ele-body {
-          transform-origin: 32px 50px;
-          animation: ele-bob 1.4s ease-in-out infinite;
-        }
-        .ele .ele-trunk {
-          transform-origin: 17px 30px;
-          animation: ele-swing 1.4s ease-in-out infinite;
-        }
-        .ele .ele-ear {
-          transform-origin: 34px 22px;
-          animation: ele-flap 1.4s ease-in-out infinite;
-        }
-        @keyframes ele-bob {
-          50% { transform: translateY(-2px); }
-        }
-        @keyframes ele-swing {
-          0%, 100% { transform: rotate(-14deg); }
-          50% { transform: rotate(22deg); }
-        }
-        @keyframes ele-flap {
-          0%, 100% { transform: rotate(0); }
-          50% { transform: rotate(-9deg); }
-        }
-        @keyframes ele-blink {
-          0%, 92%, 100% { transform: scaleY(1); }
-          95% { transform: scaleY(0.1); }
-        }
-        @keyframes ele-twinkle {
-          0%, 100% { transform: rotate(0) scale(0.6); opacity: 0.4; }
-          50% { transform: rotate(90deg) scale(1.1); opacity: 1; }
-        }
-        .ele-txt {
-          flex: 1;
-          min-width: 0;
+        /* Lade-Animation: Elefant balanciert auf einem Ball über die Leiste */
+        .avail-loading {
+          position: relative;
+          overflow: hidden;
         }
         .ele-words {
           position: relative;
@@ -3880,30 +3804,131 @@ class UnifiDynamicPanel extends HTMLElement {
         .ele-track {
           position: relative;
           height: 22px;
-          margin-top: 12px;
-          overflow: hidden;
+          margin-top: 64px;
           border-radius: 6px;
           background: color-mix(in srgb, var(--udc-text) 8%, var(--udc-card));
         }
-        .ele-track::before {
-          content: "";
+        /* Die Spur hinter dem Elefanten. Nur gespielt: die echte Ladezeit
+           ist unbekannt, darum läuft alles in einer Schleife. */
+        .ele-done {
           position: absolute;
           top: 0;
           bottom: 0;
-          width: 30%;
+          left: 0;
           border-radius: 6px;
-          background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--udc-success) 22%, transparent), transparent);
-          animation: ele-scan 1.8s ease-in-out infinite alternate;
+          background: color-mix(in srgb, var(--udc-success) 22%, var(--udc-card));
+          animation: ele-fill 7s linear infinite;
         }
-        @keyframes ele-scan {
-          from { left: -30%; }
+        .ele-rider {
+          position: absolute;
+          bottom: 20px;
+          width: 60px;
+          height: 66px;
+          animation: ele-ride 7s linear infinite;
+        }
+        .ele-rider svg {
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+        .ele-rider .sil {
+          fill: var(--udc-text2);
+        }
+        .ele-rider .tail {
+          fill: none;
+          stroke: var(--udc-text2);
+          stroke-width: 1.6;
+          stroke-linecap: round;
+        }
+        .ele-rider .eye {
+          fill: var(--udc-subtle);
+        }
+        .ele-rider .body {
+          transform-origin: 29px 41px;
+          animation: ele-wobble 1.3s ease-in-out infinite alternate;
+        }
+        .ele-rider .ear {
+          fill: color-mix(in srgb, var(--udc-text2) 72%, var(--udc-card));
+          stroke: color-mix(in srgb, var(--udc-text2) 55%, var(--udc-card));
+          stroke-width: 1;
+          transform-origin: 47px 8px;
+          animation: ele-flap 0.65s ease-in-out infinite alternate;
+        }
+        .ele-rider .trunk {
+          fill: none;
+          stroke: var(--udc-text2);
+          stroke-width: 4.5;
+          stroke-linecap: round;
+          transform-origin: 57px 17px;
+          animation: ele-trunk 1.3s ease-in-out infinite alternate;
+        }
+        /* Trippeln: diagonal versetzt wie beim Gehen, das Bein hebt sich
+           dabei leicht an. */
+        .ele-rider .leg {
+          transform-box: fill-box;
+          transform-origin: 50% 8%;
+          animation: ele-tread 0.5s ease-in-out infinite;
+        }
+        .ele-rider .l2,
+        .ele-rider .l3 {
+          animation-delay: -0.25s;
+        }
+        .ele-rider .ball {
+          fill: color-mix(in srgb, var(--udc-success) 35%, var(--udc-card));
+          stroke: color-mix(in srgb, var(--udc-success) 70%, var(--udc-card));
+          stroke-width: 1.5;
+        }
+        .ele-rider .seam {
+          fill: none;
+          stroke: color-mix(in srgb, var(--udc-success) 70%, var(--udc-card));
+          stroke-width: 1.3;
+        }
+        .ele-rider .roll {
+          transform-origin: 29px 53px;
+          animation: ele-roll 1s linear infinite;
+        }
+        @keyframes ele-ride {
+          from { left: -60px; }
           to { left: 100%; }
         }
+        @keyframes ele-fill {
+          from { width: 0; }
+          to { width: calc(100% + 30px); }
+        }
+        @keyframes ele-wobble {
+          from { transform: rotate(-5deg); }
+          to { transform: rotate(4deg); }
+        }
+        @keyframes ele-trunk {
+          from { transform: rotate(-22deg); }
+          to { transform: rotate(12deg); }
+        }
+        @keyframes ele-flap {
+          from { transform: rotate(0); }
+          to { transform: rotate(-10deg); }
+        }
+        @keyframes ele-tread {
+          0% { transform: rotate(16deg); }
+          25% { transform: rotate(0) scaleY(0.88); }
+          50% { transform: rotate(-16deg); }
+          75% { transform: rotate(0); }
+          100% { transform: rotate(16deg); }
+        }
+        @keyframes ele-roll {
+          to { transform: rotate(360deg); }
+        }
         @media (prefers-reduced-motion: reduce) {
-          .ele *,
-          .ele-words span,
-          .ele-track::before {
+          .ele-rider,
+          .ele-rider *,
+          .ele-done,
+          .ele-words span {
             animation: none !important;
+          }
+          .ele-rider {
+            left: 40%;
+          }
+          .ele-done {
+            width: 42%;
           }
           .ele-words span:first-child {
             opacity: 1;
