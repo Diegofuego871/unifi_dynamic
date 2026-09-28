@@ -340,7 +340,10 @@ Online-Entität; das kann bei langen Zeiträumen einige Sekunden dauern —
 währenddessen balanciert ein Elefant auf einem Ball über den Zeitstrahl. Zeiten ohne Daten
 (bevor der Client bekannt war, während Home Assistant nicht lief oder der
 UniFi-Controller nicht erreichbar war) sind schraffiert und zählen nicht
-mit. Ein Neustart von Home Assistant erscheint nicht als Unterbruch: Lücken
+mit. Deckt die Aufzeichnung weniger als 10 % des gewählten Zeitraums ab
+(etwa kurz nach der Installation), beginnt der Balken erst beim ersten
+Datenpunkt; links steht dann dessen Zeitpunkt, der Hinweis „erst seit …"
+bleibt. Ein Neustart von Home Assistant erscheint nicht als Unterbruch: Lücken
 bis 5 Minuten zwischen zwei gleichen Zuständen gelten als durchgehend,
 erst längere Ausfälle von Home Assistant werden schraffiert. Echte
 Unterbrüche sind davon nie betroffen, nur Zeiten ohne Daten. Einschränkung: Unterbrüche, die kürzer sind als Abfrageintervall plus

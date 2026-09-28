@@ -5,6 +5,17 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.11.4] - 2026-09-28
+
+### Changed
+
+- Availability timelines with little data no longer look almost empty: if
+  the recording covers less than 10 % of the selected range (for example
+  the controller log, which started with 2.9.0, in the 30-day view), the
+  bar starts at the first data point instead of the left edge. Its time is
+  shown on the left, the hour or day marks adapt to the shorter span, and
+  the "data only since …" note stays.
+
 ## [2.11.3] - 2026-09-28
 
 ### Fixed
@@ -1184,6 +1195,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.11.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.4
 [2.11.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.3
 [2.11.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.2
 [2.11.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.1

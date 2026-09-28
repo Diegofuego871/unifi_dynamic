@@ -323,7 +323,10 @@ after updating to 2.7.0), the panel adds the recorder history of the online
 entity; for long ranges that can take a few seconds — meanwhile an
 elephant balances on a ball across the timeline. Periods without data (before the client
 was known, while Home Assistant wasn't running or the UniFi controller was
-unreachable) are hatched and don't count. A Home Assistant restart doesn't
+unreachable) are hatched and don't count. If the recording covers less than
+10 % of the selected range (for example shortly after installing), the bar
+starts at the first data point instead; its time is shown on the left and
+the "data only since …" note stays. A Home Assistant restart doesn't
 show up as an outage: gaps of up to 5 minutes between two identical states
 count as continuous; only longer Home Assistant downtimes are hatched. Real
 outages are never affected, only periods without data.

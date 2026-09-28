@@ -697,6 +697,10 @@ const AVAIL_MAX_AGE_MS = 60000;
 // das eigene Protokoll noch der Recorder etwas aufzeichnen. Betrifft nur
 // "keine Daten", nie echte Unterbrüche; längere Lücken bleiben sichtbar.
 const AVAIL_BRIDGE_MS = 5 * 60 * 1000;
+// Deckt die Aufzeichnung weniger als diesen Anteil des Zeitraums ab (neu
+// installiert, Controller-Protokoll ab 2.9.0), beginnt der Balken beim
+// ersten Datenpunkt statt am linken Rand - sonst wäre er fast nur schraffiert.
+const AVAIL_ZOOM_SHARE = 0.1;
 // So viele Unterbrüche listet der Dialog höchstens auf (neueste zuerst).
 const AVAIL_LIST_MAX = 10;
 
@@ -2203,23 +2207,37 @@ class UnifiDynamicPanel extends HTMLElement {
     const locale = pickLang(this._hass) === "de" ? "de-CH" : "en-US";
     const ticks = [];
     const d = new Date(start);
-    if (range === "24h") {
+    const span = end - start;
+    // Verkürzter Balken (siehe AVAIL_ZOOM_SHARE): Stunden- bzw. Tagesmarken
+    // passend zur tatsächlichen Spanne.
+    let mode = range;
+    let step = 3;
+    if (range === "zoom") {
+      const hours = span / 3600000;
+      if (hours <= 36) {
+        mode = "24h";
+        step = hours <= 4 ? 1 : hours <= 10 ? 2 : hours <= 20 ? 3 : 6;
+      } else {
+        mode = hours <= 8 * 24 ? "7d" : "30d";
+      }
+    }
+    if (mode === "24h") {
       d.setMinutes(0, 0, 0);
       d.setHours(d.getHours() + 1);
       for (; d.getTime() < end; d.setHours(d.getHours() + 1)) {
         const h = d.getHours();
-        if (h % 3) continue;
+        if (h % step) continue;
         ticks.push({
           at: d.getTime(),
           label: `${String(h).padStart(2, "0")}:00`,
-          minor: h % 6 !== 0,
+          minor: h % (step * 2) !== 0,
         });
       }
     } else {
       d.setHours(0, 0, 0, 0);
       d.setDate(d.getDate() + 1);
       for (let i = 0; d.getTime() < end; d.setDate(d.getDate() + 1), i++) {
-        if (range === "7d") {
+        if (mode === "7d") {
           ticks.push({
             at: d.getTime(),
             label: d.toLocaleDateString(locale, { weekday: "short" }),
@@ -2234,11 +2252,12 @@ class UnifiDynamicPanel extends HTMLElement {
         }
       }
     }
-    const span = end - start;
-    // Nicht zu nah an "jetzt" (rechter Rand) und am linken Rand.
+    // Nicht zu nah an "jetzt" (rechter Rand) und am linken Rand (beim
+    // verkürzten Balken steht dort die Startzeit).
+    const minPos = range === "zoom" ? 16 : 5;
     return ticks
       .map((tk) => ({ ...tk, pos: ((tk.at - start) / span) * 100 }))
-      .filter((tk) => tk.pos > 5 && tk.pos < 82);
+      .filter((tk) => tk.pos > minPos && tk.pos < 82);
   }
 
   // Zeitstrahl eines Clients (Geräteansicht) bzw. des Controllers
@@ -2302,11 +2321,19 @@ class UnifiDynamicPanel extends HTMLElement {
       facts.push(esc(t("availSince")(this._formatAvailTime(firstData.from, true))));
     }
 
+    // Kaum Daten im Zeitraum: Balken erst ab dem ersten Datenpunkt.
+    const zoom = Boolean(firstData && end - firstData.from < span * AVAIL_ZOOM_SHARE);
+    const viewStart = zoom ? firstData.from : start;
+    const viewSpan = end - viewStart;
+    const viewSegs = segs
+      .filter((s) => s.to > viewStart)
+      .map((s) => ({ ...s, from: Math.max(s.from, viewStart) }));
+
     const endLabel = (s) => (s.to >= end ? t("availOngoing") : this._formatAvailTime(s.to, false));
-    const segHtml = segs
+    const segHtml = viewSegs
       .map((s) => {
-        const left = ((s.from - start) / span) * 100;
-        const width = ((s.to - s.from) / span) * 100;
+        const left = ((s.from - viewStart) / viewSpan) * 100;
+        const width = ((s.to - s.from) / viewSpan) * 100;
         const tip =
           s.kind === "off"
             ? ` data-tip="${esc(
@@ -2316,12 +2343,15 @@ class UnifiDynamicPanel extends HTMLElement {
         return `<span class="seg ${s.kind}" style="left:${left.toFixed(3)}%;width:${width.toFixed(3)}%"${tip}></span>`;
       })
       .join("");
-    const ticks = this._availTicks(start, end, range)
+    const startLabel = zoom
+      ? `<span class="start-label">${esc(this._formatAvailTime(viewStart, viewSpan > 20 * 3600000))}</span>`
+      : "";
+    const ticks = startLabel + this._availTicks(viewStart, end, zoom ? "zoom" : range)
       .map(
         (tk) => `<span class="${tk.minor ? "minor" : ""}" style="left:${tk.pos.toFixed(2)}%">${esc(tk.label)}</span>`
       )
       .join("");
-    const hasNone = segs.some((s) => s.kind === "none");
+    const hasNone = viewSegs.some((s) => s.kind === "none");
     const legend = `<div class="avail-legend"><span><i class="on"></i>${esc(t("availOnline"))}</span><span><i class="off"></i>${esc(
       t("availOffline")
     )}</span>${hasNone ? `<span><i class="none"></i>${esc(t("availNone"))}</span>` : ""}</div>`;
@@ -4971,6 +5001,10 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         .avail-ticks .now-label {
           right: 0;
+          transform: none;
+        }
+        .avail-ticks .start-label {
+          left: 0;
           transform: none;
         }
         @media (max-width: 600px) {
