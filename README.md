@@ -256,7 +256,9 @@ plus the daily check from the "Updates" section) and, if present, has HACS re-ch
 newer version exists, "Version x available", a link to the release notes
 and — if the integration was installed via HACS — an "Update" button
 appear. It installs through HACS (the same way as Settings → Updates), and
-a bar shows the running installation. Afterwards the row reports "restart
+a bar shows the running installation. If HACS doesn't know a new version
+yet (GitHub is faster), the panel has HACS reload its versions and only
+offers the button once HACS knows it — until then the row shows a note. Afterwards the row reports "restart
 required" with a "Restart now" button that asks first; the new version
 only becomes active after Home Assistant restarts. Without HACS there is
 just the note with the link, and you update manually.

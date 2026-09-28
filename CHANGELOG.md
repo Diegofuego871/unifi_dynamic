@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   checking for updates, which briefly revealed the filters behind it. The
   "Check for updates" button keeps its label (only the icon turns into a
   spinner), and the settings sheet now has a fixed height.
+- "Update" no longer fails with "The version … can not be used with HACS"
+  when GitHub already has a release that HACS hasn't loaded yet. The panel
+  now has HACS reload the repository's versions (also on "Check for
+  updates") and only offers "Update" once HACS knows the version; until
+  then the row shows a note. Errors from the update appear only in the
+  row, no longer as additional pop-up messages.
 
 ## [2.10.0] - 2026-09-28
 

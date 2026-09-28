@@ -269,7 +269,10 @@ Update-Entität von HACS neu prüfen. Gibt es eine neuere Version, erscheinen
 „Version x verfügbar", ein Link zu den Release Notes und — wenn die
 Integration über HACS installiert ist — der Knopf „Aktualisieren". Er
 installiert über HACS (derselbe Weg wie Einstellungen → Updates), ein
-Balken zeigt die laufende Installation. Danach meldet die Zeile „Neustart
+Balken zeigt die laufende Installation. Kennt HACS eine neue Version noch
+nicht (GitHub ist schneller), lässt das Panel HACS die Versionen neu laden
+und bietet den Knopf erst an, wenn HACS sie kennt — bis dahin steht ein
+Hinweis in der Zeile. Danach meldet die Zeile „Neustart
 nötig" mit dem Knopf „Jetzt neu starten", der vorher nachfragt; erst nach
 dem Neustart von Home Assistant ist die neue Version aktiv. Ohne HACS gibt
 es nur den Hinweis mit Link, installiert wird dann manuell.

@@ -234,6 +234,8 @@ const STRINGS = {
     verInstalling: (v) => `Wird aktualisiert auf ${v}…`,
     verInstallingSub: "HACS lädt die neue Version herunter",
     verInstallError: "Aktualisieren fehlgeschlagen:",
+    verHacsPending:
+      "HACS kennt diese Version noch nicht. \"Nach Updates suchen\" lässt HACS die Versionen neu laden; sonst später erneut versuchen.",
     verRestartNeeded: (v) => `${v} installiert – Neustart nötig`,
     verRestartSub: "Aktiv wird die neue Version erst nach einem Neustart von Home Assistant.",
     verRestart: "Jetzt neu starten",
@@ -495,6 +497,8 @@ const STRINGS = {
     verInstalling: (v) => `Updating to ${v}…`,
     verInstallingSub: "HACS is downloading the new version",
     verInstallError: "Update failed:",
+    verHacsPending:
+      "HACS doesn't know this version yet. \"Check for updates\" makes HACS reload its versions; otherwise try again later.",
     verRestartNeeded: (v) => `${v} installed – restart required`,
     verRestartSub: "The new version only becomes active after restarting Home Assistant.",
     verRestart: "Restart now",
@@ -1428,25 +1432,54 @@ class UnifiDynamicPanel extends HTMLElement {
     if (force) v.checking = true;
     v.error = null;
     this._renderSettingsVersion();
-    const hacs = this._hacsUpdateEntity();
     const jobs = [
       this._hass.callWS({ type: "unifi_dynamic/version", force }).then(
         (r) => (v.data = r),
         (err) => (v.error = (err && err.message) || String(err))
       ),
     ];
-    // HACS prüft sonst nur periodisch: auf Knopfdruck sofort neu abfragen.
-    if (force && hacs && typeof this._hass.callService === "function") {
-      jobs.push(
-        this._hass
-          .callService("homeassistant", "update_entity", { entity_id: hacs.entity_id })
-          .catch(() => null)
-      );
-    }
+    // HACS prüft sonst nur alle paar Tage: auf Knopfdruck sofort neu laden.
+    if (force) jobs.push(this._refreshHacs());
     await Promise.all(jobs);
+    // GitHub kennt eine neuere Version als HACS: HACS einmal pro Sitzung
+    // auch ohne Knopfdruck nachladen lassen, sonst lässt es sich nicht
+    // über HACS installieren.
+    const { hacs, a, latest } = this._versionState();
+    if (!force && hacs && !v.hacsRefreshed && latest && (!a.latest_version || this._cmpVersion(latest, a.latest_version) > 0)) {
+      v.hacsRefreshed = true;
+      await this._refreshHacs();
+    }
     v.checking = false;
     if (v.data && v.data.error && !v.data.latest) v.error = v.data.error;
     this._renderSettingsVersion();
+  }
+
+  // Dienst über WebSocket statt hass.callService: der zeigt bei einem Fehler
+  // zusätzlich eine eigene Toast-Meldung, hier steht der Fehler in der Zeile.
+  _callService(domain, service, data) {
+    return this._hass.callWS({ type: "call_service", domain, service, service_data: data });
+  }
+
+  // HACS die Versionen des Repositories neu laden lassen (seine eigenen
+  // WebSocket-Befehle, wie der Menüpunkt "Informationen aktualisieren"),
+  // dann die Update-Entität. Alles bestmöglich: fehlt ein Befehl in einer
+  // HACS-Version, bleibt es beim Aktualisieren der Entität.
+  async _refreshHacs() {
+    const hacs = this._hacsUpdateEntity();
+    if (!hacs) return;
+    try {
+      const repos = await this._hass.callWS({ type: "hacs/repositories/list" });
+      const list = Array.isArray(repos) ? repos : (repos && repos.repositories) || [];
+      const repo = list.find((r) => String(r.full_name || "").toLowerCase() === "diegofuego871/unifi_dynamic");
+      if (repo) await this._hass.callWS({ type: "hacs/repository/refresh", repository: String(repo.id) });
+    } catch (err) {
+      // Älteres oder neueres HACS ohne diese Befehle.
+    }
+    try {
+      await this._callService("homeassistant", "update_entity", { entity_id: hacs.entity_id });
+    } catch (err) {
+      // Nicht kritisch: dann gilt der bisherige Stand von HACS.
+    }
   }
 
   _versionState() {
@@ -1464,13 +1497,16 @@ class UnifiDynamicPanel extends HTMLElement {
     const inProgress = Boolean(hacs && (a.in_progress === true || typeof a.in_progress === "number"));
     // HACS hat eine neuere Version auf die Platte gelegt, als gerade läuft.
     const restart = Boolean(hacs && a.installed_version && installed && this._cmpVersion(a.installed_version, installed) > 0);
-    return { v, d, hacs, a, installed, latest, url, inProgress, restart };
+    // Installierbar nur, was HACS selbst als neueste Version kennt: eine
+    // Version, die HACS noch nicht geladen hat, lehnt es ab.
+    const canInstall = Boolean(hacs && a.latest_version && installed && this._cmpVersion(a.latest_version, installed) > 0);
+    return { v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall };
   }
 
   _versionHtml() {
     const t = (k) => this._t(k);
     const esc = (x) => this._escape(x);
-    const { v, d, hacs, a, installed, latest, url, inProgress, restart } = this._versionState();
+    const { v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall } = this._versionState();
     if (!installed && !v.data && !v.error) return "";
     const row = (cls, iconName, title, sub, right) => `<div class="ver ${cls}">
         <span class="ver-ic">${icon(iconName)}</span>
@@ -1500,16 +1536,25 @@ class UnifiDynamicPanel extends HTMLElement {
     if (latest && installed && this._cmpVersion(latest, installed) > 0) {
       const sub = v.installError
         ? `${t("verInstallError")} ${v.installError}`
-        : hacs
+        : !hacs
+        ? `${t("verInstalledVia")(installed, false)} · ${t("verNoHacs")}`
+        : canInstall
         ? t("verInstalledVia")(installed, true)
-        : `${t("verInstalledVia")(installed, false)} · ${t("verNoHacs")}`;
+        : `${t("verInstalledVia")(installed, true)} · ${t("verHacsPending")}`;
+      const checkBtn = `<button type="button" class="ver-btn" data-ver="check" ${
+        v.checking ? `disabled aria-busy="true" title="${esc(t("verChecking"))}"` : ""
+      }>${v.checking ? `<span class="ver-spin"></span>` : icon("verCheck")}${esc(t("verCheck"))}</button>`;
       return row(
         "upd",
         "verUp",
         t("verAvailable")(latest),
         sub,
         `${notes}${
-          hacs ? `<button type="button" class="ver-btn primary" data-ver="install">${icon("verDownload")}${esc(t("verUpdate"))}</button>` : ""
+          canInstall
+            ? `<button type="button" class="ver-btn primary" data-ver="install">${icon("verDownload")}${esc(t("verUpdate"))}</button>`
+            : hacs
+            ? checkBtn
+            : ""
         }`
       );
     }
@@ -1545,19 +1590,14 @@ class UnifiDynamicPanel extends HTMLElement {
     if (action === "check") {
       await this._loadVersion(true);
     } else if (action === "install") {
-      const { hacs, a, latest } = this._versionState();
-      if (!hacs) return;
-      const data = { entity_id: hacs.entity_id };
-      // Kennt HACS die neueste Version noch nicht (GitHub war schneller),
-      // gezielt diese installieren - sofern die Entität das unterstützt.
-      if (latest && a.latest_version && this._cmpVersion(latest, a.latest_version) > 0 && (a.supported_features & 2)) {
-        data.version = latest;
-      }
-      v.installing = latest;
+      const { hacs, a, canInstall } = this._versionState();
+      if (!hacs || !canInstall || v.installing) return;
+      // Ohne Versionsangabe: HACS installiert seine neueste bekannte Version.
+      v.installing = a.latest_version;
       v.installError = null;
       this._renderSettingsVersion();
       try {
-        await this._hass.callService("update", "install", data);
+        await this._callService("update", "install", { entity_id: hacs.entity_id });
       } catch (err) {
         v.installError = (err && err.message) || String(err);
       }
@@ -1568,7 +1608,7 @@ class UnifiDynamicPanel extends HTMLElement {
       v.restarting = true;
       this._renderSettingsVersion();
       try {
-        await this._hass.callService("homeassistant", "restart", {});
+        await this._callService("homeassistant", "restart", {});
       } catch (err) {
         // Die Verbindung bricht beim Neustart ab; ein Fehler hier ist normal.
       }
