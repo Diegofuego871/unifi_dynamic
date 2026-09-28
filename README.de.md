@@ -252,6 +252,8 @@ gesperrt, weil die Einstellungen pro Hub gelten; mit nur einem Hub gibt es
 keine Auswahl, nur das Zahnrad. Host, API-Key und SSL-Prüfung bleiben
 bewusst dem Einrichtungsdialog von Home Assistant vorbehalten.
 
+![Einstellungen im Panel: Controller-Verfügbarkeit über 7 Tage, Abschnitt „Abfrage" aufgeklappt mit geändertem Intervall, Reaktionszeit und aufgeklapptem ⓘ-Text](docs/panel-settings.png)
+
 Zuoberst in den Einstellungen steht die **Controller-Verfügbarkeit**:
 derselbe Zeitstrahl wie in der Geräteansicht, aber für den UniFi-Controller
 des Hubs — wann er erreichbar war und wann nicht, mit Prozent,
@@ -262,6 +264,23 @@ Schwelle „Als ausgefallen nach" erreicht war; kürzere Aussetzer erscheinen
 nicht. Die Daten stammen aus dem eigenen Verfügbarkeitsprotokoll der
 Integration und beginnen mit dem Update auf 2.9.0; Zeiten, in denen Home
 Assistant nicht lief, sind schraffiert.
+
+Die Abschnitte im Einzelnen:
+
+| Abschnitt | Einstellungen |
+|---|---|
+| Abfrage | Abfrageintervall (10–3600 s) und „Als ausgefallen nach" (Anzahl fehlgeschlagener Abfragen, darunter die daraus folgende Reaktionszeit) |
+| Automatisches Entfernen | Tage ohne Sichtung bis zum Entfernen (0 = aus), Uhrzeit des täglichen Laufs und die geschützten Clients mit Knopf zum Aufheben des Schutzes |
+| Push-Benachrichtigung | Ziel (notify-Dienst oder -Entität), wohin ein Tipp auf eine Gerätemeldung führt, Auslöser (neue Geräte, Controller-Ausfall, auch ohne Treffer) und der Inhalt der Neugeräte-Meldung in zwei Spalten |
+| Anhaltende Benachrichtigung | Bericht des Aufräumlaufs, auch ohne Treffer, und Meldung bei Controller-Ausfall |
+
+![Einstellungen im Panel: „Automatisches Entfernen" mit geschützten Clients und „Push-Benachrichtigung" aufgeklappt](docs/panel-settings-details.png)
+
+Ohne Änderung bleibt „Speichern" ausgegraut. Ungültige Werte, etwa ein
+Intervall unter 10 Sekunden, markiert das Feld rot mit dem erlaubten
+Bereich, und gespeichert wird erst, wenn alles gültig ist. Home Assistant
+prüft beim Speichern dieselben Grenzen noch einmal. „Abbrechen", Esc oder
+ein Klick neben den Dialog verwerfen den Entwurf.
 
 Jede Zeile hat ein ⋮-Menü mit „Details", „Vor automatischem Löschen schützen" (trägt
 den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt

@@ -241,6 +241,8 @@ integration briefly reloads, which the dialog points out beforehand. With
 one hub there is no switch, just the gear. Host, API key and SSL
 verification deliberately stay in Home Assistant's setup dialog.
 
+![Settings in the panel: controller availability over 7 days, "Polling" expanded with a changed interval, reaction time and expanded ⓘ text](docs/panel-settings-en.png)
+
 At the top of the settings is the **controller availability**: the same
 timeline as in the device view, but for the hub's UniFi controller — when it
 was reachable and when not, with percentage, outages and list. The time
@@ -249,6 +251,23 @@ counts from the last successful to the first successful poll again, once
 the "Offline after" threshold was reached; shorter hiccups don't show. The
 data comes from the integration's own availability log and starts with the
 update to 2.9.0; periods while Home Assistant wasn't running are hatched.
+
+The sections in detail:
+
+| Section | Settings |
+|---|---|
+| Polling | Update interval (10–3600 s) and "Offline after" (number of failed polls, with the resulting reaction time below) |
+| Automatic removal | Days unseen before removal (0 = off), time of the daily run and the protected clients, each with a button to stop protecting it |
+| Push notification | Target (notify service or entity), where tapping a device notification leads, triggers (new devices, controller outage, also without hits) and the content of the new-device notification in two columns |
+| Persistent notification | Cleanup report, also without hits, and notification on controller outage |
+
+![Settings in the panel: "Automatic removal" with protected clients and "Push notification" expanded](docs/panel-settings-details-en.png)
+
+Without changes "Save" stays greyed out. Invalid values, such as an
+interval below 10 seconds, mark the field red with the allowed range, and
+nothing is saved until everything is valid. Home Assistant checks the same
+limits again when saving. "Cancel", Esc or a click next to the dialog
+discard the draft.
 
 Each row has a ⋮ menu with "Details", "Protect from automatic removal" (adds the
 client to the exclusion list), "Remove" (asks for confirmation, then
