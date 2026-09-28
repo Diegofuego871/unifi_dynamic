@@ -5,6 +5,28 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.7.0] - 2026-09-28
+
+### Added
+
+- Own availability log: the integration now records when each client goes
+  online or offline (only the changes, kept for 31 days, in its own storage
+  file). The timeline reads this log first, so even the 30-day view loads
+  instantly instead of querying the recorder, and it reaches back 30 days
+  regardless of the recorder's retention. For the time before the log
+  existed, the recorder history is added once and cached.
+- Periods while Home Assistant wasn't running or the UniFi controller was
+  unreachable now show as "no data" instead of repeating the last state.
+- An outage now starts at the client's last contact rather than when it was
+  detected as offline.
+- A friendly elephant swinging its trunk while the history loads, with
+  changing status words and a seconds counter; it stands still with "reduce motion".
+
+### Changed
+
+- Softer timeline colours, tinted like the "Online" pill; outages keep a
+  thin orange edge so short ones stay visible.
+
 ## [2.6.0] - 2026-09-28
 
 ### Added
@@ -1028,6 +1050,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.7.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.7.0
 [2.6.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.6.0
 [2.5.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.1
 [2.5.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.5.0

@@ -37,6 +37,9 @@ from .const import (
     DEFAULT_PURGE_DAYS,
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_VERIFY_SSL,
+    AVAIL_KEEP_DAYS,
+    AVAIL_SAVE_DELAY,
+    AVAIL_STORE_SUFFIX,
     DOMAIN,
     DOWNTIME_GRACE_SECONDS,
     FIELD_AP_NAME,
@@ -277,6 +280,18 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_cache"
         )
 
+        # Verfügbarkeitsprotokoll: MAC -> Wechsel [[zeit, zustand], ...],
+        # älteste zuerst. Zustand 1 = online, 0 = offline, None = keine Daten
+        # (HA lief nicht oder der Controller war nicht erreichbar).
+        self._avail: dict[str, list[list[Any]]] = {}
+        # Letzter Lauf von _async_update_data: zeigt nach einem Neustart, seit
+        # wann HA nicht mehr lief.
+        self._avail_tick: float | None = None
+        self._avail_pruned_at = 0.0
+        self._avail_store: Store[dict[str, Any]] = Store(
+            hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_{AVAIL_STORE_SUFFIX}"
+        )
+
         super().__init__(
             hass,
             logger=_LOGGER,
@@ -309,6 +324,123 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             await self._store.async_save(self._data_to_save())
         except Exception as err:  # noqa: BLE001 - Save darf nie den Unload kippen
             _LOGGER.warning("Cache konnte nicht gespeichert werden: %s", err)
+        try:
+            await self._avail_store.async_save(self._avail_to_save())
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Verfügbarkeitsprotokoll konnte nicht gespeichert werden: %s", err)
+
+    # -- Verfügbarkeitsprotokoll ----------------------------------------------
+
+    def _avail_to_save(self) -> dict[str, Any]:
+        return {"tick": self._avail_tick, "clients": self._avail}
+
+    def _schedule_avail_save(self) -> None:
+        self._avail_store.async_delay_save(self._avail_to_save, AVAIL_SAVE_DELAY)
+
+    async def _async_load_availability(self) -> None:
+        try:
+            stored = await self._avail_store.async_load()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Verfügbarkeitsprotokoll konnte nicht geladen werden: %s", err)
+            return
+        if not isinstance(stored, dict):
+            return
+        clients = stored.get("clients")
+        if isinstance(clients, dict):
+            for mac, events in clients.items():
+                if not isinstance(events, list):
+                    continue
+                clean = [
+                    [float(ev[0]), ev[1] if ev[1] in (0, 1) else None]
+                    for ev in events
+                    if isinstance(ev, list) and len(ev) == 2 and isinstance(ev[0], (int, float))
+                ]
+                if clean:
+                    self._avail[str(mac).lower()] = clean
+        tick = as_epoch_seconds(stored.get("tick"))
+        # Lief HA länger nicht, ist über diese Zeit nichts bekannt: ab dem
+        # letzten Lauf "keine Daten" statt den letzten Zustand weiterzuziehen.
+        gap_limit = 3 * self.update_interval.total_seconds() + 60 if self.update_interval else 300
+        if tick is not None and time.time() - tick > gap_limit:
+            self._avail_mark_all(None, tick)
+        self._avail_tick = tick
+
+    @callback
+    def _avail_append(self, mac: str, at: float, state: int | None) -> bool:
+        events = self._avail.setdefault(mac, [])
+        if events and events[-1][1] == state:
+            return False
+        if events:
+            # Nie vor den letzten Wechsel zurück (Uhrsprünge, seen_at).
+            at = max(at, events[-1][0])
+            if events[-1][0] == at:
+                events.pop()
+                if events and events[-1][1] == state:
+                    return True
+        events.append([round(at, 1), state])
+        return True
+
+    @callback
+    def _avail_mark_all(self, state: int | None, at: float) -> None:
+        changed = False
+        for mac in list(self._avail):
+            changed |= self._avail_append(mac, at, state)
+        if changed:
+            self._schedule_avail_save()
+
+    @callback
+    def _avail_record(self, now: float) -> None:
+        """Nach einem erfolgreichen Poll: Zustandswechsel aller Clients festhalten."""
+        changed = False
+        for mac in self._client_cache:
+            online = self.is_client_online(mac)
+            events = self._avail.get(mac)
+            last = events[-1][1] if events else "missing"
+            state = 1 if online else 0
+            if last == state:
+                continue
+            at = now
+            if state == 0 and last == 1:
+                # Offline ab dem letzten Kontakt, nicht erst ab der Erkennung.
+                seen = self.seen_at(mac)
+                if seen is not None:
+                    at = min(now, seen)
+            changed |= self._avail_append(mac, at, state)
+        if now - self._avail_pruned_at > 3600:
+            self._avail_pruned_at = now
+            changed |= self._avail_prune(now)
+        if changed:
+            self._schedule_avail_save()
+
+    @callback
+    def _avail_prune(self, now: float) -> bool:
+        """Wechsel älter als AVAIL_KEEP_DAYS verwerfen, den Zustand davor behalten."""
+        cutoff = now - AVAIL_KEEP_DAYS * 86400
+        changed = False
+        for mac in list(self._avail):
+            if mac not in self._client_cache:
+                del self._avail[mac]
+                changed = True
+                continue
+            events = self._avail[mac]
+            old = [ev for ev in events if ev[0] < cutoff]
+            if len(old) > 1 or (old and old[-1][0] < cutoff and len(events) > len(old)):
+                keep = [[cutoff, old[-1][1]]] + [ev for ev in events if ev[0] >= cutoff]
+                self._avail[mac] = keep
+                changed = True
+        return changed
+
+    def availability(self, mac: str, start: float) -> dict[str, Any]:
+        """Wechsel ab start (mit dem Zustand davor) für das Panel."""
+        events = self._avail.get(mac.lower(), [])
+        before = [ev for ev in events if ev[0] <= start]
+        after = [ev for ev in events if ev[0] > start]
+        out = ([[start, before[-1][1]]] if before else []) + after
+        return {
+            "since": events[0][0] if events else None,
+            "events": out,
+            "now": time.time(),
+        }
 
     async def async_load_cache(self) -> None:
         """
@@ -317,6 +449,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         Muss vor async_config_entry_first_refresh() laufen, damit offline
         Clients ihre letzten bekannten Werte und ihr _seen_at behalten.
         """
+        await self._async_load_availability()
         try:
             stored = await self._store.async_load()
         except Exception as err:  # noqa: BLE001
@@ -551,6 +684,8 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         self._offline = True
         self._offline_since = self._anchor
+        # Ohne Controller ist der Zustand der Clients unbekannt.
+        self._avail_mark_all(None, self._anchor or time.time())
         gap = None if self._anchor is None else time.time() - self._anchor
 
         _LOGGER.warning(
@@ -736,6 +871,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         zeitgesteuert aus __init__.py, damit Purge-Fehler nicht als API-Fehler
         getarnt werden.
         """
+        self._avail_tick = time.time()
         url = f"https://{self.host}{CLIENTS_PATH}"
         headers = {"X-API-KEY": self.api_key, "Accept": "application/json"}
 
@@ -804,6 +940,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # Erst nach dem Merge: Die Entwarnung soll nicht rausgehen, bevor die
         # frischen Daten im Cache stehen. Setzt den Fehlerzähler zurück.
         self._register_success()
+        self._avail_record(now)
 
         # Vor der Meldung über neue Clients, damit dort der AP-Name steht.
         refreshed = False
@@ -1116,6 +1253,8 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # Ein später neu angelegter Client wird bewusst nicht automatisch
         # wieder verknüpft.
         self._device_links.pop(mac, None)
+        if self._avail.pop(mac, None) is not None:
+            self._schedule_avail_save()
 
         # Auch aus dem aktuellen Snapshot entfernen, sonst könnte die MAC vor
         # dem nächsten Poll erneut angelegt werden.

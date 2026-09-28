@@ -116,6 +116,12 @@ const STRINGS = {
     availRanges: { "24h": "24 Std.", "7d": "7 Tage", "30d": "30 Tage" },
     availRangeGroup: "Zeitraum",
     availLoading: "Verlauf wird geladen…",
+    availLoadingWords: [
+      "Der Elefant blättert im Protokoll…",
+      "Er vergisst keinen Unterbruch…",
+      "Zählt die Minuten nach…",
+      "Malt den Zeitstrahl…",
+    ],
     availError: "Verlauf nicht verfügbar:",
     availNoEntity: "Keine Online-Entität gefunden - ohne HA-Gerät gibt es keinen Verlauf.",
     availNoData: "Keine Verlaufsdaten im Recorder für diesen Zeitraum.",
@@ -244,6 +250,12 @@ const STRINGS = {
     availRanges: { "24h": "24 h", "7d": "7 days", "30d": "30 days" },
     availRangeGroup: "Time range",
     availLoading: "Loading history…",
+    availLoadingWords: [
+      "The elephant is leafing through the log…",
+      "It never forgets an outage…",
+      "Counting the minutes…",
+      "Drawing the timeline…",
+    ],
     availError: "History not available:",
     availNoEntity: "No online entity found - without a HA device there is no history.",
     availNoData: "No history data in the recorder for this time range.",
@@ -908,17 +920,68 @@ class UnifiDynamicPanel extends HTMLElement {
   // veralteter Stand da ist. Das Ende ist der Abfragezeitpunkt, nicht
   // "jetzt" beim Rendern: sonst änderte sich das HTML bei jedem hass-Update
   // und der Dialog würde ständig neu aufgebaut.
-  _ensureHistory(entityId) {
+  _ensureHistory(c, entityId) {
     const key = `${entityId}|${this._availRange}`;
     const h = this._history;
     if (h && h.key === key && (h.loading || (!h.error && Date.now() - h.at < AVAIL_MAX_AGE_MS))) {
       return;
     }
     if (h && h.key === key && h.error && Date.now() - h.at < AVAIL_MAX_AGE_MS) return;
-    this._fetchHistory(entityId, this._availRange);
+    this._fetchHistory(c, entityId, this._availRange);
   }
 
-  async _fetchHistory(entityId, range) {
+  // Recorder-Verlauf im Kurzformat für [start, end] (ms).
+  async _recorderStates(entityId, start, end) {
+    const result = await this._hass.callWS({
+      type: "history/history_during_period",
+      start_time: new Date(start).toISOString(),
+      end_time: new Date(end).toISOString(),
+      entity_ids: [entityId],
+      include_start_time_state: true,
+      significant_changes_only: false,
+      minimal_response: true,
+      no_attributes: true,
+    });
+    return (result && result[entityId]) || [];
+  }
+
+  // Zuerst das eigene Protokoll der Integration (schnell). Nur den Teil
+  // davor, den es noch nicht abdeckt (erste Tage nach dem Update auf 2.7.0),
+  // aus dem Recorder holen - der ist bei langen Zeiträumen langsam, darum
+  // wird dieser ältere Teil zwischengespeichert: er ändert sich nicht mehr.
+  async _loadAvailability(c, entityId, range, start, end) {
+    let log = null;
+    try {
+      log = await this._hass.callWS({
+        type: "unifi_dynamic/availability",
+        entry_id: c.entry_id,
+        mac: c.mac,
+        start: start / 1000,
+      });
+    } catch (err) {
+      log = null; // Älteres Backend: nur Recorder.
+    }
+    const since = log && typeof log.since === "number" ? log.since * 1000 : null;
+    const own = log
+      ? (log.events || []).map(([t, s]) => ({ s: s === 1 ? "on" : s === 0 ? "off" : "unavailable", lu: t }))
+      : [];
+    if (since !== null && since <= start + 60000) return own;
+    const until = since !== null ? since : end;
+    const ckey = `${entityId}|${range}`;
+    this._recorderCache = this._recorderCache || {};
+    let cached = this._recorderCache[ckey];
+    if (!cached || cached.until < until - 60000 || cached.start > start + 3600000 || Date.now() - cached.at > 600000) {
+      cached = { start, until, at: Date.now(), states: await this._recorderStates(entityId, start, until) };
+      this._recorderCache[ckey] = cached;
+    }
+    const older = cached.states.filter((st) => {
+      const t = typeof st.lu === "number" ? st.lu * 1000 : Date.parse(st.last_updated || "");
+      return !(t >= until);
+    });
+    return older.concat(own);
+  }
+
+  async _fetchHistory(c, entityId, range) {
     const key = `${entityId}|${range}`;
     const end = Date.now();
     const start = end - AVAIL_RANGES[range] * 1000;
@@ -927,20 +990,11 @@ class UnifiDynamicPanel extends HTMLElement {
     this._history = prev
       ? { ...prev, loading: true }
       : { key, loading: true, error: null, states: null, start, end, at: end };
+    this._tickLoader(end);
     let states = null;
     let error = null;
     try {
-      const result = await this._hass.callWS({
-        type: "history/history_during_period",
-        start_time: new Date(start).toISOString(),
-        end_time: new Date(end).toISOString(),
-        entity_ids: [entityId],
-        include_start_time_state: true,
-        significant_changes_only: false,
-        minimal_response: true,
-        no_attributes: true,
-      });
-      states = (result && result[entityId]) || [];
+      states = await this._loadAvailability(c, entityId, range, start, end);
     } catch (err) {
       error = (err && err.message) || String(err);
     }
@@ -1069,10 +1123,10 @@ class UnifiDynamicPanel extends HTMLElement {
 
     const entityId = this._onlineEntityId(c.device_id);
     if (!entityId) return note(t("availNoEntity"));
-    this._ensureHistory(entityId);
+    this._ensureHistory(c, entityId);
     const h = this._history;
     if (!h || h.key !== `${entityId}|${range}` || (!h.states && h.loading)) {
-      return note(t("availLoading"));
+      return `${head}${this._availLoaderHtml()}`;
     }
     if (h.error) return note(`${t("availError")} ${h.error}`);
 
@@ -1157,6 +1211,50 @@ class UnifiDynamicPanel extends HTMLElement {
         ${legend}
         ${list}
       </div>`;
+  }
+
+  // Lade-Animation: freundlicher Elefant mit schwingendem Rüssel, wechselnde
+  // Statuswörter und Sekundenzähler (siehe _tickLoader). Nur CSS-Animation;
+  // bei "Bewegung reduzieren" steht alles still.
+  _availLoaderHtml() {
+    const esc = (v) => this._escape(v);
+    const words = this._t("availLoadingWords");
+    return `<div class="avail avail-loading" role="status" aria-label="${esc(this._t("availLoading"))}">
+        <div class="ele-row">
+          <svg class="ele" viewBox="0 0 64 56" aria-hidden="true">
+            <path class="ele-star" d="M6 2l1.3 4.7L12 8l-4.7 1.3L6 14l-1.3-4.7L0 8l4.7-1.3z"/>
+            <g class="ele-body">
+              <ellipse cx="40" cy="36" rx="19" ry="13" class="ele-a"/>
+              <rect x="28" y="42" width="7" height="11" rx="3.5" class="ele-b"/>
+              <rect x="46" y="42" width="7" height="11" rx="3.5" class="ele-b"/>
+              <path d="M58 32q5 1 4 6" class="ele-tail"/>
+              <g class="ele-trunk"><path d="M16 28 C 8 32, 8 42, 12 46 q 2 2 4 0"/></g>
+              <circle cx="24" cy="24" r="11" class="ele-a"/>
+              <path class="ele-ear ele-b" d="M31 14c9-3 14 5 11 12-2 5-8 6-12 3z"/>
+              <ellipse class="ele-eye" cx="22" cy="23" rx="1.6" ry="2"/>
+              <circle cx="18" cy="27.5" r="2.2" class="ele-cheek"/>
+            </g>
+          </svg>
+          <div class="ele-txt">
+            <div class="ele-words">${words.map((w) => `<span class="shimmer">${esc(w)}</span>`).join("")}</div>
+            <div class="ele-sec"><span class="avail-sec">0</span> s</div>
+          </div>
+        </div>
+        <div class="ele-track"></div>
+      </div>`;
+  }
+
+  // Sekundenzähler direkt im DOM hochzählen, ohne den Dialog neu aufzubauen.
+  _tickLoader(startedAt) {
+    window.clearInterval(this._loaderTimer);
+    this._loaderTimer = window.setInterval(() => {
+      const el = this.shadowRoot && this.shadowRoot.querySelector(".avail-sec");
+      if (!this._history || !this._history.loading) {
+        window.clearInterval(this._loaderTimer);
+        return;
+      }
+      if (el) el.textContent = String(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
   }
 
   // Tooltip über einem Unterbruch (Maus: beim Überfahren, Touch: Antippen).
@@ -3532,7 +3630,7 @@ class UnifiDynamicPanel extends HTMLElement {
           font-size: 13px;
         }
         .avail-facts b {
-          color: var(--udc-warning);
+          color: color-mix(in srgb, var(--udc-warning) 85%, var(--udc-text));
           font-weight: 500;
         }
         .avail-barwrap {
@@ -3550,14 +3648,18 @@ class UnifiDynamicPanel extends HTMLElement {
           top: 0;
           bottom: 0;
         }
-        .avail-bar .seg.on {
-          background: var(--udc-success);
+        /* Getönt wie die Online-Pille statt voller Signalfarben. */
+        .avail-bar .seg.on,
+        .avail-legend i.on {
+          background: color-mix(in srgb, var(--udc-success) 22%, var(--udc-card));
         }
         .avail-bar .seg.off {
           /* Über den Nachbarn, auch wenn die Mindestbreite überlappt. */
           z-index: 1;
           min-width: 3px;
-          background: var(--udc-warning);
+          background: color-mix(in srgb, var(--udc-warning) 40%, var(--udc-card));
+          /* Feine Kante: kurze Unterbrüche bleiben auch getönt erkennbar. */
+          box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--udc-warning) 80%, var(--udc-card));
           cursor: pointer;
         }
         .avail-bar .seg.none,
@@ -3569,8 +3671,7 @@ class UnifiDynamicPanel extends HTMLElement {
           );
         }
         .avail-bar .seg.hover {
-          filter: brightness(1.2);
-          box-shadow: inset 0 0 0 2px var(--udc-card);
+          background: color-mix(in srgb, var(--udc-warning) 60%, var(--udc-card));
         }
         .avail-now {
           position: absolute;
@@ -3649,11 +3750,164 @@ class UnifiDynamicPanel extends HTMLElement {
           border-radius: 3px;
           vertical-align: -1px;
         }
-        .avail-legend i.on {
-          background: var(--udc-success);
-        }
         .avail-legend i.off {
-          background: var(--udc-warning);
+          background: color-mix(in srgb, var(--udc-warning) 40%, var(--udc-card));
+          box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--udc-warning) 80%, var(--udc-card));
+        }
+        /* Lade-Animation (Elefant) */
+        .ele-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .ele {
+          flex: 0 0 auto;
+          width: 64px;
+          height: 56px;
+          overflow: visible;
+        }
+        .ele .ele-a,
+        .ele .ele-trunk path {
+          fill: #a9bccf;
+        }
+        .ele .ele-trunk path {
+          fill: none;
+          stroke: #a9bccf;
+          stroke-width: 6;
+          stroke-linecap: round;
+        }
+        .ele .ele-b {
+          fill: #8aa0b6;
+        }
+        .ele .ele-tail {
+          fill: none;
+          stroke: #8aa0b6;
+          stroke-width: 2;
+          stroke-linecap: round;
+        }
+        .ele .ele-eye {
+          fill: #2b2f36;
+          transform-origin: 22px 23px;
+          animation: ele-blink 4.2s infinite;
+        }
+        .ele .ele-cheek {
+          fill: #f4a3a8;
+          opacity: 0.55;
+        }
+        .ele .ele-star {
+          fill: var(--udc-warning);
+          transform-origin: 6px 8px;
+          animation: ele-twinkle 1.4s ease-in-out infinite;
+        }
+        .ele .ele-body {
+          transform-origin: 32px 50px;
+          animation: ele-bob 1.4s ease-in-out infinite;
+        }
+        .ele .ele-trunk {
+          transform-origin: 17px 30px;
+          animation: ele-swing 1.4s ease-in-out infinite;
+        }
+        .ele .ele-ear {
+          transform-origin: 34px 22px;
+          animation: ele-flap 1.4s ease-in-out infinite;
+        }
+        @keyframes ele-bob {
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes ele-swing {
+          0%, 100% { transform: rotate(-14deg); }
+          50% { transform: rotate(22deg); }
+        }
+        @keyframes ele-flap {
+          0%, 100% { transform: rotate(0); }
+          50% { transform: rotate(-9deg); }
+        }
+        @keyframes ele-blink {
+          0%, 92%, 100% { transform: scaleY(1); }
+          95% { transform: scaleY(0.1); }
+        }
+        @keyframes ele-twinkle {
+          0%, 100% { transform: rotate(0) scale(0.6); opacity: 0.4; }
+          50% { transform: rotate(90deg) scale(1.1); opacity: 1; }
+        }
+        .ele-txt {
+          flex: 1;
+          min-width: 0;
+        }
+        .ele-words {
+          position: relative;
+          height: 20px;
+          overflow: hidden;
+        }
+        .ele-words span {
+          position: absolute;
+          top: 0;
+          left: 0;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          opacity: 0;
+          animation: ele-words 12s infinite, ele-sweep 1.8s linear infinite;
+        }
+        .ele-words span:nth-child(2) { animation-delay: 3s, 0s; }
+        .ele-words span:nth-child(3) { animation-delay: 6s, 0s; }
+        .ele-words span:nth-child(4) { animation-delay: 9s, 0s; }
+        .shimmer {
+          font-size: 13px;
+          font-weight: 500;
+          background: linear-gradient(90deg, var(--udc-text3) 0%, var(--udc-text3) 40%, var(--udc-text) 50%, var(--udc-text3) 60%, var(--udc-text3) 100%);
+          background-size: 250% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+        }
+        @keyframes ele-sweep {
+          from { background-position: 100% 0; }
+          to { background-position: -150% 0; }
+        }
+        @keyframes ele-words {
+          0% { opacity: 0; transform: translateY(10px); }
+          3%, 22% { opacity: 1; transform: none; }
+          25%, 100% { opacity: 0; transform: translateY(-10px); }
+        }
+        .ele-sec {
+          margin-top: 2px;
+          color: var(--udc-text3);
+          font-size: 12px;
+          font-variant-numeric: tabular-nums;
+        }
+        .ele-track {
+          position: relative;
+          height: 22px;
+          margin-top: 12px;
+          overflow: hidden;
+          border-radius: 6px;
+          background: color-mix(in srgb, var(--udc-text) 8%, var(--udc-card));
+        }
+        .ele-track::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 30%;
+          border-radius: 6px;
+          background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--udc-success) 22%, transparent), transparent);
+          animation: ele-scan 1.8s ease-in-out infinite alternate;
+        }
+        @keyframes ele-scan {
+          from { left: -30%; }
+          to { left: 100%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ele *,
+          .ele-words span,
+          .ele-track::before {
+            animation: none !important;
+          }
+          .ele-words span:first-child {
+            opacity: 1;
+          }
         }
         .avail-list {
           margin-top: 10px;

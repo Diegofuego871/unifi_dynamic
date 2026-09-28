@@ -249,13 +249,18 @@ erreichbar war (grün) und wann nicht (orange) — wahlweise für die letzten
 Darüber stehen die Verfügbarkeit in Prozent, die Anzahl Unterbrüche, ihre
 Gesamtdauer und der längste; Überfahren oder Antippen eines Unterbruchs
 zeigt Beginn, Ende und Dauer, darunter sind alle Unterbrüche aufgelistet
-(neueste zuerst). Die Daten stammen aus dem Recorder-Verlauf der
-Online-Entität des Clients. Zeiten ohne Daten (bevor der Client bekannt war
-oder älter als die Aufbewahrungsdauer des Recorders, standardmässig 10 Tage)
-sind schraffiert und zählen nicht mit. Einschränkungen: Unterbrüche, die
-kürzer sind als Abfrageintervall plus Offline-Schwelle, sind nicht
-sichtbar, und solange der UniFi-Controller selbst nicht erreichbar ist,
-behält der Client seinen letzten Zustand.
+(neueste zuerst). Die Daten stammen aus einem eigenen, schlanken
+Verfügbarkeitsprotokoll der Integration: Sie merkt sich pro Client nur die
+Wechsel zwischen online und offline, 31 Tage lang und unabhängig von der
+Aufbewahrungsdauer des Recorders. Dadurch lädt auch die 30-Tage-Ansicht
+sofort. Für die Zeit, bevor das Protokoll lief (die ersten Tage nach dem
+Update auf 2.7.0), ergänzt das Panel den Recorder-Verlauf der
+Online-Entität; das kann bei langen Zeiträumen einige Sekunden dauern —
+währenddessen blättert ein kleiner Elefant im Protokoll. Zeiten ohne Daten
+(bevor der Client bekannt war, während Home Assistant nicht lief oder der
+UniFi-Controller nicht erreichbar war) sind schraffiert und zählen nicht
+mit. Einschränkung: Unterbrüche, die kürzer sind als Abfrageintervall plus
+Offline-Schwelle, sind nicht sichtbar.
 
 Der Abschnitt „Netzwerk" zeigt alles, was die Integration über den Client weiss, als
 Kacheln: IP, MAC, Hostname, SSID, Access Point, Signal (dBm, der RSSI-Wert

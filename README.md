@@ -240,12 +240,16 @@ reachable (green) and when it wasn't (orange) — for the last 24 hours,
 availability in percent, the number of outages, their total and the
 longest one; hovering or tapping an outage shows its start, end and
 duration, and all outages are listed below (newest first). The data comes
-from the recorder history of the client's online entity. Periods without
-data (before the client was known, or older than the recorder keeps,
-10 days by default) are hatched and don't count. Limitations: outages
-shorter than the update interval plus the offline threshold aren't
-visible, and while the UniFi controller itself is unreachable the client
-keeps its last state.
+from the integration's own lean availability log: for each client it only
+keeps the changes between online and offline, for 31 days and independent
+of how long the recorder keeps its data. That's why even the 30-day view
+loads instantly. For the time before the log was running (the first days
+after updating to 2.7.0), the panel adds the recorder history of the online
+entity; for long ranges that can take a few seconds — meanwhile a small
+elephant leafs through the log. Periods without data (before the client
+was known, while Home Assistant wasn't running or the UniFi controller was
+unreachable) are hatched and don't count. Limitation: outages shorter than
+the update interval plus the offline threshold aren't visible.
 
 The "Network" section shows everything
 the integration knows about the client as tiles: IP, MAC, hostname, SSID,

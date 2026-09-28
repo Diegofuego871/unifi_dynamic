@@ -62,6 +62,7 @@ from .const import (
     SERVICE_PURGE_NOW,
     SERVICE_REMOVE_CLIENT,
     STATIC_URL_PATH,
+    WS_TYPE_AVAILABILITY,
     WS_TYPE_EXCLUDE_CLIENT,
     WS_TYPE_LIST_CLIENTS,
     WS_TYPE_REMOVE_CLIENT,
@@ -756,6 +757,31 @@ def _ws_unexclude_client(
     connection.send_result(msg["id"], {"changed": changed})
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_AVAILABILITY,
+        vol.Required("entry_id"): str,
+        vol.Required(ATTR_MAC): str,
+        vol.Required("start"): vol.Coerce(float),
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_availability(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Verfügbarkeitsprotokoll eines Clients ab start (Epoch-Sekunden)."""
+    coordinator: UnifiDynamicCoordinator | None = hass.data.get(DOMAIN, {}).get(
+        msg["entry_id"]
+    )
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+    connection.send_result(
+        msg["id"], coordinator.availability(msg[ATTR_MAC], msg["start"])
+    )
+
+
 def _is_own_device(device: dr.DeviceEntry) -> bool:
     """Gerät dieser Integration (ein UniFi-Client), nicht verknüpfbar."""
     return any(domain == DOMAIN for domain, *_ in device.identifiers)
@@ -884,6 +910,7 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_unexclude_client)
     websocket_api.async_register_command(hass, _ws_list_devices)
     websocket_api.async_register_command(hass, _ws_link_device)
+    websocket_api.async_register_command(hass, _ws_availability)
 
 
 # ---------------------------------------------------------------------------

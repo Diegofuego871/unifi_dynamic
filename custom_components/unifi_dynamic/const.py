@@ -34,6 +34,12 @@ STORE_MIGRATION_FLAG = "entity_id_migration_v1_done"
 # gesetzt. Reine Zuordnung: das verknüpfte Gerät wird nie verändert.
 STORE_DEVICE_LINKS = "device_links"
 
+# Verfügbarkeitsprotokoll für den Zeitstrahl im Panel: eigene Datei, damit
+# der häufig geschriebene Client-Cache nicht mitwächst.
+AVAIL_STORE_SUFFIX = "availability"
+AVAIL_KEEP_DAYS = 31
+AVAIL_SAVE_DELAY = 120  # Sekunden; Wechsel sind selten, Verlust kurz vor Absturz verkraftbar
+
 # Internes Cache-Feld: Epoch-Sekunden (UTC), zu denen die Integration den
 # Client zuletzt selbst in der UniFi-API gesehen hat. Einzige Grundlage für
 # Purge, Online-Erkennung und den "Last seen"-Sensor.
@@ -190,7 +196,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "24"
+PANEL_VERSION = "25"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
@@ -204,6 +210,7 @@ WS_TYPE_EXCLUDE_CLIENT = f"{DOMAIN}/exclude_client"
 WS_TYPE_UNEXCLUDE_CLIENT = f"{DOMAIN}/unexclude_client"
 WS_TYPE_LIST_DEVICES = f"{DOMAIN}/list_devices"
 WS_TYPE_LINK_DEVICE = f"{DOMAIN}/link_device"
+WS_TYPE_AVAILABILITY = f"{DOMAIN}/availability"
 
 # Android ersetzt Meldungen mit gleichem Tag, statt sie zu stapeln.
 NOTIFICATION_TAG_PREFIX = "unifi_dynamic_purge"
