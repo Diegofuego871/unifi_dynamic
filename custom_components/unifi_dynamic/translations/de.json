@@ -14,13 +14,38 @@
           "host": "Adresse des UniFi-Controllers, ohne https://",
           "purge_days": "0 deaktiviert das automatische Entfernen."
         }
+      },
+      "reauth_confirm": {
+        "title": "API-Key erneuern",
+        "description": "Der Controller {host} lehnt den hinterlegten API-Key ab. Gib einen neuen Key ein; alles andere bleibt, wie es ist.",
+        "data": {
+          "api_key": "Neuer API-Key"
+        }
+      },
+      "reconfigure": {
+        "title": "Verbindung ändern",
+        "description": "Ändert Host, API-Key oder SSL-Prüfung dieses Hubs. Geräte, Entitäten, Verknüpfungen und Einstellungen bleiben erhalten. Die Verbindung wird vor dem Speichern getestet.",
+        "data": {
+          "host": "Host oder IP",
+          "api_key": "Neuer API-Key",
+          "verify_ssl": "SSL-Zertifikat prüfen"
+        },
+        "data_description": {
+          "host": "Adresse des UniFi-Controllers, ohne https://",
+          "api_key": "Leer lassen, um den hinterlegten Key zu behalten."
+        }
       }
     },
     "error": {
-      "cannot_connect": "Verbindung fehlgeschlagen. Host und API-Key prüfen."
+      "cannot_connect": "Host nicht erreichbar. Adresse und SSL-Einstellung prüfen.",
+      "invalid_auth": "API-Key ungültig. Der Controller lehnt den Key ab.",
+      "invalid_host": "Bitte Host oder IP angeben.",
+      "already_configured": "Dieser Host wird bereits von einem anderen Hub verwendet."
     },
     "abort": {
-      "already_configured": "Dieser Host ist bereits eingerichtet."
+      "already_configured": "Dieser Host ist bereits eingerichtet.",
+      "reauth_successful": "API-Key erneuert.",
+      "reconfigure_successful": "Verbindung aktualisiert."
     }
   },
   "options": {

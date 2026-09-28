@@ -5,12 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-from aiohttp import ClientTimeout
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     CLICK_TARGETS,
@@ -48,8 +46,8 @@ from .const import (
     DOMAIN,
     MESSAGE_FIELDS,
     NOTIFY_NONE,
-    SITES_PATH,
 )
+from . import connection
 from .coordinator import preferred_client_name
 from .options_api import OFFLINE_AFTER_RANGE, PURGE_DAYS_RANGE, SCAN_INTERVAL_RANGE
 
@@ -84,24 +82,13 @@ def _flatten(user_input: dict[str, Any]) -> dict[str, Any]:
             flat[key] = value
     return flat
 
-TEST_TIMEOUT = ClientTimeout(total=20)
 
 
 async def _test_connection(
     hass: HomeAssistant, host: str, api_key: str, verify_ssl: bool
 ) -> None:
     """Wirft eine Exception, wenn Host oder API-Key nicht funktionieren."""
-    session = async_get_clientsession(hass, verify_ssl=verify_ssl)
-    url = f"https://{host}{SITES_PATH}"
-
-    async with session.get(
-        url,
-        headers={"X-API-KEY": api_key, "Accept": "application/json"},
-        timeout=TEST_TIMEOUT,
-    ) as resp:
-        if resp.status >= 400:
-            text = await resp.text()
-            raise ConnectionError(f"HTTP {resp.status}: {text[:200]}")
+    await connection.async_test_connection(hass, host, api_key, verify_ssl)
 
 
 def _client_options(
@@ -194,7 +181,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            host = str(user_input[CONF_HOST]).strip()
+            host = connection.normalize_host(user_input[CONF_HOST])
             api_key = str(user_input[CONF_API_KEY]).strip()
             verify_ssl = bool(user_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL))
 
@@ -202,10 +189,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(host.lower())
             self._abort_if_unique_id_configured()
 
-            try:
-                await _test_connection(self.hass, host, api_key, verify_ssl)
-            except Exception:  # noqa: BLE001
-                errors["base"] = "cannot_connect"
+            error = await connection.async_check(self.hass, host, api_key, verify_ssl)
+            if error:
+                errors["base"] = error
             else:
                 return self.async_create_entry(
                     title=f"UniFi {host}",
@@ -239,6 +225,102 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+
+    # -- Erneut authentifizieren (API-Key ungültig) ------------------------
+
+    async def async_step_reauth(
+        self, entry_data: dict[str, Any]
+    ) -> config_entries.ConfigFlowResult:
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        entry = self._get_reauth_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            api_key = str(user_input[CONF_API_KEY]).strip()
+            error = await connection.async_check(
+                self.hass,
+                entry.data[CONF_HOST],
+                api_key,
+                bool(entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)),
+            )
+            if error:
+                errors["base"] = error
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_API_KEY: api_key}
+                )
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_API_KEY): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    )
+                }
+            ),
+            description_placeholders={"host": str(entry.data.get(CONF_HOST, ""))},
+            errors=errors,
+        )
+
+    # -- Neu konfigurieren (Host, API-Key, SSL) ----------------------------
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """
+        Verbindungsdaten ändern, ohne den Hub neu anzulegen. Ein leeres
+        Key-Feld behält den bisherigen Key. Die ID des Hubs bleibt, damit
+        bleibt alles andere erhalten.
+        """
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        host = str(entry.data.get(CONF_HOST, ""))
+        verify_ssl = bool(entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL))
+        if user_input is not None:
+            host = connection.normalize_host(user_input.get(CONF_HOST, ""))
+            verify_ssl = bool(user_input.get(CONF_VERIFY_SSL, verify_ssl))
+            api_key = str(user_input.get(CONF_API_KEY) or "").strip() or str(
+                entry.data.get(CONF_API_KEY, "")
+            )
+            if not host:
+                errors[CONF_HOST] = connection.ERR_INVALID_HOST
+            elif connection.host_taken(self.hass, host, entry.entry_id):
+                errors[CONF_HOST] = connection.ERR_ALREADY_CONFIGURED
+            else:
+                error = await connection.async_check(self.hass, host, api_key, verify_ssl)
+                if error:
+                    errors["base"] = error
+                else:
+                    return self.async_update_reload_and_abort(
+                        entry,
+                        unique_id=host.lower(),
+                        title=connection.updated_title(entry, host),
+                        data_updates={
+                            CONF_HOST: host,
+                            CONF_API_KEY: api_key,
+                            CONF_VERIFY_SSL: verify_ssl,
+                        },
+                    )
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_HOST, default=host): str,
+                    vol.Optional(CONF_API_KEY): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD
+                        )
+                    ),
+                    vol.Optional(CONF_VERIFY_SSL, default=verify_ssl): bool,
+                }
+            ),
+            errors=errors,
+        )
 
     @staticmethod
     @callback

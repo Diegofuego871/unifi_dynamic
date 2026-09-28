@@ -87,6 +87,23 @@ Clients"**.
 | Abfrageintervall | Wie oft die Clientliste abgefragt wird (Sekunden) |
 | Entfernen nach Tagen ohne Sichtung | 0 deaktiviert das automatische Entfernen |
 
+### Verbindung ändern
+
+Host, API-Key und SSL-Prüfung lassen sich ändern, ohne den Hub zu löschen,
+zum Beispiel nach einem neuen API-Key oder wenn ein Controller mit gleicher
+oder neuer IP ersetzt wird:
+
+- **⋮ → Neu konfigurieren** an der Integration: Host, neuer API-Key (leer
+  lassen behält den bisherigen) und SSL-Prüfung.
+- **Erneut authentifizieren**: Lehnt der Controller den Key ab (HTTP
+  401/403), meldet Home Assistant das unter Einstellungen, dort wird nur der
+  neue Key eingegeben.
+- Im **Panel** unter Einstellungen → Verbindung (siehe [Panel](#panel)).
+
+Alle drei Wege testen die Verbindung vor dem Speichern und behalten den
+Hub: Geräte, Entitäten, Verknüpfungen, Schutzliste, Verlauf und
+Einstellungen bleiben erhalten.
+
 ## Optionen
 
 Nachträglich über **Konfigurieren** an der Integration erreichbar. Der Dialog
@@ -255,8 +272,20 @@ Felder sind markiert, gespeichert wird erst mit „Speichern". Ändern sich
 Abfrageintervall oder Uhrzeit des Laufs, lädt die Integration dabei kurz
 neu, worauf der Dialog vorher hinweist. Bei „Alle Hubs" ist das Zahnrad
 gesperrt, weil die Einstellungen pro Hub gelten; mit nur einem Hub gibt es
-keine Auswahl, nur das Zahnrad. Host, API-Key und SSL-Prüfung bleiben
-bewusst dem Einrichtungsdialog von Home Assistant vorbehalten.
+keine Auswahl, nur das Zahnrad.
+
+Unter den Abschnitten zeigt **Verbindung** Host/IP, SSL-Prüfung, ob ein
+API-Key hinterlegt ist, und den Status („Verbunden", „API-Key ungültig",
+„Nicht erreichbar"). Der Key selbst wird nie angezeigt, auch nicht
+teilweise. „Verbindung ändern…" öffnet einen kleinen Dialog für Host, neuen
+API-Key (leer lassen behält den bisherigen) und SSL-Prüfung. Vor dem
+Speichern wird die Verbindung getestet; schlägt der Test fehl, bleibt alles
+unverändert und der Dialog nennt den Grund („API-Key ungültig", „Host nicht
+erreichbar"). Ein Host, den bereits ein anderer Hub verwendet, wird
+abgelehnt. Nach dem Speichern lädt die Integration neu; der Hub bleibt
+derselbe, Geräte, Entitäten, Verknüpfungen, Schutzliste, Verlauf und
+Einstellungen bleiben erhalten. Lehnt der Controller den Key ab, erscheint
+zuoberst in den Einstellungen ein Hinweis mit dem Knopf „API-Key erneuern".
 
 ![Einstellungen im Panel: Controller-Verfügbarkeit über 7 Tage, Abschnitt „Abfrage" aufgeklappt mit geändertem Intervall, Reaktionszeit und aufgeklapptem ⓘ-Text](docs/panel-settings.png)
 

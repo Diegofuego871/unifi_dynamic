@@ -26,6 +26,10 @@
  * Objekt von panel.html (aus dem Elternfenster).
  */
 
+// Wie lange ein Verbindungsunterbruch still überbrückt wird, bevor die
+// Fehlermeldung erscheint.
+const RETRY_GIVE_UP_MS = 30000;
+
 const STRINGS = {
   de: {
     searchPlaceholder: "In allen Spalten suchen…",
@@ -83,6 +87,8 @@ const STRINGS = {
     empty: "Keine Clients gefunden.",
     loading: "Lädt…",
     error: "Fehler beim Laden der Clientliste:",
+    errorConnection: "Keine Verbindung zu Home Assistant. Es wird automatisch erneut versucht.",
+    errorCode: "Fehlercode",
     retry: "Erneut versuchen",
     resetFilters: "Filter zurücksetzen",
     clearSearch: "Suche leeren",
@@ -118,6 +124,34 @@ const STRINGS = {
     settingsBtn: "Einstellungen",
     settingsNeedHub: "Einstellungen gelten pro Hub – zuerst einen Hub wählen",
     settingsTitle: "Einstellungen",
+    secConnection: "Verbindung",
+    connHost: "Host / IP",
+    connSsl: "SSL-Zertifikat prüfen",
+    connKey: "API-Key",
+    connKeyStored: "hinterlegt",
+    connKeyMissing: "fehlt",
+    connYes: "ja",
+    connNo: "nein",
+    connStatus: "Status",
+    connOk: "Verbunden",
+    connAuthFailed: "API-Key ungültig",
+    connOffline: "Nicht erreichbar",
+    connEdit: "Verbindung ändern…",
+    connRenew: "API-Key erneuern",
+    connBanner: "Der Controller lehnt den hinterlegten API-Key ab. Es werden keine Clients mehr aktualisiert.",
+    connDlgTitle: "Verbindung ändern",
+    connNewKey: "Neuer API-Key",
+    connNewKeyHint: "Leer lassen, um den hinterlegten Key zu behalten.",
+    connNewKeyRequired: "Bitte den neuen API-Key eingeben.",
+    connHint: "Die Verbindung wird vor dem Speichern getestet. Danach wird die Integration neu geladen; Geräte, Entitäten, Verknüpfungen und Einstellungen bleiben erhalten.",
+    connTest: "Testen und speichern",
+    connTesting: "Verbindung wird getestet…",
+    connSaved: "Verbindung gespeichert, Integration wird neu geladen",
+    connErr_invalid_auth: "API-Key ungültig. Der Controller lehnt den Key ab.",
+    connErr_cannot_connect: "Host nicht erreichbar. Adresse und SSL-Einstellung prüfen.",
+    connErr_invalid_host: "Bitte Host oder IP angeben.",
+    connErr_already_configured: "Dieser Host wird bereits von einem anderen Hub verwendet.",
+    connErr_other: "Speichern fehlgeschlagen:",
     settingsLoading: "Einstellungen werden geladen…",
     settingsLoadError: "Einstellungen konnten nicht geladen werden:",
     settingsSaveError: "Speichern fehlgeschlagen:",
@@ -346,6 +380,8 @@ const STRINGS = {
     empty: "No clients found.",
     loading: "Loading…",
     error: "Failed to load the client list:",
+    errorConnection: "No connection to Home Assistant. Retrying automatically.",
+    errorCode: "Error code",
     retry: "Retry",
     resetFilters: "Reset filters",
     clearSearch: "Clear search",
@@ -381,6 +417,34 @@ const STRINGS = {
     settingsBtn: "Settings",
     settingsNeedHub: "Settings apply per hub – choose a hub first",
     settingsTitle: "Settings",
+    secConnection: "Connection",
+    connHost: "Host / IP",
+    connSsl: "Verify SSL certificate",
+    connKey: "API key",
+    connKeyStored: "stored",
+    connKeyMissing: "missing",
+    connYes: "yes",
+    connNo: "no",
+    connStatus: "Status",
+    connOk: "Connected",
+    connAuthFailed: "API key invalid",
+    connOffline: "Not reachable",
+    connEdit: "Change connection…",
+    connRenew: "Renew API key",
+    connBanner: "The controller rejects the stored API key. Clients are no longer updated.",
+    connDlgTitle: "Change connection",
+    connNewKey: "New API key",
+    connNewKeyHint: "Leave empty to keep the stored key.",
+    connNewKeyRequired: "Please enter the new API key.",
+    connHint: "The connection is tested before saving. The integration then reloads; devices, entities, links and settings are kept.",
+    connTest: "Test and save",
+    connTesting: "Testing connection…",
+    connSaved: "Connection saved, integration is reloading",
+    connErr_invalid_auth: "API key invalid. The controller rejects the key.",
+    connErr_cannot_connect: "Host not reachable. Check address and SSL setting.",
+    connErr_invalid_host: "Please enter a host or IP.",
+    connErr_already_configured: "This host is already used by another hub.",
+    connErr_other: "Saving failed:",
     settingsLoading: "Loading settings…",
     settingsLoadError: "Could not load the settings:",
     settingsSaveError: "Saving failed:",
@@ -627,6 +691,8 @@ const HIDEABLE_KEYS = HIDEABLE_COLUMNS.map(([key]) => key);
 
 // Material Design Icons als Pfade; das iframe kennt HAs ha-icon nicht.
 const ICONS = {
+  alert: "M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
+  key: "M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z",
   wifi: "M12,21L15.6,16.2C14.6,15.45 13.35,15 12,15C10.65,15 9.4,15.45 8.4,16.2L12,21M12,3C7.95,3 4.21,4.34 1.2,6.6L3,9C5.5,7.12 8.62,6 12,6C15.38,6 18.5,7.12 21,9L22.8,6.6C19.79,4.34 16.05,3 12,3M12,9C9.3,9 6.81,9.89 4.8,11.4L6.6,13.8C8.1,12.67 9.97,12 12,12C14.03,12 15.9,12.67 17.4,13.8L19.2,11.4C17.19,9.89 14.7,9 12,9Z",
   eth: "M7,15H9V18H11V15H13V18H15V15H17V18H19V9H15V6H9V9H5V18H7V15M4.38,3H19.63C20.94,3 22,4.06 22,5.38V19.63A2.37,2.37 0 0,1 19.63,22H4.38C3.06,22 2,20.94 2,19.63V5.38C2,4.06 3.06,3 4.38,3Z",
   unknown: "M10,19H13V22H10V19M12,2C17.35,2.22 19.68,7.62 16.5,11.67C15.67,12.67 14.33,13.33 13.67,14.17C13,15 13,16 13,17H10C10,15.33 10,13.92 10.67,12.92C11.33,11.92 12.67,11.33 13.5,10.67C15.92,8.43 15.32,5.26 12,5A3,3 0 0,0 9,8H6A6,6 0 0,1 12,2Z",
@@ -777,6 +843,8 @@ class UnifiDynamicPanel extends HTMLElement {
     this._hubs = [];
     // Einstellungsdialog: siehe _openSettings.
     this._settings = null;
+    // Verbindungsdialog: siehe _openConn.
+    this._conn = null;
     this._hostCount = 0;
     this._loading = true;
     this._error = null;
@@ -951,7 +1019,13 @@ class UnifiDynamicPanel extends HTMLElement {
       this._loadUserPrefs();
       this._fetchClients();
       this._startPolling();
+    } else if (hass && hass.connected === true && this._wasDisconnected) {
+      // HA hat die WebSocket-Verbindung wiederhergestellt (z.B. App aus dem
+      // Hintergrund geholt): sofort neu laden statt auf den Poll zu warten.
+      this._wasDisconnected = false;
+      this._fetchClients();
     }
+    if (hass && hass.connected === false) this._wasDisconnected = true;
     // Entitätszustände im offenen Dialog aktuell halten.
     this._renderDialog();
     this._renderSettingsVersion();
@@ -968,11 +1042,14 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     this._startPolling();
     this._watchParentLocation(true);
+    document.addEventListener("visibilitychange", this._onVisible);
   }
 
   disconnectedCallback() {
     this._stopPolling();
     this._watchParentLocation(false);
+    document.removeEventListener("visibilitychange", this._onVisible);
+    this._clearRetry();
   }
 
   // Ist das Panel schon offen, wechselt HA bei einem Tipp auf eine weitere
@@ -990,6 +1067,13 @@ class UnifiDynamicPanel extends HTMLElement {
       // Anderer Ursprung (nicht in HA eingebettet): ohne Deep-Link weiter.
     }
   }
+
+  // Panel wieder sichtbar (App/Tab aus dem Hintergrund): sofort aktualisieren.
+  _onVisible = () => {
+    if (document.visibilityState !== "visible" || !this._hass) return;
+    this._retryCount = 0;
+    this._fetchClients();
+  };
 
   _t(key) {
     return STRINGS[pickLang(this._hass)][key];
@@ -1010,8 +1094,45 @@ class UnifiDynamicPanel extends HTMLElement {
     }
   }
 
+  // Verbindungsfehler der HA-WebSocket-Bibliothek (home-assistant-js-
+  // websocket): 1 = ERR_CANNOT_CONNECT, 3 = ERR_CONNECTION_LOST. Sie kommen
+  // als nackte Zahl, typischerweise wenn iOS/Android die App im Hintergrund
+  // eingefroren hat und die Verbindung beim Öffnen noch nicht wieder steht.
+  // Kein echter Fehler: still erneut versuchen, bestehende Daten behalten.
+  _isConnectionError(err) {
+    if (err === 1 || err === 3) return true;
+    if (err && (err.code === 1 || err.code === 3)) return true;
+    return Boolean(this._hass && this._hass.connected === false);
+  }
+
+  _clearRetry() {
+    if (this._retryTimer) {
+      window.clearTimeout(this._retryTimer);
+      this._retryTimer = null;
+    }
+  }
+
+  // Wiederholung mit wachsendem Abstand (1, 2, 4, 8, 15 s). Erst wenn die
+  // Verbindung nach RETRY_GIVE_UP_MS immer noch fehlt, kommt die Meldung.
+  _scheduleRetry() {
+    this._clearRetry();
+    const n = (this._retryCount = (this._retryCount || 0) + 1);
+    const delay = Math.min(15000, 1000 * 2 ** (n - 1));
+    this._retryTimer = window.setTimeout(() => {
+      this._retryTimer = null;
+      this._fetchClients();
+    }, delay);
+  }
+
+  _errorText(err) {
+    if (this._isConnectionError(err)) return this._t("errorConnection");
+    if (typeof err === "number") return `${this._t("errorCode")} ${err}`;
+    return (err && err.message) || String(err);
+  }
+
   async _fetchClients() {
     if (!this._hass) return;
+    this._clearRetry();
     try {
       const [result, hubs] = await Promise.all([
         this._hass.callWS({ type: "unifi_dynamic/list_clients" }),
@@ -1026,8 +1147,21 @@ class UnifiDynamicPanel extends HTMLElement {
       this._applyHub();
       this._lastFetchAt = new Date();
       this._error = null;
+      this._retryCount = 0;
+      this._connLostSince = null;
     } catch (err) {
-      this._error = (err && err.message) || String(err);
+      if (this._isConnectionError(err)) {
+        const now = Date.now();
+        this._connLostSince = this._connLostSince || now;
+        this._scheduleRetry();
+        // Kurze Unterbrüche nicht melden; vorhandene Daten bleiben stehen.
+        if (now - this._connLostSince < RETRY_GIVE_UP_MS) {
+          if (!this._allClients.length) return;
+          this._renderRows();
+          return;
+        }
+      }
+      this._error = this._errorText(err);
     }
     this._loading = false;
     this._renderRows();
@@ -1371,8 +1505,10 @@ class UnifiDynamicPanel extends HTMLElement {
     };
     const reload = changes.has("scan_interval") || changes.has("purge_time");
     return (
+      this._connBannerHtml() +
       `<div class="ver-slot">${this._versionHtml()}</div>` +
       `<div class="avail-slot">${this._settingsAvailHtml()}</div>` +
+      this._connSectionHtml() +
       this._settingsSections()
         .map(([id, keys]) => {
           const open = st.open.has(id);
@@ -1391,6 +1527,205 @@ class UnifiDynamicPanel extends HTMLElement {
       (reload ? `<div class="set-note">${esc(t("settingsReloadNote"))}</div>` : "") +
       (st.saveError ? `<div class="dlg-error">${esc(t("settingsSaveError"))} ${esc(st.saveError)}</div>` : "")
     );
+  }
+
+  // ---------------------------------------------------------------------
+  // Verbindung (Host, API-Key, SSL-Prüfung). Der API-Key kommt nie ins
+  // Panel: das Backend meldet nur, ob einer hinterlegt ist. Geändert wird im
+  // kleinen Dialog (unifi_dynamic/set_connection), der vor dem Speichern
+  // testet.
+  // ---------------------------------------------------------------------
+
+  _connInfo() {
+    const st = this._settings;
+    return (st && st.data && st.data.connection) || null;
+  }
+
+  _connBannerHtml() {
+    const c = this._connInfo();
+    if (!c || c.status !== "auth_failed") return "";
+    const esc = (v) => this._escape(v);
+    return `<div class="conn-banner" role="alert">
+        <span>${icon("alert")}<span>${esc(this._t("connBanner"))}</span></span>
+        <button type="button" class="dlg-btn primary" data-set="conn-renew">${esc(this._t("connRenew"))}</button>
+      </div>`;
+  }
+
+  _connSectionHtml() {
+    const c = this._connInfo();
+    if (!c) return "";
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const status = { ok: "connOk", auth_failed: "connAuthFailed", offline: "connOffline" }[c.status] || "connOk";
+    const line = (label, value) =>
+      `<div class="opt"><div class="opt-line"><span class="opt-label">${esc(label)}</span>${value}</div></div>`;
+    return `<section class="set-sec open conn-sec">
+        <div class="set-sec-head static"><span><span class="set-sec-title">${esc(t("secConnection"))}</span></span></div>
+        <div class="set-sec-body">
+          ${line(t("connHost"), `<span class="conn-val">${esc(c.host)}</span>`)}
+          ${line(t("connSsl"), `<span class="conn-val">${esc(c.verify_ssl ? t("connYes") : t("connNo"))}</span>`)}
+          ${line(t("connKey"), `<span class="conn-val">${esc(c.has_key ? t("connKeyStored") : t("connKeyMissing"))}</span>`)}
+          ${line(t("connStatus"), `<span class="conn-status ${esc(c.status)}">${esc(t(status))}</span>`)}
+          <div class="conn-actions"><button type="button" class="dlg-btn" data-set="conn-edit">${esc(t("connEdit"))}</button></div>
+        </div>
+      </section>`;
+  }
+
+  _openConn(renew) {
+    const c = this._connInfo();
+    const dialog = this.shadowRoot.querySelector("dialog.conn-edit");
+    if (!c || !dialog) return;
+    this._conn = {
+      entryId: this._settings.entryId,
+      host: c.host,
+      key: "",
+      ssl: Boolean(c.verify_ssl),
+      // Beim Erneuern ist ein neuer Key Pflicht.
+      renew: Boolean(renew),
+      busy: false,
+      error: null,
+    };
+    this._renderConn();
+    if (!dialog.open) {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    }
+    const focus = dialog.querySelector(renew ? '[data-conn="key"]' : '[data-conn="host"]');
+    if (focus) focus.focus();
+  }
+
+  _closeConn() {
+    const dialog = this.shadowRoot.querySelector("dialog.conn-edit");
+    this._conn = null;
+    if (dialog && dialog.open) {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    }
+  }
+
+  _connValid() {
+    const c = this._conn;
+    if (!c) return false;
+    if (!c.host.trim()) return false;
+    return !(c.renew && !c.key.trim());
+  }
+
+  _renderConn() {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.conn-edit");
+    const c = this._conn;
+    if (!dialog || !c) return;
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const err = c.error
+      ? `<div class="dlg-error" role="alert">${esc(
+          STRINGS.en["connErr_" + c.error] ? t("connErr_" + c.error) : `${t("connErr_other")} ${c.error}`
+        )}</div>`
+      : "";
+    dialog.innerHTML = `<form method="dialog" class="conn-form" novalidate>
+        <div class="dlg-head">
+          <span class="dlg-avatar">${icon("key")}</span>
+          <div class="dlg-title"><h2>${esc(t(c.renew ? "connRenew" : "connDlgTitle"))}</h2></div>
+          <button type="button" class="dlg-close" data-conn="close" title="${esc(t("dialogClose"))}" aria-label="${esc(
+            t("dialogClose")
+          )}">${icon("close")}</button>
+        </div>
+        <div class="dlg-body">
+          <label class="conn-field"><span>${esc(t("connHost"))}</span>
+            <input type="text" data-conn="host" autocomplete="off" spellcheck="false" value="${esc(c.host)}" ${c.busy ? "disabled" : ""} /></label>
+          <label class="conn-field"><span>${esc(t("connNewKey"))}</span>
+            <input type="password" data-conn="key" autocomplete="new-password" spellcheck="false" value="" ${c.busy ? "disabled" : ""} />
+            <small>${esc(t(c.renew ? "connNewKeyRequired" : "connNewKeyHint"))}</small></label>
+          <div class="opt-line conn-ssl"><span>${esc(t("connSsl"))}</span>
+            <label class="switch"><input type="checkbox" data-conn="ssl" ${c.ssl ? "checked" : ""} ${c.busy ? "disabled" : ""} /><span></span></label></div>
+          <p class="conn-hint">${esc(t("connHint"))}</p>
+          ${err}
+        </div>
+        <div class="dlg-actions">
+          <button type="button" class="dlg-btn" data-conn="close">${esc(t("settingsCancel"))}</button>
+          <button type="submit" class="dlg-btn primary" data-conn="save" ${c.busy || !this._connValid() ? "disabled" : ""}>${esc(
+            c.busy ? t("connTesting") : t("connTest")
+          )}</button>
+        </div>
+      </form>`;
+    // Den Key nie ins HTML schreiben, nur ins Feld setzen.
+    const keyInput = dialog.querySelector('[data-conn="key"]');
+    if (keyInput) keyInput.value = c.key;
+  }
+
+  _bindConn(dialog) {
+    dialog.addEventListener("input", (ev) => {
+      const c = this._conn;
+      const field = ev.target.dataset && ev.target.dataset.conn;
+      if (!c || !field) return;
+      if (field === "host") c.host = ev.target.value;
+      else if (field === "key") c.key = ev.target.value;
+      else if (field === "ssl") c.ssl = ev.target.checked;
+      c.error = null;
+      const save = dialog.querySelector('[data-conn="save"]');
+      if (save) save.disabled = c.busy || !this._connValid();
+      const err = dialog.querySelector(".dlg-error");
+      if (err) err.remove();
+    });
+    dialog.addEventListener("change", (ev) => {
+      if (this._conn && ev.target.dataset && ev.target.dataset.conn === "ssl") this._conn.ssl = ev.target.checked;
+    });
+    dialog.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      this._saveConn();
+    });
+    dialog.addEventListener("click", (ev) => {
+      if (ev.target === dialog) {
+        const r = dialog.getBoundingClientRect();
+        if (ev.clientY < r.top || ev.clientY > r.bottom || ev.clientX < r.left || ev.clientX > r.right) {
+          if (!(this._conn && this._conn.busy)) this._closeConn();
+        }
+        return;
+      }
+      const btn = ev.target.closest('[data-conn="close"]');
+      if (btn && !(this._conn && this._conn.busy)) this._closeConn();
+    });
+    dialog.addEventListener("cancel", (ev) => {
+      if (this._conn && this._conn.busy) ev.preventDefault();
+    });
+    dialog.addEventListener("close", () => {
+      if (!dialog.open) this._conn = null;
+    });
+  }
+
+  async _saveConn() {
+    const c = this._conn;
+    if (!c || c.busy || !this._connValid()) return;
+    c.busy = true;
+    c.error = null;
+    this._renderConn();
+    const msg = { type: "unifi_dynamic/set_connection", entry_id: c.entryId, host: c.host.trim(), verify_ssl: c.ssl };
+    if (c.key.trim()) msg.api_key = c.key.trim();
+    let error = null;
+    try {
+      const result = await this._hass.callWS(msg);
+      if (!result || !result.ok) error = (result && result.error) || "cannot_connect";
+    } catch (err) {
+      error = (err && err.message) || String(err);
+    }
+    if (this._conn !== c) return;
+    if (error) {
+      c.busy = false;
+      c.error = error;
+      this._renderConn();
+      const focus = this.shadowRoot.querySelector(
+        error === "invalid_auth" ? 'dialog.conn-edit [data-conn="key"]' : 'dialog.conn-edit [data-conn="host"]'
+      );
+      if (focus) focus.focus();
+      return;
+    }
+    c.key = "";
+    this._closeConn();
+    this._closeSettings();
+    this._toast(this._t("connSaved"));
+    // Nach dem Reload: Hubs (Titel, Host) und Clients neu holen.
+    setTimeout(() => {
+      this._fetchClients();
+    }, 3000);
   }
 
   // ---------------------------------------------------------------------
@@ -1715,6 +2050,8 @@ class UnifiDynamicPanel extends HTMLElement {
         st.draft.purge_exclude = st.draft.purge_exclude.filter((m) => m !== btn.dataset.mac);
         this._renderSettings();
       } else if (action === "save") this._saveSettings();
+      else if (action === "conn-edit") this._openConn(false);
+      else if (action === "conn-renew") this._openConn(true);
     });
     // Zahlen und Uhrzeit: Entwurf beim Tippen nachführen, aber nur die
     // Anzeige drumherum neu aufbauen, wenn das Feld den Fokus verliert -
@@ -6078,6 +6415,114 @@ class UnifiDynamicPanel extends HTMLElement {
         .ver-slot:empty {
           display: none;
         }
+        dialog.conn-edit {
+          width: min(440px, calc(100vw - 32px));
+          max-height: calc(100% - 48px);
+          padding: 0;
+          border: none;
+          border-radius: 22px;
+          background: var(--udc-card);
+          color: var(--udc-text);
+          box-shadow: var(--udc-shadow);
+          overflow: auto;
+        }
+        dialog.conn-edit::backdrop {
+          background: rgba(0,0,0,0.5);
+        }
+        dialog.conn-edit .dlg-btn {
+          flex: 1 1 auto;
+        }
+        .conn-field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-bottom: 14px;
+          font-size: 14px;
+        }
+        .conn-field input {
+          box-sizing: border-box;
+          width: 100%;
+          height: 42px;
+          padding: 0 12px;
+          border: 1px solid var(--udc-divider);
+          border-radius: 10px;
+          background: var(--udc-input);
+          color: var(--udc-text);
+          font: inherit;
+          font-size: 16px;
+        }
+        .conn-field input:focus {
+          outline: 2px solid var(--udc-primary);
+          outline-offset: -1px;
+        }
+        .conn-field small,
+        .conn-hint {
+          color: var(--udc-text2);
+          font-size: 12px;
+          line-height: 1.4;
+        }
+        .conn-ssl {
+          font-size: 14px;
+        }
+        .conn-hint {
+          margin: 10px 0 0;
+        }
+        .conn-val {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: var(--udc-text2);
+        }
+        .conn-status {
+          padding: 3px 10px;
+          border-radius: 999px;
+          font-size: 13px;
+          white-space: nowrap;
+          background: color-mix(in srgb, var(--udc-success) 14%, transparent);
+          color: var(--udc-success);
+        }
+        .conn-status.auth_failed,
+        .conn-status.offline {
+          background: color-mix(in srgb, var(--udc-error) 12%, transparent);
+          color: var(--udc-error);
+        }
+        .conn-actions {
+          display: flex;
+          justify-content: flex-end;
+          padding-top: 10px;
+        }
+        .set-sec-head.static {
+          cursor: default;
+        }
+        .conn-banner {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin: 0 0 12px;
+          padding: 12px;
+          border-radius: 12px;
+          background: color-mix(in srgb, var(--udc-error) 12%, transparent);
+          color: var(--udc-error);
+          font-size: 14px;
+        }
+        .conn-banner > span {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          flex: 1 1 220px;
+        }
+        .conn-banner svg {
+          flex: 0 0 auto;
+          width: 20px;
+          height: 20px;
+        }
+        .conn-banner .dlg-btn {
+          border-color: var(--udc-error);
+          background: var(--udc-error);
+        }
         .set-note {
           margin-top: 12px;
           padding: 10px 12px;
@@ -6195,6 +6640,7 @@ class UnifiDynamicPanel extends HTMLElement {
       <dialog class="device"></dialog>
       <dialog class="filters"></dialog>
       <dialog class="settings"></dialog>
+      <dialog class="conn-edit"></dialog>
     `;
 
     const root = this.shadowRoot;
@@ -6321,6 +6767,7 @@ class UnifiDynamicPanel extends HTMLElement {
       if (entryId) this._openSettings(entryId);
     });
     this._bindSettings(root.querySelector("dialog.settings"));
+    this._bindConn(root.querySelector("dialog.conn-edit"));
 
     // Filter-Blatt (Handy).
     const sheet = root.querySelector("dialog.filters");

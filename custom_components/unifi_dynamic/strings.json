@@ -14,13 +14,38 @@
           "host": "Address of the UniFi controller, without https://",
           "purge_days": "0 disables automatic removal."
         }
+      },
+      "reauth_confirm": {
+        "title": "Renew API key",
+        "description": "The controller {host} rejects the stored API key. Enter a new key; everything else stays as it is.",
+        "data": {
+          "api_key": "New API key"
+        }
+      },
+      "reconfigure": {
+        "title": "Change connection",
+        "description": "Changes host, API key or SSL verification of this hub. Devices, entities, links and settings are kept. The connection is tested before saving.",
+        "data": {
+          "host": "Host or IP",
+          "api_key": "New API key",
+          "verify_ssl": "Verify SSL certificate"
+        },
+        "data_description": {
+          "host": "Address of the UniFi controller, without https://",
+          "api_key": "Leave empty to keep the stored key."
+        }
       }
     },
     "error": {
-      "cannot_connect": "Connection failed. Check host and API key."
+      "cannot_connect": "Host not reachable. Check address and SSL setting.",
+      "invalid_auth": "API key invalid. The controller rejects the key.",
+      "invalid_host": "Please enter a host or IP.",
+      "already_configured": "This host is already used by another hub."
     },
     "abort": {
-      "already_configured": "This host is already configured."
+      "already_configured": "This host is already configured.",
+      "reauth_successful": "API key renewed.",
+      "reconfigure_successful": "Connection updated."
     }
   },
   "options": {

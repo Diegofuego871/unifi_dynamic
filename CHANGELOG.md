@@ -5,6 +5,40 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.12.0] - 2026-09-28
+
+### Added
+
+- Change host, API key and SSL verification without deleting the hub.
+  The hub keeps its ID, so devices, entities, links, protection list,
+  history and settings are kept. Useful after issuing a new API key or
+  when a controller is replaced under the same or a new IP.
+  - **Reconfigure** on the integration (⋮ menu): host, new API key (leave
+    empty to keep the stored one) and SSL verification.
+  - **Re-authenticate**: if the controller rejects the key (HTTP 401/403),
+    Home Assistant starts a re-authentication once, asking only for the new
+    key.
+  - **Panel**: the settings show a "Connection" section with host/IP, SSL
+    verification, whether an API key is stored and the status. "Change
+    connection…" opens a small dialog. The key is never shown in the
+    panel, not even partially.
+  - If the key is rejected, the panel settings show a notice at the top
+    with a "Renew API key" button.
+- The connection is always tested before saving. On failure nothing is
+  changed and a clear reason is shown ("API key invalid", "Host not
+  reachable"). A host already used by another hub is refused.
+
+### Fixed
+
+- Opening the Home Assistant app after it was in the background no longer
+  shows "Failed to load the client list: 3". The mobile OS drops the
+  WebSocket connection while the app is suspended, and the panel's refresh
+  ran before Home Assistant had reconnected (code 3 is "connection lost").
+  The panel now keeps the current list, retries quietly and refreshes as
+  soon as the app is visible again or the connection is back. Only if the
+  connection stays down for 30 seconds does a plain-language message
+  appear; it disappears by itself once the connection returns.
+
 ## [2.11.4] - 2026-09-28
 
 ### Changed
@@ -1195,6 +1229,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.12.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.0
 [2.11.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.4
 [2.11.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.3
 [2.11.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.2

@@ -30,9 +30,13 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.util import dt as dt_util
 
-from . import options_api, update_check
+from . import connection as conn_api, options_api, update_check
 from .const import (
     ACTION_EXCLUDE,
+    CONF_API_KEY,
+    CONF_HOST,
+    CONF_VERIFY_SSL,
+    DEFAULT_VERIFY_SSL,
     ATTR_DEVICE_ID,
     ATTR_DRY_RUN,
     ATTR_ENTRY_ID,
@@ -69,6 +73,7 @@ from .const import (
     WS_TYPE_EXCLUDE_CLIENT,
     WS_TYPE_GET_OPTIONS,
     WS_TYPE_LIST_HUBS,
+    WS_TYPE_SET_CONNECTION,
     WS_TYPE_SET_OPTIONS,
     WS_TYPE_VERSION,
     WS_TYPE_LIST_CLIENTS,
@@ -849,6 +854,17 @@ def _ws_get_options(
                 DOMAIN,
                 f"{DOMAIN}.{coordinator.entry.entry_id}.{AVAIL_CONTROLLER}",
             ),
+            # Verbindungsdaten ohne den API-Key selbst: nur ob einer hinterlegt ist.
+            "connection": {
+                "host": str(coordinator.entry.data.get(CONF_HOST, "")),
+                "verify_ssl": bool(coordinator.entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)),
+                "has_key": bool(coordinator.entry.data.get(CONF_API_KEY)),
+                "status": (
+                    "auth_failed"
+                    if coordinator.auth_failed
+                    else "offline" if coordinator.offline else "ok"
+                ),
+            },
             "limits": {
                 "scan_interval": options_api.SCAN_INTERVAL_RANGE,
                 "offline_after_failures": options_api.OFFLINE_AFTER_RANGE,
@@ -885,6 +901,34 @@ def _ws_set_options(
         msg["id"],
         {"changed": changed, "reload": changed and _reload_signature(entry) != before},
     )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_SET_CONNECTION,
+        vol.Required("entry_id"): str,
+        vol.Required("host"): str,
+        vol.Optional("api_key"): str,
+        vol.Required("verify_ssl"): bool,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def _ws_set_connection(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """
+    Neue Verbindungsdaten aus dem Panel: erst testen, dann speichern und neu
+    laden. Bei einem Fehler bleibt alles unverändert.
+    """
+    entry = hass.config_entries.async_get_entry(msg["entry_id"])
+    if entry is None or entry.domain != DOMAIN:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+    error = await conn_api.async_apply(
+        hass, entry, msg["host"], msg.get("api_key"), msg["verify_ssl"]
+    )
+    connection.send_result(msg["id"], {"ok": error is None, "error": error})
 
 
 @websocket_api.websocket_command(
@@ -1035,6 +1079,7 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_list_hubs)
     websocket_api.async_register_command(hass, _ws_get_options)
     websocket_api.async_register_command(hass, _ws_set_options)
+    websocket_api.async_register_command(hass, _ws_set_connection)
     websocket_api.async_register_command(hass, _ws_version)
 
 

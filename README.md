@@ -83,6 +83,22 @@ Requires Home Assistant 2024.12 or newer.
 | Polling interval | How often the client list is fetched (seconds) |
 | Remove after days without a sighting | 0 disables automatic removal |
 
+### Changing the connection
+
+Host, API key and SSL verification can be changed without deleting the
+hub, for example after issuing a new API key or when a controller is
+replaced under the same or a new IP:
+
+- **⋮ → Reconfigure** on the integration: host, new API key (leave empty to
+  keep the stored one) and SSL verification.
+- **Re-authenticate**: if the controller rejects the key (HTTP 401/403),
+  Home Assistant reports it under Settings, where only the new key is
+  entered.
+- In the **panel** under Settings → Connection (see [Panel](#panel)).
+
+All three test the connection before saving and keep the hub: devices,
+entities, links, protection list, history and settings are kept.
+
 ## Options
 
 Available afterwards via **Configure** on the integration. The dialog is
@@ -244,8 +260,19 @@ the table). Changed fields are marked, and nothing is saved until "Save".
 If the update interval or the time of the daily run changes, the
 integration briefly reloads, which the dialog points out beforehand. With
 "All hubs" the gear is disabled, since settings apply per hub; with only
-one hub there is no switch, just the gear. Host, API key and SSL
-verification deliberately stay in Home Assistant's setup dialog.
+one hub there is no switch, just the gear.
+
+Below the sections, **Connection** shows host/IP, SSL verification, whether
+an API key is stored, and the status ("Connected", "API key invalid", "Not
+reachable"). The key itself is never shown, not even partially. "Change
+connection…" opens a small dialog for host, new API key (leave empty to keep
+the stored one) and SSL verification. The connection is tested before
+saving; if the test fails, nothing changes and the dialog names the reason
+("API key invalid", "Host not reachable"). A host already used by another
+hub is refused. After saving, the integration reloads; the hub stays the
+same, and devices, entities, links, protection list, history and settings
+are kept. If the controller rejects the key, a notice with a "Renew API key"
+button appears at the top of the settings.
 
 ![Settings in the panel: controller availability over 7 days, "Polling" expanded with a changed interval, reaction time and expanded ⓘ text](docs/panel-settings-en.png)
 

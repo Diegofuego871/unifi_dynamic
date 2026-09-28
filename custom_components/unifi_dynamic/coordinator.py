@@ -292,6 +292,9 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # erst nach einem Neustart erkannt wird, beginnt frühestens hier und
         # nicht beim letzten erfolgreichen Poll vor dem Neustart.
         self._started_at = time.time()
+        # Controller lehnt den API-Key ab (HTTP 401/403): Panel zeigt das an,
+        # HA startet einmalig "Erneut authentifizieren".
+        self._auth_failed = False
         self._avail_pruned_at = 0.0
         self._avail_store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_{AVAIL_STORE_SUFFIX}"
@@ -709,6 +712,11 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             self._contact_callback(offline, seconds, failures)
         )
 
+    @property
+    def auth_failed(self) -> bool:
+        """True, solange der Controller den API-Key ablehnt."""
+        return self._auth_failed
+
     def _register_failure(self, reason: str) -> None:
         """
         Zählt eine fehlgeschlagene Abfrage und meldet beim Erreichen der
@@ -944,6 +952,9 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                         resp.status,
                         text[:200],
                     )
+                    if resp.status in (401, 403) and not self._auth_failed:
+                        self._auth_failed = True
+                        self.entry.async_start_reauth(self.hass)
                     self._register_failure(f"HTTP {resp.status}")
                     return dict(self._client_cache)
 
@@ -994,6 +1005,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 self._client_cache[mac.lower()][FIELD_FIRST_SEEN] = now
 
         self._anchor = now
+        self._auth_failed = False
 
         # Erst nach dem Merge: Die Entwarnung soll nicht rausgehen, bevor die
         # frischen Daten im Cache stehen. Setzt den Fehlerzähler zurück.
