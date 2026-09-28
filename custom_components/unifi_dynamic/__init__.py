@@ -30,6 +30,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.util import dt as dt_util
 
+from . import options_api
 from .const import (
     ACTION_EXCLUDE,
     ATTR_DEVICE_ID,
@@ -37,6 +38,7 @@ from .const import (
     ATTR_ENTRY_ID,
     ATTR_MAC,
     BRAND_DIR,
+    CONF_NOTIFY_SERVICE,
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
@@ -64,6 +66,9 @@ from .const import (
     STATIC_URL_PATH,
     WS_TYPE_AVAILABILITY,
     WS_TYPE_EXCLUDE_CLIENT,
+    WS_TYPE_GET_OPTIONS,
+    WS_TYPE_LIST_HUBS,
+    WS_TYPE_SET_OPTIONS,
     WS_TYPE_LIST_CLIENTS,
     WS_TYPE_REMOVE_CLIENT,
     WS_TYPE_LINK_DEVICE,
@@ -782,6 +787,93 @@ def _ws_availability(
     )
 
 
+def _hub_summary(coordinator: UnifiDynamicCoordinator) -> dict[str, Any]:
+    entry = coordinator.entry
+    return {
+        "entry_id": entry.entry_id,
+        "title": entry.title,
+        "host": coordinator.host,
+        "clients": len(coordinator.panel_clients()),
+    }
+
+
+@websocket_api.websocket_command({vol.Required("type"): WS_TYPE_LIST_HUBS})
+@websocket_api.require_admin
+@callback
+def _ws_list_hubs(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Alle eingerichteten Hubs für die Hub-Auswahl im Panel."""
+    hubs = [_hub_summary(c) for c in hass.data.get(DOMAIN, {}).values()]
+    hubs.sort(key=lambda h: str(h["title"]).lower())
+    connection.send_result(msg["id"], {"hubs": hubs})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): WS_TYPE_GET_OPTIONS, vol.Required("entry_id"): str}
+)
+@websocket_api.require_admin
+@callback
+def _ws_get_options(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Einstellungen eines Hubs, dieselben Werte wie im Optionsdialog."""
+    coordinator: UnifiDynamicCoordinator | None = hass.data.get(DOMAIN, {}).get(
+        msg["entry_id"]
+    )
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+    values = options_api.current_values(coordinator.entry)
+    connection.send_result(
+        msg["id"],
+        {
+            "hub": _hub_summary(coordinator),
+            "values": values,
+            "notify_targets": options_api.notify_targets(
+                hass, values[CONF_NOTIFY_SERVICE]
+            ),
+            "protected": options_api.protected_clients(
+                hass, coordinator.entry, values[CONF_PURGE_EXCLUDE]
+            ),
+            "limits": {
+                "scan_interval": options_api.SCAN_INTERVAL_RANGE,
+                "offline_after_failures": options_api.OFFLINE_AFTER_RANGE,
+                "purge_days": options_api.PURGE_DAYS_RANGE,
+            },
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_SET_OPTIONS,
+        vol.Required("entry_id"): str,
+        vol.Required("values"): dict,
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_set_options(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Speichert Einstellungen aus dem Panel in die Options des Hubs."""
+    entry = hass.config_entries.async_get_entry(msg["entry_id"])
+    if entry is None or entry.domain != DOMAIN:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+    before = _reload_signature(entry)
+    try:
+        changed = options_api.apply_values(hass, entry, msg["values"])
+    except vol.Invalid as err:
+        connection.send_error(msg["id"], "invalid_format", str(err))
+        return
+    connection.send_result(
+        msg["id"],
+        {"changed": changed, "reload": changed and _reload_signature(entry) != before},
+    )
+
+
 def _is_own_device(device: dr.DeviceEntry) -> bool:
     """Gerät dieser Integration (ein UniFi-Client), nicht verknüpfbar."""
     return any(domain == DOMAIN for domain, *_ in device.identifiers)
@@ -911,6 +1003,9 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_list_devices)
     websocket_api.async_register_command(hass, _ws_link_device)
     websocket_api.async_register_command(hass, _ws_availability)
+    websocket_api.async_register_command(hass, _ws_list_hubs)
+    websocket_api.async_register_command(hass, _ws_get_options)
+    websocket_api.async_register_command(hass, _ws_set_options)
 
 
 # ---------------------------------------------------------------------------

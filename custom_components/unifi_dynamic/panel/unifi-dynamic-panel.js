@@ -112,6 +112,104 @@ const STRINGS = {
     copyFailed: "Kopieren nicht möglich - der Browser erlaubt keinen Zugriff auf die Zwischenablage.",
     secLinked: "Verknüpftes Gerät",
     secNetwork: "Netzwerk",
+    hubAll: "Alle Hubs",
+    hubSelect: "Hub wählen",
+    hubClients: (n) => (n === 1 ? "1 Client" : `${n} Clients`),
+    settingsBtn: "Einstellungen",
+    settingsNeedHub: "Einstellungen gelten pro Hub – zuerst einen Hub wählen",
+    settingsTitle: "Einstellungen",
+    settingsLoading: "Einstellungen werden geladen…",
+    settingsLoadError: "Einstellungen konnten nicht geladen werden:",
+    settingsSaveError: "Speichern fehlgeschlagen:",
+    settingsChanged: "geändert",
+    settingsChanges: (n) => (n === 1 ? "1 Änderung" : `${n} Änderungen`),
+    settingsReloadNote:
+      "Beim Speichern lädt die Integration kurz neu (Abfrageintervall oder Uhrzeit geändert). Die Entitäten sind 1–2 Sekunden nicht verfügbar.",
+    settingsCancel: "Abbrechen",
+    settingsSave: "Speichern",
+    settingsSaving: "Speichert…",
+    settingsSaved: "Einstellungen gespeichert.",
+    settingsSavedReload: "Einstellungen gespeichert – die Integration lädt kurz neu.",
+    settingsInfo: "Mehr erfahren",
+    settingsRange: (min, max) => `Erlaubt: ${min}–${max}`,
+    settingsTimeError: "Uhrzeit im Format HH:MM",
+    secPolling: "Abfrage",
+    secCleanup: "Automatisches Entfernen",
+    secPush: "Push-Benachrichtigung",
+    secPersistent: "Anhaltende Benachrichtigung",
+    sumPolling: (i, n) => `Alle ${i} s · ausgefallen nach ${n} Abfragen`,
+    sumCleanup: (d, time) => (d ? `Nach ${d} Tagen ohne Sichtung · täglich ${time}` : "Ausgeschaltet"),
+    sumPushOff: "Keine Push-Benachrichtigung",
+    sumPersistentOff: "Ausgeschaltet",
+    sumNew: "neue Geräte",
+    sumController: "Controller-Ausfall",
+    sumEmpty: "auch ohne Treffer",
+    sumReport: "Bericht des Aufräumlaufs",
+    unitSeconds: "s",
+    unitPolls: "Abfragen",
+    unitDays: "Tagen",
+    optScanInterval: "Abfrageintervall",
+    optScanIntervalShort: "Wie oft die Clientliste geholt wird (10–3600 s).",
+    optScanIntervalInfo:
+      "Kürzere Intervalle erkennen Wechsel schneller, belasten den Controller aber stärker. Änderungen laden die Integration kurz neu.",
+    optOfflineAfter: "Als ausgefallen nach",
+    optOfflineAfterLive: (i, dur) => `Bei ${i} s Intervall: nach ${dur}`,
+    optOfflineAfterInfo:
+      "Zählt fehlgeschlagene Abfragen in Folge. Niedrige Werte melden schneller, reagieren aber auch auf einzelne Aussetzer. Die Entwarnung kommt mit der ersten erfolgreichen Abfrage.",
+    optPurgeDays: "Entfernen nach",
+    optPurgeDaysShort: "Tage ohne Sichtung, 0 schaltet es aus.",
+    optPurgeDaysInfo:
+      "Wer länger nicht gesehen wurde, verliert beim täglichen Lauf seine Entitäten und sein Gerät in Home Assistant. Geschützte Clients sind ausgenommen.",
+    optPurgeTime: "Uhrzeit des täglichen Laufs",
+    optPurgeTimeShort: "Lokale Zeit.",
+    optPurgeTimeInfo:
+      "Zusätzlich läuft eine Prüfung 60 Sekunden nach jedem Start von Home Assistant; sie meldet nur, wenn etwas entfernt wurde. Manuell auslösbar über die Aktion unifi_dynamic.purge_now, auch als Testlauf. Änderungen laden die Integration kurz neu.",
+    optProtected: "Geschützte Clients",
+    optProtectedShort: "Werden nie automatisch entfernt.",
+    optProtectedInfo: "Hinzufügen über \"Schützen\" in der Tabelle oder in der Geräteansicht.",
+    optProtectedNone: "Keine geschützten Clients.",
+    optProtectedUnknown: "nicht mehr bekannt",
+    optUnprotect: (name) => `Schutz für ${name} aufheben`,
+    optNotifyService: "Ziel",
+    optNotifyServiceShort: "notify-Dienst oder -Entität.",
+    optNotifyServiceInfo: "Zum Beispiel eine notify-Gruppe, um mehrere Handys zu erreichen.",
+    optNotifyNone: "Keine Push-Benachrichtigung",
+    optNotifyMissing: "nicht gefunden",
+    optClickTarget: "Tipp auf Gerätemeldung öffnet",
+    optClickTargetShort: "Wohin die Meldung zu einem Client führt.",
+    optClickTargetInfo:
+      "\"Geräteansicht im Panel\" zeigt Details und Aktionen, auch ohne HA-Gerät. \"HA-Geräteseite\" ist für alle ohne Panel gedacht. Sammel- und Controller-Meldungen öffnen immer die Integrationsseite.",
+    optClickPanel: "Geräteansicht im Panel",
+    optClickDevice: "HA-Geräteseite",
+    optNotifyNew: "Neue Geräte melden",
+    optNotifyNewShort: "Sobald ein Client zum ersten Mal auftaucht.",
+    optNotifyNewInfo:
+      "Wartet bis zu 120 Sekunden, bis IP, SSID und Access Point bekannt sind. Ab 6 Clients gleichzeitig kommt eine Sammelmeldung. Nach der Installation wird bewusst nichts gemeldet.",
+    optNotifyController: "Controller-Ausfall melden",
+    optNotifyControllerShort: "Einmal je Störung, mit Entwarnung.",
+    optNotifyControllerInfo:
+      "Ab wann der Controller als ausgefallen gilt, legt \"Als ausgefallen nach\" fest. Während der Störung werden keine Clients aktualisiert.",
+    optNotifyEmpty: "Auch ohne Treffer melden",
+    optNotifyEmptyShort: "Push nach jedem täglichen Lauf.",
+    optContent: "Inhalt der Meldung",
+    optContentShort: "Welche Angaben in der Meldung über neue Geräte stehen.",
+    optContentInfo:
+      "Ist alles aus, wird der Anzeigename gemeldet. SSID und Access Point gibt es nur bei WLAN-Clients. Die MAC wird weggelassen, wenn sie schon der Name ist.",
+    msgName: "Anzeigename",
+    msgConnection: "Verbindungsart",
+    msgSsid: "SSID",
+    msgAp: "Access Point",
+    msgIp: "IP-Adresse",
+    msgMac: "MAC-Adresse",
+    optPersistent: "Anhaltende Benachrichtigung",
+    optPersistentShort: "Bericht des Aufräumlaufs in der Seitenleiste.",
+    optPersistentInfo: "Neu erkannte Geräte erzeugen nie eine anhaltende Benachrichtigung.",
+    optPersistentEmpty: "Auch ohne Treffer",
+    optPersistentEmptyShort: "Sonst nur, wenn etwas entfernt wurde.",
+    optPersistentEmptyInfo: "Aus heisst: Die letzte Meldung bleibt stehen und zeigt den letzten echten Lauf.",
+    optPersistentController: "Controller-Ausfall",
+    optPersistentControllerShort: "Solange der Controller nicht antwortet.",
+    optPersistentControllerInfo: "Verschwindet automatisch, sobald er wieder erreichbar ist.",
     secAvail: "Verfügbarkeit",
     availRanges: { "24h": "24 Std.", "7d": "7 Tage", "30d": "30 Tage" },
     availRangeGroup: "Zeitraum",
@@ -246,6 +344,104 @@ const STRINGS = {
     copyFailed: "Could not copy - the browser does not allow access to the clipboard.",
     secLinked: "Linked device",
     secNetwork: "Network",
+    hubAll: "All hubs",
+    hubSelect: "Choose hub",
+    hubClients: (n) => (n === 1 ? "1 client" : `${n} clients`),
+    settingsBtn: "Settings",
+    settingsNeedHub: "Settings apply per hub – choose a hub first",
+    settingsTitle: "Settings",
+    settingsLoading: "Loading settings…",
+    settingsLoadError: "Could not load the settings:",
+    settingsSaveError: "Saving failed:",
+    settingsChanged: "changed",
+    settingsChanges: (n) => (n === 1 ? "1 change" : `${n} changes`),
+    settingsReloadNote:
+      "Saving briefly reloads the integration (update interval or time changed). The entities are unavailable for 1–2 seconds.",
+    settingsCancel: "Cancel",
+    settingsSave: "Save",
+    settingsSaving: "Saving…",
+    settingsSaved: "Settings saved.",
+    settingsSavedReload: "Settings saved – the integration is reloading.",
+    settingsInfo: "Learn more",
+    settingsRange: (min, max) => `Allowed: ${min}–${max}`,
+    settingsTimeError: "Time as HH:MM",
+    secPolling: "Polling",
+    secCleanup: "Automatic removal",
+    secPush: "Push notification",
+    secPersistent: "Persistent notification",
+    sumPolling: (i, n) => `Every ${i} s · offline after ${n} polls`,
+    sumCleanup: (d, time) => (d ? `After ${d} days unseen · daily at ${time}` : "Off"),
+    sumPushOff: "No push notification",
+    sumPersistentOff: "Off",
+    sumNew: "new devices",
+    sumController: "controller outage",
+    sumEmpty: "also without hits",
+    sumReport: "Cleanup report",
+    unitSeconds: "s",
+    unitPolls: "polls",
+    unitDays: "days",
+    optScanInterval: "Update interval",
+    optScanIntervalShort: "How often the client list is fetched (10–3600 s).",
+    optScanIntervalInfo:
+      "Shorter intervals detect changes faster but put more load on the controller. Changes briefly reload the integration.",
+    optOfflineAfter: "Offline after",
+    optOfflineAfterLive: (i, dur) => `At a ${i} s interval: after ${dur}`,
+    optOfflineAfterInfo:
+      "Counts failed polls in a row. Low values report faster but also react to single hiccups. The all-clear comes with the first successful poll.",
+    optPurgeDays: "Remove after",
+    optPurgeDaysShort: "Days unseen, 0 turns it off.",
+    optPurgeDaysInfo:
+      "Clients unseen for longer lose their entities and device in Home Assistant during the daily run. Protected clients are exempt.",
+    optPurgeTime: "Time of the daily run",
+    optPurgeTimeShort: "Local time.",
+    optPurgeTimeInfo:
+      "In addition, a check runs 60 seconds after every Home Assistant start; it only reports when something was removed. Can be triggered manually with the unifi_dynamic.purge_now action, also as a dry run. Changes briefly reload the integration.",
+    optProtected: "Protected clients",
+    optProtectedShort: "Never removed automatically.",
+    optProtectedInfo: "Add clients with \"Protect\" in the table or in the device view.",
+    optProtectedNone: "No protected clients.",
+    optProtectedUnknown: "no longer known",
+    optUnprotect: (name) => `Stop protecting ${name}`,
+    optNotifyService: "Target",
+    optNotifyServiceShort: "notify service or entity.",
+    optNotifyServiceInfo: "For example a notify group to reach several phones.",
+    optNotifyNone: "No push notification",
+    optNotifyMissing: "not found",
+    optClickTarget: "Tapping a device notification opens",
+    optClickTargetShort: "Where the notification about a client leads.",
+    optClickTargetInfo:
+      "\"Device view in the panel\" shows details and actions, even without a HA device. \"HA device page\" is for anyone not using the panel. Summary and controller notifications always open the integration page.",
+    optClickPanel: "Device view in the panel",
+    optClickDevice: "HA device page",
+    optNotifyNew: "Report new devices",
+    optNotifyNewShort: "As soon as a client appears for the first time.",
+    optNotifyNewInfo:
+      "Waits up to 120 seconds until IP, SSID and access point are known. From 6 clients at once a summary is sent. Nothing is reported right after installation.",
+    optNotifyController: "Report controller outage",
+    optNotifyControllerShort: "Once per outage, with all-clear.",
+    optNotifyControllerInfo:
+      "When the controller counts as down is set by \"Offline after\". During the outage no clients are updated.",
+    optNotifyEmpty: "Also report without hits",
+    optNotifyEmptyShort: "Push after every daily run.",
+    optContent: "Notification content",
+    optContentShort: "Which details the notification about new devices contains.",
+    optContentInfo:
+      "If everything is off, the display name is sent. SSID and access point only exist for wireless clients. The MAC is left out when it already is the name.",
+    msgName: "Display name",
+    msgConnection: "Connection type",
+    msgSsid: "SSID",
+    msgAp: "Access point",
+    msgIp: "IP address",
+    msgMac: "MAC address",
+    optPersistent: "Persistent notification",
+    optPersistentShort: "Cleanup report in the sidebar.",
+    optPersistentInfo: "Newly detected devices never create a persistent notification.",
+    optPersistentEmpty: "Also without hits",
+    optPersistentEmptyShort: "Otherwise only when something was removed.",
+    optPersistentEmptyInfo: "Off means: the last notification stays and shows the last real run.",
+    optPersistentController: "Controller outage",
+    optPersistentControllerShort: "While the controller doesn't respond.",
+    optPersistentControllerInfo: "Disappears automatically once it is reachable again.",
     secAvail: "Availability",
     availRanges: { "24h": "24 h", "7d": "7 days", "30d": "30 days" },
     availRangeGroup: "Time range",
@@ -383,6 +579,9 @@ const ICONS = {
   open: "M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z",
   trash: "M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z",
   columns: "M16,5V18H21V5M4,18H9V5H4M10,18H15V5H10V18Z",
+  gear: "M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z",
+  hub: "M4,1H20A1,1 0 0,1 21,2V6A1,1 0 0,1 20,7H4A1,1 0 0,1 3,6V2A1,1 0 0,1 4,1M4,9H20A1,1 0 0,1 21,10V14A1,1 0 0,1 20,15H4A1,1 0 0,1 3,14V10A1,1 0 0,1 4,9M4,17H20A1,1 0 0,1 21,18V22A1,1 0 0,1 20,23H4A1,1 0 0,1 3,22V18A1,1 0 0,1 4,17M9,5H10V3H9V5M9,13H10V11H9V13M9,21H10V19H9V21M5,3V5H7V3H5M5,11V13H7V11H5M5,19V21H7V19H5Z",
+  chevron: "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z",
   drag: "M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z",
   close: "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z",
   device: "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z",
@@ -419,6 +618,8 @@ const DEFAULT_PREFS = {
   hideLinked: false,
   // Zeitraum des Verfügbarkeits-Zeitstrahls in der Geräteansicht.
   availRange: "24h",
+  // Gewählter Hub (entry_id) oder "all". Für Handy und Desktop gemeinsam.
+  hub: "all",
 };
 
 // Zeitraum -> Dauer in Sekunden.
@@ -460,6 +661,7 @@ function sanitizePrefs(raw) {
     colOrderNarrow: order(p.colOrderNarrow),
     hideLinked: p.hideLinked === true,
     availRange: Object.prototype.hasOwnProperty.call(AVAIL_RANGES, p.availRange) ? p.availRange : "24h",
+    hub: typeof p.hub === "string" && p.hub ? p.hub : "all",
     // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
     // Kopie oder der Stand von HA neuer ist.
     updated: typeof p.updated === "number" ? p.updated : 0,
@@ -492,7 +694,14 @@ class UnifiDynamicPanel extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._hass = null;
+    // Alle Clients aller Hubs, und die in der Tabelle gezeigten (gewählter
+    // Hub, siehe _applyHub).
+    this._allClients = [];
     this._clients = [];
+    // Eingerichtete Hubs (unifi_dynamic/list_hubs).
+    this._hubs = [];
+    // Einstellungsdialog: siehe _openSettings.
+    this._settings = null;
     this._hostCount = 0;
     this._loading = true;
     this._error = null;
@@ -555,6 +764,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._colOrderNarrow = [...prefs.colOrderNarrow];
     this._hideLinked = prefs.hideLinked;
     this._availRange = prefs.availRange || "24h";
+    this._hub = prefs.hub || "all";
   }
 
   _currentPrefs() {
@@ -569,6 +779,7 @@ class UnifiDynamicPanel extends HTMLElement {
       colOrderNarrow: [...this._colOrderNarrow],
       hideLinked: this._hideLinked,
       availRange: this._availRange,
+      hub: this._hub,
     };
   }
 
@@ -642,7 +853,11 @@ class UnifiDynamicPanel extends HTMLElement {
       this._applyPrefs(prefs);
       this._lastSavedPrefs = JSON.stringify(this._currentPrefs());
       savePrefs(prefs);
-      if (this._built) this._rebuildColumns();
+      if (this._built) {
+        this._rebuildColumns();
+        this._applyHub();
+        this._renderRows();
+      }
       return;
     }
     await this._saveUserPrefs();
@@ -722,9 +937,17 @@ class UnifiDynamicPanel extends HTMLElement {
   async _fetchClients() {
     if (!this._hass) return;
     try {
-      const result = await this._hass.callWS({ type: "unifi_dynamic/list_clients" });
-      this._clients = result.clients || [];
-      this._hostCount = new Set(this._clients.map((c) => c.entry_id)).size;
+      const [result, hubs] = await Promise.all([
+        this._hass.callWS({ type: "unifi_dynamic/list_clients" }),
+        // Älteres Backend ohne Hub-Liste: aus den Clients ableiten.
+        this._hass.callWS({ type: "unifi_dynamic/list_hubs" }).catch(() => null),
+      ]);
+      this._allClients = result.clients || [];
+      this._hubs =
+        hubs && Array.isArray(hubs.hubs)
+          ? hubs.hubs
+          : [...new Map(this._allClients.map((c) => [c.entry_id, { entry_id: c.entry_id, title: c.host, host: c.host }])).values()];
+      this._applyHub();
       this._lastFetchAt = new Date();
       this._error = null;
     } catch (err) {
@@ -733,6 +956,513 @@ class UnifiDynamicPanel extends HTMLElement {
     this._loading = false;
     this._renderRows();
     if (!this._error) this._checkDeepLink();
+  }
+
+  // Gewählter Hub, sofern es ihn (noch) gibt und es mehr als einen gibt;
+  // sonst alle.
+  _effectiveHub() {
+    if (this._hubs.length < 2) return "all";
+    return this._hubs.some((h) => h.entry_id === this._hub) ? this._hub : "all";
+  }
+
+  _applyHub() {
+    const hub = this._effectiveHub();
+    this._clients = hub === "all" ? this._allClients : this._allClients.filter((c) => c.entry_id === hub);
+    this._hostCount = new Set(this._clients.map((c) => c.entry_id)).size;
+    this._renderHubControl();
+  }
+
+  // Hub-Auswahl nur bei mehreren Hubs; das Zahnrad immer. Bei "Alle Hubs"
+  // ist es gesperrt, weil die Einstellungen pro Hub gelten.
+  _renderHubControl() {
+    const root = this.shadowRoot;
+    const ctl = root && root.querySelector(".hub-ctl");
+    if (!ctl) return;
+    const t = (k) => this._t(k);
+    const multi = this._hubs.length > 1;
+    const hub = this._effectiveHub();
+    ctl.classList.toggle("multi", multi);
+    const select = ctl.querySelector(".hub-select");
+    select.hidden = !multi;
+    const opts = multi
+      ? [["all", `${t("hubAll")}`], ...this._hubs.map((h) => [h.entry_id, h.title || h.host])]
+      : [];
+    const html = opts
+      .map(([v, label]) => `<option value="${this._escape(v)}"${v === hub ? " selected" : ""}>${this._escape(label)}</option>`)
+      .join("");
+    if (select.innerHTML !== html) select.innerHTML = html;
+    select.value = hub;
+    const gear = ctl.querySelector(".gear-btn");
+    const blocked = !this._hubs.length || (multi && hub === "all");
+    gear.disabled = blocked;
+    const title = blocked && this._hubs.length ? t("settingsNeedHub") : t("settingsBtn");
+    gear.title = title;
+    gear.setAttribute("aria-label", title);
+  }
+
+  // ---------------------------------------------------------------------
+  // Einstellungen eines Hubs: dieselben Options wie der Optionsdialog von
+  // Home Assistant (unifi_dynamic/get_options, set_options). Gespeichert
+  // wird erst mit "Speichern"; der Entwurf lebt nur im Dialog.
+  // ---------------------------------------------------------------------
+
+  async _openSettings(entryId) {
+    const dialog = this.shadowRoot.querySelector("dialog.settings");
+    this._settings = {
+      entryId,
+      loading: true,
+      error: null,
+      saveError: null,
+      saving: false,
+      data: null,
+      draft: null,
+      open: new Set(),
+      info: new Set(),
+    };
+    this._renderSettings();
+    if (!dialog.open) {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    }
+    try {
+      const data = await this._hass.callWS({ type: "unifi_dynamic/get_options", entry_id: entryId });
+      if (!this._settings || this._settings.entryId !== entryId) return;
+      this._settings.data = data;
+      this._settings.draft = JSON.parse(JSON.stringify(data.values));
+    } catch (err) {
+      if (!this._settings) return;
+      this._settings.error = (err && err.message) || String(err);
+    }
+    this._settings.loading = false;
+    this._renderSettings();
+  }
+
+  _closeSettings() {
+    const dialog = this.shadowRoot.querySelector("dialog.settings");
+    this._settings = null;
+    if (dialog && dialog.open) {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    }
+  }
+
+  // Geänderte Schlüssel gegenüber dem geladenen Stand.
+  _settingsChanges() {
+    const st = this._settings;
+    if (!st || !st.draft) return [];
+    return Object.keys(st.draft).filter(
+      (k) => JSON.stringify(st.draft[k]) !== JSON.stringify(st.data.values[k])
+    );
+  }
+
+  // Fehlermeldung je Feld, leer wenn gültig.
+  _settingsErrors() {
+    const st = this._settings;
+    const errors = {};
+    if (!st || !st.draft) return errors;
+    const limits = st.data.limits || {};
+    for (const key of ["scan_interval", "offline_after_failures", "purge_days"]) {
+      const v = st.draft[key];
+      const [min, max] = limits[key] || [0, Infinity];
+      if (!Number.isInteger(v) || v < min || v > max) errors[key] = this._t("settingsRange")(min, max);
+    }
+    if (!/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(String(st.draft.purge_time || ""))) {
+      errors.purge_time = this._t("settingsTimeError");
+    }
+    return errors;
+  }
+
+  _settingsSections() {
+    return [
+      ["polling", ["scan_interval", "offline_after_failures"]],
+      ["cleanup", ["purge_days", "purge_time", "purge_exclude"]],
+      [
+        "push",
+        [
+          "notify_service",
+          "notify_click_target",
+          "notify_new_clients",
+          "notify_controller_offline",
+          "notify_when_empty",
+          "message_name",
+          "message_connection",
+          "message_ssid",
+          "message_access_point",
+          "message_ip",
+          "message_mac",
+        ],
+      ],
+      ["persistent", ["persistent_notification", "persistent_when_empty", "persistent_controller_offline"]],
+    ];
+  }
+
+  _settingsSummary(id, d) {
+    const t = (k) => this._t(k);
+    const hhmm = String(d.purge_time || "").slice(0, 5);
+    if (id === "polling") return t("sumPolling")(d.scan_interval, d.offline_after_failures);
+    if (id === "cleanup") return t("sumCleanup")(d.purge_days, hhmm);
+    if (id === "push") {
+      if (!d.notify_service || d.notify_service === "none") return t("sumPushOff");
+      const target = (this._settings.data.notify_targets || []).find((o) => o.value === d.notify_service);
+      const parts = [
+        d.notify_new_clients && t("sumNew"),
+        d.notify_controller_offline && t("sumController"),
+        d.notify_when_empty && t("sumEmpty"),
+      ].filter(Boolean);
+      return [target ? target.label : d.notify_service, parts.join(", ")].filter(Boolean).join(" · ");
+    }
+    if (!d.persistent_notification && !d.persistent_controller_offline) return t("sumPersistentOff");
+    return [
+      d.persistent_notification && t("sumReport"),
+      d.persistent_controller_offline && t("sumController"),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  _renderSettings() {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.settings");
+    const st = this._settings;
+    if (!dialog || !st) return;
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const hub = (st.data && st.data.hub) || this._hubs.find((h) => h.entry_id === st.entryId) || {};
+    const head = `<div class="dlg-head">
+        <span class="dlg-avatar">${icon("gear")}</span>
+        <div class="dlg-title"><h2>${esc(t("settingsTitle"))}</h2><div class="dlg-sub">${esc(
+          [hub.title, hub.host].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · ")
+        )}</div></div>
+        <button class="dlg-close" data-set="close" title="${esc(t("dialogClose"))}" aria-label="${esc(
+          t("dialogClose")
+        )}">${icon("close")}</button>
+      </div>`;
+    let body;
+    if (st.loading) body = `<p class="dlg-note">${esc(t("settingsLoading"))}</p>`;
+    else if (st.error) body = `<div class="dlg-error">${esc(t("settingsLoadError"))} ${esc(st.error)}</div>`;
+    else body = this._settingsBodyHtml();
+    const changes = this._settingsChanges();
+    const errors = this._settingsErrors();
+    const canSave = !st.loading && !st.error && !st.saving && changes.length > 0 && !Object.keys(errors).length;
+    const actions = `<div class="dlg-actions">
+        <span class="set-count">${changes.length ? esc(t("settingsChanges")(changes.length)) : ""}</span>
+        <button class="dlg-btn" data-set="close">${esc(t("settingsCancel"))}</button>
+        <button class="dlg-btn primary" data-set="save" ${canSave ? "" : "disabled"}>${esc(
+          st.saving ? t("settingsSaving") : t("settingsSave")
+        )}</button>
+      </div>`;
+    const scroll = dialog.scrollTop;
+    const active = this.shadowRoot.activeElement;
+    const focusKey = active && active.dataset ? active.dataset.opt || active.dataset.set : null;
+    dialog.innerHTML = `${head}<div class="dlg-body">${body}</div>${actions}`;
+    dialog.scrollTop = scroll;
+    if (focusKey) {
+      const el = dialog.querySelector(`[data-opt="${focusKey}"], [data-set="${focusKey}"]`);
+      if (el) el.focus();
+    }
+  }
+
+  _settingsBodyHtml() {
+    const st = this._settings;
+    const d = st.draft;
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const changes = new Set(this._settingsChanges());
+    const errors = this._settingsErrors();
+    const infoBtn = (key) =>
+      `<button type="button" class="info-btn${st.info.has(key) ? " on" : ""}" data-set="info" data-key="${key}" title="${esc(
+        t("settingsInfo")
+      )}" aria-label="${esc(t("settingsInfo"))}" aria-expanded="${st.info.has(key)}">${icon("info")}</button>`;
+    const infoText = (key, text) => (st.info.has(key) ? `<div class="opt-info">${esc(text)}</div>` : "");
+    // Feldzeile: Beschriftung (+ ⓘ), Eingabe, Kurzzeile, aufklappbarer Text.
+    const row = (key, label, control, short, info) => `<div class="opt${changes.has(key) ? " changed" : ""}${
+        errors[key] ? " invalid" : ""
+      }">
+        <div class="opt-line"><span class="opt-label">${esc(label)}${info ? infoBtn(key) : ""}</span>${control}</div>
+        ${errors[key] ? `<div class="opt-error">${esc(errors[key])}</div>` : short ? `<div class="opt-short">${esc(short)}</div>` : ""}
+        ${info ? infoText(key, info) : ""}
+      </div>`;
+    const num = (key, unit) => `<span class="opt-input"><input type="number" inputmode="numeric" data-opt="${key}" value="${esc(
+        d[key]
+      )}" /><span class="unit">${esc(unit)}</span></span>`;
+    const sw = (key) => `<label class="switch"><input type="checkbox" data-opt="${key}" ${d[key] ? "checked" : ""} /><span></span></label>`;
+    const select = (key, options) => `<span class="opt-select"><select data-opt="${key}">${options
+        .map(([v, label]) => `<option value="${esc(v)}"${v === d[key] ? " selected" : ""}>${esc(label)}</option>`)
+        .join("")}</select>${icon("chevron")}</span>`;
+
+    const dur = this._formatDuration((d.scan_interval || 0) * (d.offline_after_failures || 0) * 1000);
+    const targets = (st.data.notify_targets || []).map((o) => [
+      o.value,
+      o.value === "none" ? t("optNotifyNone") : o.missing ? `${o.label} (${t("optNotifyMissing")})` : o.label,
+    ]);
+    const protectedMacs = d.purge_exclude || [];
+    const known = new Map((st.data.protected || []).map((p) => [p.mac, p.name]));
+    const chips = protectedMacs.length
+      ? `<div class="opt-chips">${protectedMacs
+          .map((mac) => {
+            const name = known.get(mac) || this._allClients.find((c) => c.mac === mac)?.name;
+            return `<span class="opt-chip">${esc(name || t("optProtectedUnknown"))}<small>${esc(mac)}</small><button type="button" data-set="unprotect" data-mac="${esc(
+              mac
+            )}" title="${esc(t("optUnprotect")(name || mac))}" aria-label="${esc(t("optUnprotect")(name || mac))}">${icon(
+              "close"
+            )}</button></span>`;
+          })
+          .join("")}</div>`
+      : `<div class="opt-short">${esc(t("optProtectedNone"))}</div>`;
+
+    const fields = {
+      polling:
+        row("scan_interval", t("optScanInterval"), num("scan_interval", t("unitSeconds")), t("optScanIntervalShort"), t("optScanIntervalInfo")) +
+        row(
+          "offline_after_failures",
+          t("optOfflineAfter"),
+          num("offline_after_failures", t("unitPolls")),
+          t("optOfflineAfterLive")(d.scan_interval, dur),
+          t("optOfflineAfterInfo")
+        ),
+      cleanup:
+        row("purge_days", t("optPurgeDays"), num("purge_days", t("unitDays")), t("optPurgeDaysShort"), t("optPurgeDaysInfo")) +
+        row(
+          "purge_time",
+          t("optPurgeTime"),
+          `<span class="opt-input"><input type="time" data-opt="purge_time" value="${esc(String(d.purge_time || "").slice(0, 5))}" /></span>`,
+          t("optPurgeTimeShort"),
+          t("optPurgeTimeInfo")
+        ) +
+        `<div class="opt${changes.has("purge_exclude") ? " changed" : ""}">
+          <div class="opt-line"><span class="opt-label">${esc(t("optProtected"))}${infoBtn("purge_exclude")}</span><span class="opt-count">${
+            protectedMacs.length
+          }</span></div>
+          <div class="opt-short">${esc(t("optProtectedShort"))}</div>
+          ${infoText("purge_exclude", t("optProtectedInfo"))}
+          ${chips}
+        </div>`,
+      push:
+        row("notify_service", t("optNotifyService"), select("notify_service", targets), t("optNotifyServiceShort"), t("optNotifyServiceInfo")) +
+        row(
+          "notify_click_target",
+          t("optClickTarget"),
+          select("notify_click_target", [
+            ["panel", t("optClickPanel")],
+            ["device", t("optClickDevice")],
+          ]),
+          t("optClickTargetShort"),
+          t("optClickTargetInfo")
+        ) +
+        row("notify_new_clients", t("optNotifyNew"), sw("notify_new_clients"), t("optNotifyNewShort"), t("optNotifyNewInfo")) +
+        row("notify_controller_offline", t("optNotifyController"), sw("notify_controller_offline"), t("optNotifyControllerShort"), t("optNotifyControllerInfo")) +
+        row("notify_when_empty", t("optNotifyEmpty"), sw("notify_when_empty"), t("optNotifyEmptyShort"), null) +
+        `<div class="opt">
+          <div class="opt-line"><span class="opt-label">${esc(t("optContent"))}${infoBtn("content")}</span></div>
+          <div class="opt-short">${esc(t("optContentShort"))}</div>
+          ${infoText("content", t("optContentInfo"))}
+          <div class="opt-grid">${[
+            ["message_name", "msgName"],
+            ["message_connection", "msgConnection"],
+            ["message_ssid", "msgSsid"],
+            ["message_access_point", "msgAp"],
+            ["message_ip", "msgIp"],
+            ["message_mac", "msgMac"],
+          ]
+            .map(
+              ([key, label]) =>
+                `<div class="opt-line sub${changes.has(key) ? " changed" : ""}"><span>${esc(t(label))}</span>${sw(key)}</div>`
+            )
+            .join("")}</div>
+        </div>`,
+      persistent:
+        row("persistent_notification", t("optPersistent"), sw("persistent_notification"), t("optPersistentShort"), t("optPersistentInfo")) +
+        row("persistent_when_empty", t("optPersistentEmpty"), sw("persistent_when_empty"), t("optPersistentEmptyShort"), t("optPersistentEmptyInfo")) +
+        row(
+          "persistent_controller_offline",
+          t("optPersistentController"),
+          sw("persistent_controller_offline"),
+          t("optPersistentControllerShort"),
+          t("optPersistentControllerInfo")
+        ),
+    };
+    const titles = { polling: "secPolling", cleanup: "secCleanup", push: "secPush", persistent: "secPersistent" };
+    const reload = changes.has("scan_interval") || changes.has("purge_time");
+    return (
+      this._settingsSections()
+        .map(([id, keys]) => {
+          const open = st.open.has(id);
+          const changed = keys.some((k) => changes.has(k));
+          return `<section class="set-sec${open ? " open" : ""}">
+            <button type="button" class="set-sec-head" data-set="section" data-id="${id}" aria-expanded="${open}">
+              <span><span class="set-sec-title">${esc(t(titles[id]))}${
+                changed ? `<span class="set-badge">${esc(t("settingsChanged"))}</span>` : ""
+              }</span><span class="set-sec-sum">${esc(this._settingsSummary(id, d))}</span></span>
+              ${icon("chevron")}
+            </button>
+            ${open ? `<div class="set-sec-body">${fields[id]}</div>` : ""}
+          </section>`;
+        })
+        .join("") +
+      (reload ? `<div class="set-note">${esc(t("settingsReloadNote"))}</div>` : "") +
+      (st.saveError ? `<div class="dlg-error">${esc(t("settingsSaveError"))} ${esc(st.saveError)}</div>` : "")
+    );
+  }
+
+  _bindSettings(dialog) {
+    dialog.addEventListener("click", (ev) => {
+      if (ev.target === dialog) {
+        const r = dialog.getBoundingClientRect();
+        if (ev.clientY < r.top || ev.clientY > r.bottom || ev.clientX < r.left || ev.clientX > r.right) {
+          this._closeSettings();
+        }
+        return;
+      }
+      const btn = ev.target.closest("[data-set]");
+      if (!btn || btn.disabled || !this._settings) return;
+      const st = this._settings;
+      const action = btn.dataset.set;
+      if (action === "close") this._closeSettings();
+      else if (action === "section") {
+        const id = btn.dataset.id;
+        if (st.open.has(id)) st.open.delete(id);
+        else st.open.add(id);
+        this._renderSettings();
+      } else if (action === "info") {
+        const key = btn.dataset.key;
+        if (st.info.has(key)) st.info.delete(key);
+        else st.info.add(key);
+        this._renderSettings();
+      } else if (action === "unprotect") {
+        st.draft.purge_exclude = st.draft.purge_exclude.filter((m) => m !== btn.dataset.mac);
+        this._renderSettings();
+      } else if (action === "save") this._saveSettings();
+    });
+    // Zahlen und Uhrzeit: Entwurf beim Tippen nachführen, aber nur die
+    // Anzeige drumherum neu aufbauen, wenn das Feld den Fokus verliert -
+    // sonst sprünge der Cursor bei jedem Tastendruck.
+    dialog.addEventListener("input", (ev) => {
+      const key = ev.target.dataset && ev.target.dataset.opt;
+      if (!key || !this._settings || !this._settings.draft) return;
+      const el = ev.target;
+      if (el.type === "number") this._settings.draft[key] = el.value === "" ? null : Number(el.value);
+      else if (el.type === "time") this._settings.draft[key] = el.value ? `${el.value}:00` : "";
+      else return;
+      this._updateSettingsMeta();
+    });
+    dialog.addEventListener("change", (ev) => {
+      const key = ev.target.dataset && ev.target.dataset.opt;
+      if (!key || !this._settings || !this._settings.draft) return;
+      const el = ev.target;
+      // Zahlen und Uhrzeit laufen über "input"; ihr "change" kommt erst beim
+      // Verlassen des Felds - ein Neuaufbau dann würde den Klick verschlucken,
+      // der den Fokus wegnimmt (z.B. auf "Speichern").
+      if (el.type === "checkbox") this._settings.draft[key] = el.checked;
+      else if (el.tagName === "SELECT") this._settings.draft[key] = el.value;
+      else return;
+      this._renderSettings();
+    });
+    dialog.addEventListener("close", () => {
+      if (!dialog.open) this._settings = null;
+    });
+  }
+
+  // Leichte Aktualisierung während der Eingabe: Zähler, Speichern-Knopf,
+  // Markierung und Fehlertext des Felds.
+  _updateSettingsMeta() {
+    const dialog = this.shadowRoot.querySelector("dialog.settings");
+    const st = this._settings;
+    if (!dialog || !st) return;
+    const changes = this._settingsChanges();
+    const errors = this._settingsErrors();
+    dialog.querySelector(".set-count").textContent = changes.length ? this._t("settingsChanges")(changes.length) : "";
+    const save = dialog.querySelector('[data-set="save"]');
+    save.disabled = st.saving || !changes.length || Object.keys(errors).length > 0;
+    for (const input of dialog.querySelectorAll("input[data-opt]")) {
+      const opt = input.closest(".opt");
+      if (!opt || input.type === "checkbox") continue;
+      const key = input.dataset.opt;
+      opt.classList.toggle("changed", changes.includes(key));
+      opt.classList.toggle("invalid", Boolean(errors[key]));
+    }
+    // Zusammenfassungen, Etiketten, Live-Text und Hinweis direkt anpassen,
+    // ohne Neuaufbau (Fokus und Klicks bleiben erhalten).
+    const d = st.draft;
+    for (const [id, keys] of this._settingsSections()) {
+      const head = dialog.querySelector(`[data-set="section"][data-id="${id}"]`);
+      if (!head) continue;
+      head.querySelector(".set-sec-sum").textContent = this._settingsSummary(id, d);
+      const title = head.querySelector(".set-sec-title");
+      let badge = title.querySelector(".set-badge");
+      const changed = keys.some((k) => changes.includes(k));
+      if (changed && !badge) {
+        badge = document.createElement("span");
+        badge.className = "set-badge";
+        badge.textContent = this._t("settingsChanged");
+        title.appendChild(badge);
+      } else if (!changed && badge) badge.remove();
+    }
+    for (const key of ["scan_interval", "offline_after_failures", "purge_days", "purge_time"]) {
+      const input = dialog.querySelector(`input[data-opt="${key}"]`);
+      const opt = input && input.closest(".opt");
+      if (!opt) continue;
+      let line = opt.querySelector(".opt-short, .opt-error");
+      const text = errors[key]
+        ? errors[key]
+        : key === "offline_after_failures"
+        ? this._t("optOfflineAfterLive")(d.scan_interval, this._formatDuration((d.scan_interval || 0) * (d.offline_after_failures || 0) * 1000))
+        : null;
+      if (line) {
+        if (errors[key]) line.className = "opt-error";
+        else if (line.className === "opt-error") {
+          line.className = "opt-short";
+          line.textContent = "";
+        }
+        if (text !== null) line.textContent = text;
+        else if (!errors[key] && !line.textContent) line.textContent = this._settingsShortText(key);
+      }
+    }
+    const body = dialog.querySelector(".dlg-body");
+    let note = dialog.querySelector(".set-note");
+    const reload = changes.includes("scan_interval") || changes.includes("purge_time");
+    if (reload && !note && body) {
+      note = document.createElement("div");
+      note.className = "set-note";
+      note.textContent = this._t("settingsReloadNote");
+      const err = body.querySelector(":scope > .dlg-error");
+      body.insertBefore(note, err);
+    } else if (!reload && note) note.remove();
+  }
+
+  _settingsShortText(key) {
+    const map = {
+      scan_interval: "optScanIntervalShort",
+      purge_days: "optPurgeDaysShort",
+      purge_time: "optPurgeTimeShort",
+    };
+    return map[key] ? this._t(map[key]) : "";
+  }
+
+  async _saveSettings() {
+    const st = this._settings;
+    if (!st) return;
+    const changes = this._settingsChanges();
+    if (!changes.length || Object.keys(this._settingsErrors()).length) return;
+    const values = {};
+    for (const key of changes) values[key] = st.draft[key];
+    st.saving = true;
+    st.saveError = null;
+    this._renderSettings();
+    try {
+      const result = await this._hass.callWS({
+        type: "unifi_dynamic/set_options",
+        entry_id: st.entryId,
+        values,
+      });
+      this._toast(result && result.reload ? this._t("settingsSavedReload") : this._t("settingsSaved"));
+      this._closeSettings();
+      // Schutzliste und Namen können sich geändert haben.
+      this._fetchClients();
+    } catch (err) {
+      if (this._settings !== st) return;
+      st.saving = false;
+      st.saveError = (err && err.message) || String(err);
+      this._renderSettings();
+    }
   }
 
   // Fehler hier abfangen statt die Promise unbehandelt durchfallen zu
@@ -837,8 +1567,8 @@ class UnifiDynamicPanel extends HTMLElement {
     // die MAC; unbekannt bleibt der Schlüssel trotzdem gesetzt und der
     // Dialog meldet "nicht vorhanden" statt still nichts zu tun.
     const hit =
-      this._clients.find((c) => c.mac === mac && (!entryId || c.entry_id === entryId)) ||
-      this._clients.find((c) => c.mac === mac);
+      this._allClients.find((c) => c.mac === mac && (!entryId || c.entry_id === entryId)) ||
+      this._allClients.find((c) => c.mac === mac);
     try {
       params.delete("mac");
       params.delete("entry");
@@ -850,8 +1580,10 @@ class UnifiDynamicPanel extends HTMLElement {
     this._openDialog(hit ? `${hit.entry_id}|${hit.mac}` : `${entryId}|${mac}`);
   }
 
+  // Über alle Hubs: eine Meldung kann auf einen Client eines gerade nicht
+  // gewählten Hubs zeigen.
   _clientByKey(key) {
-    return this._clients.find((c) => `${c.entry_id}|${c.mac}` === key) || null;
+    return this._allClients.find((c) => `${c.entry_id}|${c.mac}` === key) || null;
   }
 
   _openDialog(key) {
@@ -1359,7 +2091,7 @@ class UnifiDynamicPanel extends HTMLElement {
       // desselben Geräts), deshalb nur markieren bzw. wahlweise ausblenden,
       // nie sperren.
       const linkedElsewhere = new Map();
-      for (const other of this._clients) {
+      for (const other of this._allClients) {
         if (!other.linked_device || `${other.entry_id}|${other.mac}` === currentKey) continue;
         const names = linkedElsewhere.get(other.linked_device.id) || [];
         names.push(other.name);
@@ -2589,6 +3321,72 @@ class UnifiDynamicPanel extends HTMLElement {
         .count-badge[hidden] {
           display: none;
         }
+        /* Hub-Auswahl und Zahnrad: bei einem Hub nur das Zahnrad, bei
+           mehreren beide als zusammenhängende Gruppe. */
+        .hub-ctl {
+          display: inline-flex;
+          flex: 0 0 auto;
+          align-items: stretch;
+        }
+        .hub-select-wrap {
+          display: none;
+          position: relative;
+          align-items: center;
+          border: 1px solid var(--udc-divider);
+          border-right: none;
+          border-radius: 10px 0 0 10px;
+          background: var(--udc-card);
+          color: var(--udc-text2);
+        }
+        .hub-ctl.multi .hub-select-wrap {
+          display: inline-flex;
+        }
+        .hub-select-wrap > svg {
+          position: absolute;
+          width: 18px;
+          height: 18px;
+          pointer-events: none;
+        }
+        .hub-select-wrap > svg:first-child {
+          left: 11px;
+        }
+        .hub-select-wrap > svg:last-child {
+          right: 8px;
+        }
+        .hub-select {
+          height: 100%;
+          max-width: 220px;
+          padding: 0 32px 0 38px;
+          border: none;
+          border-radius: 10px 0 0 10px;
+          background: none;
+          color: var(--udc-text);
+          font: inherit;
+          font-size: 14px;
+          cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          text-overflow: ellipsis;
+        }
+        .hub-select:hover {
+          background: var(--udc-hover);
+        }
+        .gear-btn {
+          width: 40px;
+          padding: 0;
+          justify-content: center;
+        }
+        .hub-ctl.multi .gear-btn {
+          border-radius: 0 10px 10px 0;
+        }
+        .gear-btn:disabled {
+          color: var(--udc-text3);
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+        .gear-btn:disabled:hover {
+          background: var(--udc-card);
+        }
         /* Filter-Button nur auf dem Handy (dort ersetzt er die Filterzeile). */
         .filter-btn {
           display: none;
@@ -2676,6 +3474,24 @@ class UnifiDynamicPanel extends HTMLElement {
           }
           .filter-btn {
             display: inline-flex;
+          }
+          /* Handy: ein Hub - Zahnrad neben dem Filter-Button; mehrere -
+             eigene Zeile unter den Zahlen. */
+          .gear-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+          }
+          .hub-ctl.multi {
+            order: 6;
+            flex: 1 1 100%;
+          }
+          .hub-ctl.multi .hub-select-wrap {
+            flex: 1 1 auto;
+          }
+          .hub-ctl.multi .hub-select {
+            width: 100%;
+            max-width: none;
           }
           .chips {
             padding: 0 12px 10px;
@@ -3372,7 +4188,8 @@ class UnifiDynamicPanel extends HTMLElement {
            Fokusfalle liefert der Browser. Auf dem Handy als Blatt von unten
            über die ganze Breite. Der Dialog selbst scrollt, Kopf und
            Aktionsleiste bleiben dabei per sticky sichtbar. */
-        dialog.device {
+        dialog.device,
+        dialog.settings {
           width: min(640px, calc(100vw - 32px));
           max-height: calc(100% - 48px);
           padding: 0;
@@ -3384,11 +4201,13 @@ class UnifiDynamicPanel extends HTMLElement {
           overflow: auto;
           overscroll-behavior: contain;
         }
-        dialog.device::backdrop {
+        dialog.device::backdrop,
+        dialog.settings::backdrop {
           background: rgba(0,0,0,0.5);
         }
         @media (max-width: 600px) {
-          dialog.device {
+          dialog.device,
+          dialog.settings {
             width: 100%;
             max-width: 100%;
             max-height: 92%;
@@ -4321,6 +5140,336 @@ class UnifiDynamicPanel extends HTMLElement {
         .dlg-btn:hover {
           background: var(--udc-hover);
         }
+        .dlg-btn.primary {
+          flex: 1 1 auto;
+          border-color: var(--udc-primary);
+          background: var(--udc-primary);
+          color: #fff;
+          font-weight: 500;
+        }
+        .dlg-btn.primary:hover {
+          background: color-mix(in srgb, var(--udc-primary) 88%, #000);
+        }
+        .dlg-btn:disabled {
+          opacity: 0.45;
+          cursor: default;
+        }
+        dialog.settings .dlg-btn[data-set="close"] {
+          flex: 1 1 auto;
+        }
+        .set-count {
+          align-self: center;
+          color: var(--udc-text2);
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        .set-count:empty {
+          display: none;
+        }
+        /* Einstellungen: aufklappbare Abschnitte */
+        .set-sec {
+          margin-top: 10px;
+          border: 1px solid var(--udc-divider);
+          border-radius: 14px;
+          overflow: hidden;
+        }
+        .set-sec-head {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          padding: 12px 14px;
+          border: none;
+          background: none;
+          color: var(--udc-text);
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+        .set-sec-head > span {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+        .set-sec-head:hover {
+          background: var(--udc-hover);
+        }
+        .set-sec-head > svg {
+          flex: 0 0 auto;
+          width: 20px;
+          height: 20px;
+          color: var(--udc-text2);
+          transition: transform 0.15s;
+        }
+        .set-sec.open .set-sec-head > svg {
+          transform: rotate(180deg);
+        }
+        .set-sec-title {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 500;
+        }
+        .set-sec-sum {
+          display: block;
+          margin-top: 1px;
+          overflow: hidden;
+          color: var(--udc-text2);
+          font-size: 12px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .set-badge {
+          padding: 0 8px;
+          border-radius: 99px;
+          background: var(--udc-primary-soft);
+          color: var(--udc-primary);
+          font-size: 11px;
+          font-weight: 400;
+        }
+        .set-sec-body {
+          padding: 2px 14px 10px;
+          border-top: 1px solid var(--udc-divider);
+        }
+        .opt {
+          padding: 10px 0;
+          border-bottom: 1px solid var(--udc-divider);
+        }
+        .opt:last-child {
+          border-bottom: none;
+        }
+        .opt-line {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          min-height: 36px;
+        }
+        .opt-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          min-width: 0;
+        }
+        .opt-short,
+        .opt-error {
+          margin-top: 3px;
+          color: var(--udc-text2);
+          font-size: 12px;
+          line-height: 1.35;
+        }
+        .opt-error {
+          color: var(--udc-error);
+        }
+        .opt-info {
+          margin-top: 6px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          background: var(--udc-subtle);
+          color: var(--udc-text2);
+          font-size: 12px;
+          line-height: 1.45;
+        }
+        .info-btn {
+          display: inline-grid;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          padding: 0;
+          border: none;
+          border-radius: 50%;
+          background: none;
+          color: var(--udc-text3);
+          cursor: pointer;
+        }
+        .info-btn svg {
+          width: 16px;
+          height: 16px;
+        }
+        .info-btn:hover,
+        .info-btn.on {
+          color: var(--udc-primary);
+        }
+        .opt-input {
+          display: inline-flex;
+          flex: 0 0 auto;
+          align-items: center;
+          gap: 6px;
+          height: 36px;
+          padding: 0 10px;
+          border: 1px solid var(--udc-divider);
+          border-radius: 9px;
+          background: var(--udc-input);
+        }
+        .opt-input input {
+          width: 70px;
+          border: none;
+          outline: none;
+          background: none;
+          color: var(--udc-text);
+          font: inherit;
+          font-size: 14px;
+          font-variant-numeric: tabular-nums;
+        }
+        .opt-input input[type="time"] {
+          width: 96px;
+          color-scheme: light dark;
+        }
+        .opt-input .unit {
+          color: var(--udc-text3);
+          font-size: 12px;
+        }
+        .opt.changed > .opt-line .opt-input,
+        .opt.changed > .opt-line .opt-select select {
+          border-color: var(--udc-primary);
+          box-shadow: inset 0 0 0 1px var(--udc-primary);
+        }
+        .opt.invalid > .opt-line .opt-input {
+          border-color: var(--udc-error);
+          box-shadow: inset 0 0 0 1px var(--udc-error);
+        }
+        .opt-select {
+          position: relative;
+          flex: 0 1 260px;
+          min-width: 0;
+        }
+        .opt-select select {
+          width: 100%;
+          height: 36px;
+          padding: 0 30px 0 10px;
+          border: 1px solid var(--udc-divider);
+          border-radius: 9px;
+          background: var(--udc-input);
+          color: var(--udc-text);
+          font: inherit;
+          font-size: 14px;
+          appearance: none;
+          -webkit-appearance: none;
+          text-overflow: ellipsis;
+        }
+        .opt-select svg {
+          position: absolute;
+          top: 8px;
+          right: 6px;
+          width: 20px;
+          height: 20px;
+          color: var(--udc-text2);
+          pointer-events: none;
+        }
+        .switch {
+          position: relative;
+          flex: 0 0 auto;
+          width: 36px;
+          height: 20px;
+        }
+        .switch input {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          opacity: 0;
+          cursor: pointer;
+        }
+        .switch span {
+          position: absolute;
+          inset: 0;
+          border-radius: 99px;
+          background: color-mix(in srgb, var(--udc-text) 25%, transparent);
+          pointer-events: none;
+          transition: background 0.15s;
+        }
+        .switch span::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #fff;
+          transition: left 0.15s;
+        }
+        .switch input:checked + span {
+          background: var(--udc-primary);
+        }
+        .switch input:checked + span::after {
+          left: 18px;
+        }
+        .switch input:focus-visible + span {
+          outline: 2px solid var(--udc-primary);
+          outline-offset: 2px;
+        }
+        .opt-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0 18px;
+          margin-top: 4px;
+        }
+        @media (max-width: 600px) {
+          .opt-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .opt-line.sub {
+          min-height: 34px;
+          font-size: 13px;
+        }
+        .opt-line.sub.changed span:first-child {
+          color: var(--udc-primary);
+        }
+        .opt-count {
+          color: var(--udc-text2);
+          font-size: 13px;
+        }
+        .opt-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 8px;
+        }
+        .opt-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          max-width: 100%;
+          padding: 3px 4px 3px 10px;
+          border-radius: 99px;
+          background: var(--udc-subtle);
+          font-size: 13px;
+        }
+        .opt-chip small {
+          color: var(--udc-text3);
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          font-size: 11px;
+        }
+        .opt-chip button {
+          display: grid;
+          place-items: center;
+          width: 22px;
+          height: 22px;
+          padding: 0;
+          border: none;
+          border-radius: 50%;
+          background: none;
+          color: var(--udc-text2);
+          cursor: pointer;
+        }
+        .opt-chip button:hover {
+          background: var(--udc-hover);
+          color: var(--udc-error);
+        }
+        .opt-chip button svg {
+          width: 14px;
+          height: 14px;
+        }
+        .set-note {
+          margin-top: 12px;
+          padding: 10px 12px;
+          border-radius: 10px;
+          background: var(--udc-warning-soft);
+          color: color-mix(in srgb, var(--udc-warning) 85%, var(--udc-text));
+          font-size: 13px;
+        }
         .dlg-btn.destructive {
           color: var(--udc-error);
           border-color: color-mix(in srgb, var(--udc-error) 45%, transparent);
@@ -4391,6 +5540,12 @@ class UnifiDynamicPanel extends HTMLElement {
           </button>
         </div>
         <span class="toolbar-spacer"></span>
+        <span class="hub-ctl">
+          <span class="hub-select-wrap">${icon("hub")}<select class="hub-select" aria-label="${this._escape(
+            t("hubSelect")
+          )}" hidden></select>${icon("chevron")}</span>
+          <button class="tool-btn gear-btn" disabled>${icon("gear")}</button>
+        </span>
         <button class="tool-btn cols-btn" aria-haspopup="true" aria-expanded="false">
           ${icon("columns")}${this._escape(t("columnsBtn"))}<span class="count-badge" hidden></span>
         </button>
@@ -4423,6 +5578,7 @@ class UnifiDynamicPanel extends HTMLElement {
       <style class="colvis"></style>
       <dialog class="device"></dialog>
       <dialog class="filters"></dialog>
+      <dialog class="settings"></dialog>
     `;
 
     const root = this.shadowRoot;
@@ -4534,6 +5690,21 @@ class UnifiDynamicPanel extends HTMLElement {
         root.querySelector(".cols-btn").focus();
       }
     });
+
+    // Hub-Auswahl und Einstellungen.
+    root.querySelector(".hub-select").addEventListener("change", (ev) => {
+      this._hub = ev.target.value;
+      this._openMenuKey = null;
+      this._applyHub();
+      this._renderRows();
+      this._savePrefs();
+    });
+    root.querySelector(".gear-btn").addEventListener("click", () => {
+      const hub = this._effectiveHub();
+      const entryId = hub !== "all" ? hub : this._hubs.length === 1 ? this._hubs[0].entry_id : null;
+      if (entryId) this._openSettings(entryId);
+    });
+    this._bindSettings(root.querySelector("dialog.settings"));
 
     // Filter-Blatt (Handy).
     const sheet = root.querySelector("dialog.filters");

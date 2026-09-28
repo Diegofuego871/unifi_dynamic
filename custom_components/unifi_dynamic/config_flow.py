@@ -49,6 +49,7 @@ from .const import (
     SITES_PATH,
 )
 from .coordinator import preferred_client_name
+from .options_api import OFFLINE_AFTER_RANGE, PURGE_DAYS_RANGE, SCAN_INTERVAL_RANGE
 
 # Options-Keys aus früheren Versionen, die beim Speichern verworfen werden.
 OBSOLETE_OPTIONS = ("notification_icon", "icon_url")
@@ -226,9 +227,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_VERIFY_SSL, default=DEFAULT_VERIFY_SSL): bool,
                 vol.Optional(
                     CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL
-                ): vol.All(vol.Coerce(int), vol.Range(min=10, max=3600)),
+                ): vol.All(vol.Coerce(int), vol.Range(*SCAN_INTERVAL_RANGE)),
                 vol.Optional(CONF_PURGE_DAYS, default=DEFAULT_PURGE_DAYS): vol.All(
-                    vol.Coerce(int), vol.Range(min=0, max=3650)
+                    vol.Coerce(int), vol.Range(*PURGE_DAYS_RANGE)
                 ),
             }
         )
@@ -387,11 +388,11 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         {
                             vol.Required(
                                 CONF_SCAN_INTERVAL, default=scan_default
-                            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=3600)),
+                            ): vol.All(vol.Coerce(int), vol.Range(*SCAN_INTERVAL_RANGE)),
                             vol.Required(
                                 CONF_OFFLINE_AFTER_FAILURES,
                                 default=offline_after_default,
-                            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=2880)),
+                            ): vol.All(vol.Coerce(int), vol.Range(*OFFLINE_AFTER_RANGE)),
                         }
                     ),
                     {"collapsed": True},
@@ -401,7 +402,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         {
                             vol.Required(
                                 CONF_PURGE_DAYS, default=purge_default
-                            ): vol.All(vol.Coerce(int), vol.Range(min=0, max=3650)),
+                            ): vol.All(vol.Coerce(int), vol.Range(*PURGE_DAYS_RANGE)),
                             vol.Required(
                                 CONF_PURGE_TIME, default=purge_time_default
                             ): selector.TimeSelector(),

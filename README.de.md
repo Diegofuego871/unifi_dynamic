@@ -86,7 +86,9 @@ Clients"**.
 ## Optionen
 
 Nachträglich über **Konfigurieren** an der Integration erreichbar. Der Dialog
-ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind.
+ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind. Dieselben
+Einstellungen lassen sich auch direkt im Panel über das Zahnrad bearbeiten
+(siehe [Panel](#panel)); beide Wege schreiben in dieselben Optionen.
 
 ### Abfrage
 
@@ -226,6 +228,25 @@ lokale Kopie. Einstellungen aus 2.4.0 und früher werden einmalig
 aktiver Filter) setzt Filter, Suche und Sortierung mit einem Klick zurück;
 ausgeblendete Spalten bleiben ausgeblendet, sie gehören zum Layout, nicht zu
 den Filtern.
+
+Sind mehrere Hubs (UniFi-Controller) eingerichtet, erscheint neben „Spalten"
+eine Hub-Auswahl: „Alle Hubs" zeigt die Clients aller Controller gemeinsam,
+ein einzelner Hub nur dessen Clients samt passender Zählung. Die Wahl wird
+pro Benutzer gespeichert. Gleich daneben öffnet das Zahnrad die
+**Einstellungen** des gewählten Hubs — dieselben vier Abschnitte wie im
+Optionsdialog von Home Assistant (Abfrage, Automatisches Entfernen,
+Push-Benachrichtigung, Anhaltende Benachrichtigung), mit einer
+Zusammenfassung pro Abschnitt. Jedes Feld hat eine kurze Erklärung, das
+ⓘ-Symbol klappt den ausführlichen Text auf; unter „Als ausgefallen nach"
+steht die resultierende Reaktionszeit, zum Beispiel „Bei 30 s Intervall:
+nach 15 Min.". Geschützte Clients erscheinen als Liste und lassen sich dort
+entfernen (hinzufügen geht über „Schützen" in der Tabelle). Geänderte
+Felder sind markiert, gespeichert wird erst mit „Speichern". Ändern sich
+Abfrageintervall oder Uhrzeit des Laufs, lädt die Integration dabei kurz
+neu, worauf der Dialog vorher hinweist. Bei „Alle Hubs" ist das Zahnrad
+gesperrt, weil die Einstellungen pro Hub gelten; mit nur einem Hub gibt es
+keine Auswahl, nur das Zahnrad. Host, API-Key und SSL-Prüfung bleiben
+bewusst dem Einrichtungsdialog von Home Assistant vorbehalten.
 
 Jede Zeile hat ein ⋮-Menü mit „Details", „Vor automatischem Löschen schützen" (trägt
 den Client in die Ausnahmeliste ein), „Löschen" (fragt zuerst nach, entfernt

@@ -5,6 +5,23 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.8.0] - 2026-09-28
+
+### Added
+
+- Settings in the panel: a gear button next to "Columns" opens the
+  settings of a hub — the same options as Home Assistant's options dialog
+  (polling, automatic removal, push notification, persistent
+  notification), in collapsible sections with a summary each. Every field
+  has a short explanation, the ⓘ symbol expands the detailed text, and the
+  resulting reaction time is shown for "Offline after". Protected clients
+  are listed and can be removed. Changed fields are marked, nothing is
+  saved until "Save", and a note warns when saving will briefly reload the
+  integration. Both places write the same options, with the same limits.
+- Hub switch: with several hubs a selector next to "Columns" shows all
+  hubs together or a single one, with matching counts; the choice is saved
+  per user. Settings apply per hub, so the gear is disabled for "All hubs".
+
 ## [2.7.1] - 2026-09-28
 
 ### Changed
@@ -1065,6 +1082,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.8.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.8.0
 [2.7.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.7.1
 [2.7.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.7.0
 [2.6.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.6.0

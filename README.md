@@ -82,7 +82,9 @@ Requires Home Assistant 2024.12 or newer.
 ## Options
 
 Available afterwards via **Configure** on the integration. The dialog is
-grouped into four sections, collapsed when opened.
+grouped into four sections, collapsed when opened. The same settings can
+also be edited right in the panel with the gear button (see
+[Panel](#panel)); both write to the same options.
 
 ### Polling
 
@@ -217,6 +219,23 @@ doesn't offer the storage, the local copy is used. Settings from 2.4.0 and
 earlier are taken over once. "Reset filters" in the toolbar (with the number
 of active filters) clears filters, search and sorting in one click; hidden
 columns stay hidden, as they are part of the layout rather than a filter.
+
+With several hubs (UniFi controllers) set up, a hub switch appears next to
+"Columns": "All hubs" shows the clients of every controller together, a
+single hub only its own clients with matching counts. The choice is saved
+per user. Right next to it the gear opens the **settings** of the selected
+hub — the same four sections as Home Assistant's options dialog (Polling,
+Automatic removal, Push notification, Persistent notification), with a
+summary per section. Each field has a short explanation, and the ⓘ symbol
+expands the detailed text; below "Offline after" the resulting reaction
+time is shown, for example "At a 30 s interval: after 15 min". Protected
+clients are listed and can be removed there (adding works with "Protect" in
+the table). Changed fields are marked, and nothing is saved until "Save".
+If the update interval or the time of the daily run changes, the
+integration briefly reloads, which the dialog points out beforehand. With
+"All hubs" the gear is disabled, since settings apply per hub; with only
+one hub there is no switch, just the gear. Host, API key and SSL
+verification deliberately stay in Home Assistant's setup dialog.
 
 Each row has a ⋮ menu with "Details", "Protect from automatic removal" (adds the
 client to the exclusion list), "Remove" (asks for confirmation, then
