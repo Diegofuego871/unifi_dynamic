@@ -166,6 +166,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     ) -> None:
         nonlocal signature
 
+        # Tägliche Prüfung ein-/ausgeschaltet: Meldung sofort nachführen.
+        hass.async_create_task(update_check.async_refresh_issue(hass))
+
         current = _reload_signature(updated)
         if current == signature:
             _LOGGER.debug(
@@ -177,6 +180,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await hass.config_entries.async_reload(updated.entry_id)
 
     entry.async_on_unload(entry.add_update_listener(_options_updated))
+    update_check.async_start_daily(hass)
 
     _register_notification_action_handler(hass, entry, coordinator)
 
@@ -225,6 +229,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await coordinator.async_close()
 
         if not hass.data.get(DOMAIN):
+            update_check.async_stop_daily(hass)
             hass.services.async_remove(DOMAIN, SERVICE_PURGE_NOW)
             hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CLIENT)
 
@@ -893,6 +898,8 @@ async def _ws_version(
     """Installierte und neueste veröffentlichte Version (GitHub)."""
     installed = await update_check.async_installed_version(hass)
     release = await update_check.async_latest_release(hass, force=msg["force"])
+    # Meldung unter "Reparaturen" gleich mitziehen (z.B. nach dem Update weg).
+    await update_check.async_refresh_issue(hass, release)
     connection.send_result(msg["id"], {"installed": installed, **release})
 
 

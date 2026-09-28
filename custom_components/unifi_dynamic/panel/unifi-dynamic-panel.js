@@ -137,6 +137,13 @@ const STRINGS = {
     secCleanup: "Automatisches Entfernen",
     secPush: "Push-Benachrichtigung",
     secPersistent: "Anhaltende Benachrichtigung",
+    secUpdates: "Updates",
+    sumUpdatesOn: "Tägliche Prüfung auf neue Versionen",
+    sumUpdatesOff: "Keine automatische Prüfung",
+    optUpdateCheck: "Täglich nach Updates suchen",
+    optUpdateCheckShort: "Meldet eine neue Version unter Einstellungen → Reparaturen.",
+    optUpdateCheckInfo:
+      "Fragt einmal täglich die veröffentlichten Releases auf GitHub ab, die erste Prüfung zufällig 5–65 Minuten nach dem Start. Ergänzt HACS, das nur alle paar Tage prüft; wer die doppelte Meldung nicht möchte, schaltet es aus. Gilt für die ganze Integration, solange es bei mindestens einem Hub eingeschaltet ist.",
     sumPolling: (i, n) => `Alle ${i} s · ausgefallen nach ${n} Abfragen`,
     sumCleanup: (d, time) => (d ? `Nach ${d} Tagen ohne Sichtung · täglich ${time}` : "Ausgeschaltet"),
     sumPushOff: "Keine Push-Benachrichtigung",
@@ -391,6 +398,13 @@ const STRINGS = {
     secCleanup: "Automatic removal",
     secPush: "Push notification",
     secPersistent: "Persistent notification",
+    secUpdates: "Updates",
+    sumUpdatesOn: "Daily check for new versions",
+    sumUpdatesOff: "No automatic check",
+    optUpdateCheck: "Check for updates daily",
+    optUpdateCheckShort: "Reports a new version under Settings → Repairs.",
+    optUpdateCheckInfo:
+      "Queries the published releases on GitHub once a day, the first check at a random time 5–65 minutes after startup. Complements HACS, which only checks every few days; turn it off if you don't want the duplicate notice. Applies to the whole integration as long as it is on for at least one hub.",
     sumPolling: (i, n) => `Every ${i} s · offline after ${n} polls`,
     sumCleanup: (d, time) => (d ? `After ${d} days unseen · daily at ${time}` : "Off"),
     sumPushOff: "No push notification",
@@ -1148,7 +1162,8 @@ class UnifiDynamicPanel extends HTMLElement {
         ],
       ],
       ["persistent", ["persistent_notification", "persistent_when_empty", "persistent_controller_offline"]],
-    ];
+      ["updates", ["update_check"]],
+    ].filter(([id]) => id !== "updates" || !this._settings || !this._settings.draft || "update_check" in this._settings.draft);
   }
 
   _settingsSummary(id, d) {
@@ -1166,6 +1181,7 @@ class UnifiDynamicPanel extends HTMLElement {
       ].filter(Boolean);
       return [target ? target.label : d.notify_service, parts.join(", ")].filter(Boolean).join(" · ");
     }
+    if (id === "updates") return t(d.update_check ? "sumUpdatesOn" : "sumUpdatesOff");
     if (!d.persistent_notification && !d.persistent_controller_offline) return t("sumPersistentOff");
     return [
       d.persistent_notification && t("sumReport"),
@@ -1334,8 +1350,17 @@ class UnifiDynamicPanel extends HTMLElement {
           t("optPersistentControllerShort"),
           t("optPersistentControllerInfo")
         ),
+      // Fehlt die Option (älteres Backend), blendet _settingsSections den
+      // Abschnitt aus.
+      updates: row("update_check", t("optUpdateCheck"), sw("update_check"), t("optUpdateCheckShort"), t("optUpdateCheckInfo")),
     };
-    const titles = { polling: "secPolling", cleanup: "secCleanup", push: "secPush", persistent: "secPersistent" };
+    const titles = {
+      polling: "secPolling",
+      cleanup: "secCleanup",
+      push: "secPush",
+      persistent: "secPersistent",
+      updates: "secUpdates",
+    };
     const reload = changes.has("scan_interval") || changes.has("purge_time");
     return (
       `<div class="ver-slot">${this._versionHtml()}</div>` +

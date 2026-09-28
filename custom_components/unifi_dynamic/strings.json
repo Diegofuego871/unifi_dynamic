@@ -97,6 +97,16 @@
               "persistent_when_empty": "Off means the message only appears when something was actually removed. The previous one then stays and keeps showing the last real run and its time.",
               "persistent_controller_offline": "Persistent notification for as long as the UniFi controller does not answer. It disappears automatically once it is reachable again. On by default."
             }
+          },
+          "updates": {
+            "name": "Updates",
+            "description": "Checking for a new version of the integration.",
+            "data": {
+              "update_check": "Check for updates daily"
+            },
+            "data_description": {
+              "update_check": "Queries the published releases on GitHub once a day and reports a new version under Settings → Repairs, with a link to the release notes. Complements HACS, which only checks every few days; turn it off if you don't want the duplicate notice."
+            }
           }
         }
       }
@@ -124,6 +134,12 @@
         "panel": "Device view in the panel",
         "device": "Home Assistant device page"
       }
+    }
+  },
+  "issues": {
+    "update_available": {
+      "title": "UniFi Dynamic Clients {latest} is available",
+      "description": "Installed is {installed}. Update via HACS or with the gear button in the \"UniFi Dynamic Clients\" panel (settings). The daily check can be turned off in the integration options under \"Updates\"."
     }
   }
 }

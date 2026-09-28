@@ -90,7 +90,7 @@ Clients"**.
 ## Optionen
 
 Nachträglich über **Konfigurieren** an der Integration erreichbar. Der Dialog
-ist in vier Abschnitte gegliedert, die beim Öffnen zugeklappt sind. Dieselben
+ist in fünf Abschnitte gegliedert, die beim Öffnen zugeklappt sind. Dieselben
 Einstellungen lassen sich auch direkt im Panel über das Zahnrad bearbeiten
 (siehe [Panel](#panel)); beide Wege schreiben in dieselben Optionen.
 
@@ -127,6 +127,12 @@ Einstellungen lassen sich auch direkt im Panel über das Zahnrad bearbeiten
 | Anhaltende Benachrichtigung erstellen | Bericht des Aufräumlaufs in der Seitenleiste | an |
 | Auch erstellen, wenn nichts entfernt wurde | Andernfalls erscheint sie nur bei tatsächlichen Treffern | an |
 | Auch erstellen, wenn der Controller ausfällt | Bleibt in der Seitenleiste, bis der Controller wieder antwortet | an |
+
+### Updates
+
+| Option | Bedeutung | Vorgabe |
+| --- | --- | --- |
+| Täglich nach Updates suchen | Fragt einmal täglich die veröffentlichten Releases auf GitHub ab (erste Prüfung zufällig 5–65 Minuten nach dem Start) und meldet eine neue Version unter **Einstellungen → Reparaturen**, mit Link zu den Release Notes. Die Meldung verschwindet nach dem Update oder beim Ausschalten. Ergänzt HACS, das nur alle paar Tage prüft; wer die doppelte Meldung nicht möchte, schaltet es aus. Gilt für die ganze Integration, solange es bei mindestens einem Hub an ist. | an |
 
 ## Aktion `unifi_dynamic.purge_now`
 
@@ -237,9 +243,9 @@ Sind mehrere Hubs (UniFi-Controller) eingerichtet, erscheint neben „Spalten"
 eine Hub-Auswahl: „Alle Hubs" zeigt die Clients aller Controller gemeinsam,
 ein einzelner Hub nur dessen Clients samt passender Zählung. Die Wahl wird
 pro Benutzer gespeichert. Gleich daneben öffnet das Zahnrad die
-**Einstellungen** des gewählten Hubs — dieselben vier Abschnitte wie im
+**Einstellungen** des gewählten Hubs — dieselben fünf Abschnitte wie im
 Optionsdialog von Home Assistant (Abfrage, Automatisches Entfernen,
-Push-Benachrichtigung, Anhaltende Benachrichtigung), mit einer
+Push-Benachrichtigung, Anhaltende Benachrichtigung, Updates), mit einer
 Zusammenfassung pro Abschnitt. Jedes Feld hat eine kurze Erklärung, das
 ⓘ-Symbol klappt den ausführlichen Text auf; unter „Als ausgefallen nach"
 steht die resultierende Reaktionszeit, zum Beispiel „Bei 30 s Intervall:
@@ -256,8 +262,9 @@ bewusst dem Einrichtungsdialog von Home Assistant vorbehalten.
 
 Ganz oben in den Einstellungen steht die **Version** der Integration mit
 dem Knopf „Nach Updates suchen". Die Integration fragt dafür selbst die
-veröffentlichten Releases auf GitHub ab (auch ohne HACS; ohne Knopfdruck
-höchstens alle 6 Stunden) und lässt, falls vorhanden, zugleich die
+veröffentlichten Releases auf GitHub ab (auch ohne HACS; beim Öffnen
+höchstens alle 6 Stunden, dazu die tägliche Prüfung aus dem Abschnitt
+„Updates") und lässt, falls vorhanden, zugleich die
 Update-Entität von HACS neu prüfen. Gibt es eine neuere Version, erscheinen
 „Version x verfügbar", ein Link zu den Release Notes und — wenn die
 Integration über HACS installiert ist — der Knopf „Aktualisieren". Er
@@ -288,6 +295,7 @@ Die Abschnitte im Einzelnen:
 | Automatisches Entfernen | Tage ohne Sichtung bis zum Entfernen (0 = aus), Uhrzeit des täglichen Laufs und die geschützten Clients mit Knopf zum Aufheben des Schutzes |
 | Push-Benachrichtigung | Ziel (notify-Dienst oder -Entität), wohin ein Tipp auf eine Gerätemeldung führt, Auslöser (neue Geräte, Controller-Ausfall, auch ohne Treffer) und der Inhalt der Neugeräte-Meldung in zwei Spalten |
 | Anhaltende Benachrichtigung | Bericht des Aufräumlaufs, auch ohne Treffer, und Meldung bei Controller-Ausfall |
+| Updates | Tägliche Prüfung auf eine neue Version mit Meldung unter „Reparaturen" |
 
 ![Einstellungen im Panel: „Automatisches Entfernen" mit geschützten Clients und „Push-Benachrichtigung" aufgeklappt](docs/panel-settings-details.png)
 

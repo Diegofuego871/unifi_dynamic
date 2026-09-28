@@ -29,6 +29,7 @@ from .const import (
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
+    CONF_UPDATE_CHECK,
     CONF_VERIFY_SSL,
     DEFAULT_NOTIFY_CLICK_TARGET,
     DEFAULT_NOTIFY_CONTROLLER_OFFLINE,
@@ -42,6 +43,7 @@ from .const import (
     DEFAULT_PURGE_DAYS,
     DEFAULT_PURGE_TIME,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_UPDATE_CHECK,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     MESSAGE_FIELDS,
@@ -61,12 +63,14 @@ SECTION_POLLING = "polling"
 SECTION_CLEANUP = "cleanup"
 SECTION_PUSH = "push"
 SECTION_PERSISTENT = "persistent"
+SECTION_UPDATES = "updates"
 
 SECTIONS = (
     SECTION_POLLING,
     SECTION_CLEANUP,
     SECTION_PUSH,
     SECTION_PERSISTENT,
+    SECTION_UPDATES,
 )
 
 
@@ -451,6 +455,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                         CONF_PERSISTENT_CONTROLLER_OFFLINE,
                                         DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
                                     )
+                                ),
+                            ): bool,
+                        }
+                    ),
+                    {"collapsed": True},
+                ),
+                vol.Required(SECTION_UPDATES): section(
+                    vol.Schema(
+                        {
+                            vol.Required(
+                                CONF_UPDATE_CHECK,
+                                default=bool(
+                                    current.get(CONF_UPDATE_CHECK, DEFAULT_UPDATE_CHECK)
                                 ),
                             ): bool,
                         }

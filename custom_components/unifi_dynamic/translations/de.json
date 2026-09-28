@@ -97,6 +97,16 @@
               "persistent_when_empty": "Aus bedeutet: die Meldung erscheint nur, wenn tatsächlich etwas entfernt wurde. Die vorherige bleibt dann stehen und zeigt weiterhin den letzten echten Lauf samt Zeitpunkt.",
               "persistent_controller_offline": "Anhaltende Benachrichtigung, solange der UniFi-Controller nicht antwortet. Sie verschwindet automatisch, sobald er wieder erreichbar ist. Standardmässig an."
             }
+          },
+          "updates": {
+            "name": "Updates",
+            "description": "Prüfung auf eine neue Version der Integration.",
+            "data": {
+              "update_check": "Täglich nach Updates suchen"
+            },
+            "data_description": {
+              "update_check": "Fragt einmal täglich die veröffentlichten Releases auf GitHub ab und meldet eine neue Version unter Einstellungen → Reparaturen, mit Link zu den Release Notes. Ergänzt HACS, das nur alle paar Tage prüft; wer die doppelte Meldung nicht möchte, schaltet es aus."
+            }
           }
         }
       }
@@ -124,6 +134,12 @@
         "panel": "Geräteansicht im Panel",
         "device": "Home-Assistant-Geräteseite"
       }
+    }
+  },
+  "issues": {
+    "update_available": {
+      "title": "UniFi Dynamic Clients {latest} ist verfügbar",
+      "description": "Installiert ist {installed}. Aktualisieren über HACS oder über das Zahnrad im Panel „UniFi Dynamic Clients\" (Einstellungen). Die tägliche Prüfung lässt sich in den Optionen der Integration unter „Updates\" ausschalten."
     }
   }
 }

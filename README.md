@@ -86,7 +86,7 @@ Requires Home Assistant 2024.12 or newer.
 ## Options
 
 Available afterwards via **Configure** on the integration. The dialog is
-grouped into four sections, collapsed when opened. The same settings can
+grouped into five sections, collapsed when opened. The same settings can
 also be edited right in the panel with the gear button (see
 [Panel](#panel)); both write to the same options.
 
@@ -123,6 +123,12 @@ also be edited right in the panel with the gear button (see
 | Create persistent notification | Report of the cleanup run in the sidebar | on |
 | Also create when nothing was removed | Otherwise it only appears on actual hits | on |
 | Also create when the controller goes down | Stays in the sidebar until the controller answers again | on |
+
+### Updates
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| Check for updates daily | Queries the published releases on GitHub once a day (first check at a random time 5–65 minutes after startup) and reports a new version under **Settings → Repairs**, with a link to the release notes. The notice disappears after updating or when turned off. Complements HACS, which only checks every few days; turn it off if you don't want the duplicate notice. Applies to the whole integration as long as it is on for at least one hub. | on |
 
 ## Action `unifi_dynamic.purge_now`
 
@@ -228,8 +234,8 @@ With several hubs (UniFi controllers) set up, a hub switch appears next to
 "Columns": "All hubs" shows the clients of every controller together, a
 single hub only its own clients with matching counts. The choice is saved
 per user. Right next to it the gear opens the **settings** of the selected
-hub — the same four sections as Home Assistant's options dialog (Polling,
-Automatic removal, Push notification, Persistent notification), with a
+hub — the same five sections as Home Assistant's options dialog (Polling,
+Automatic removal, Push notification, Persistent notification, Updates), with a
 summary per section. Each field has a short explanation, and the ⓘ symbol
 expands the detailed text; below "Offline after" the resulting reaction
 time is shown, for example "At a 30 s interval: after 15 min". Protected
@@ -245,8 +251,8 @@ verification deliberately stay in Home Assistant's setup dialog.
 
 At the very top of the settings is the integration's **version** with a
 "Check for updates" button. The integration queries the published releases
-on GitHub itself (also without HACS; without a button press at most every
-6 hours) and, if present, has HACS re-check its update entity as well. If a
+on GitHub itself (also without HACS; when opening at most every 6 hours,
+plus the daily check from the "Updates" section) and, if present, has HACS re-check its update entity as well. If a
 newer version exists, "Version x available", a link to the release notes
 and — if the integration was installed via HACS — an "Update" button
 appear. It installs through HACS (the same way as Settings → Updates), and
@@ -275,6 +281,7 @@ The sections in detail:
 | Automatic removal | Days unseen before removal (0 = off), time of the daily run and the protected clients, each with a button to stop protecting it |
 | Push notification | Target (notify service or entity), where tapping a device notification leads, triggers (new devices, controller outage, also without hits) and the content of the new-device notification in two columns |
 | Persistent notification | Cleanup report, also without hits, and notification on controller outage |
+| Updates | Daily check for a new version with a notice under "Repairs" |
 
 ![Settings in the panel: "Automatic removal" with protected clients and "Push notification" expanded](docs/panel-settings-details-en.png)
 
