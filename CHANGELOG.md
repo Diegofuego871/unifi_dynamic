@@ -16,6 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   message. Previously the greyed-out "Save" button after picking a loader
   looked like the change had not been registered.
 
+### Fixed
+
+- The loading animation sometimes jumped back to the start in the middle
+  of a scene. The device view is rebuilt whenever something in it changes
+  (relative times such as "2 min ago", new poll data, entity states), and
+  the rebuilt loader restarted its animations from zero; the seconds
+  counter briefly showed 0 as well. The loader now remembers when loading
+  started and continues seamlessly after every rebuild, also in the
+  controller availability and the previews in the settings.
+
 ## [2.13.0] - 2026-09-29
 
 ### Added

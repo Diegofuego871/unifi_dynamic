@@ -1294,6 +1294,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const dialog = this.shadowRoot.querySelector("dialog.settings");
     this._settings = {
       entryId,
+      // Gemeinsamer Takt der Loader-Vorschauen (siehe _syncLoaders).
+      openedAt: Date.now(),
       loading: true,
       error: null,
       saveError: null,
@@ -1441,6 +1443,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const active = this.shadowRoot.activeElement;
     const focusKey = active && active.dataset ? active.dataset.opt || active.dataset.set : null;
     dialog.innerHTML = `${head}<div class="dlg-body">${body}</div>${actions}`;
+    this._syncLoaders(dialog);
     dialog.scrollTop = scroll;
     if (focusKey) {
       const el = dialog.querySelector(`[data-opt="${focusKey}"], [data-set="${focusKey}"]`);
@@ -1623,7 +1626,7 @@ class UnifiDynamicPanel extends HTMLElement {
           const preview =
             k === "random"
               ? `<div class="ld-mini ld-dice" aria-hidden="true">${icon("dice")}</div>`
-              : `<div class="ld-mini ld-${k}" aria-hidden="true"><div class="ld-mini-in">${this._loaderTrackHtml(k)}</div></div>`;
+              : `<div class="ld-mini ld-${k}" aria-hidden="true"><div class="ld-mini-in" data-ld-started="${st.openedAt || 0}">${this._loaderTrackHtml(k)}</div></div>`;
           return `<button type="button" class="ld-choice${on ? " on" : ""}" data-set="loader-pick" data-kind="${k}" aria-pressed="${on}" aria-label="${esc(
             t("loaderSelect")(name)
           )}">${preview}<span class="ld-name">${esc(name)}</span><span class="ld-desc">${esc(desc)}</span></button>`;
@@ -2095,7 +2098,10 @@ class UnifiDynamicPanel extends HTMLElement {
     const slot = this.shadowRoot && this.shadowRoot.querySelector("dialog.settings .avail-slot");
     if (!slot) return;
     const html = this._settingsAvailHtml();
-    if (slot.innerHTML !== html) slot.innerHTML = html;
+    if (slot.innerHTML !== html) {
+      slot.innerHTML = html;
+      this._syncLoaders(slot);
+    }
   }
 
   _bindSettings(dialog) {
@@ -2565,6 +2571,9 @@ class UnifiDynamicPanel extends HTMLElement {
     this._history = prev
       ? { ...prev, loading: true }
       : { key, loading: true, error: null, states: null, start, end, at: end };
+    // Startzeit für den Loader: damit läuft er nach einem Neuaufbau des
+    // Dialogs an derselben Stelle weiter (siehe _syncLoaders).
+    this._loaderStarted = { key, at: end };
     this._tickLoader(end);
     let states = null;
     let error = null;
@@ -2858,7 +2867,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const esc = (v) => this._escape(v);
     const kind = this._loaderKind(key || "");
     const words = kind === "elephant" ? this._t("availLoadingWords") : this._t("loaderWords")[kind];
-    return `<div class="avail avail-loading ld-${kind}" role="status" aria-label="${esc(this._t("availLoading"))}">
+    const started = this._loaderStarted && this._loaderStarted.key === key ? this._loaderStarted.at : Date.now();
+    return `<div class="avail avail-loading ld-${kind}" data-ld-started="${started}" role="status" aria-label="${esc(this._t("availLoading"))}">
         <div class="ele-words">${words.map((w) => `<span class="shimmer">${esc(w)}</span>`).join("")}</div>
         <div class="ele-sec"><span class="avail-sec">0</span> s</div>
         ${this._loaderTrackHtml(kind)}
@@ -2964,6 +2974,31 @@ class UnifiDynamicPanel extends HTMLElement {
             <g class="roll"><circle class="ball" cx="29" cy="53" r="12"/><path class="seam" d="M18.5 50 q10.5 8 21 0"/></g>
           </svg></div>
         </div>`;
+  }
+
+  // Der Dialog wird bei jeder Änderung seines Inhalts neu aufgebaut
+  // (Relativzeiten, Polling, Entitätszustände). Dabei entsteht auch der
+  // Loader neu, und der Browser würde seine CSS-Animationen von vorn
+  // starten. Deshalb nach jedem Neuaufbau alle Animationen auf die seit dem
+  // Start verstrichene Zeit setzen: die Szene läuft nahtlos weiter.
+  _syncLoaders(root) {
+    if (!root) return;
+    const now = Date.now();
+    for (const el of root.querySelectorAll("[data-ld-started]")) {
+      const started = Number(el.dataset.ldStarted) || now;
+      const elapsed = Math.max(0, now - started);
+      if (typeof el.getAnimations === "function") {
+        for (const anim of el.getAnimations({ subtree: true })) {
+          try {
+            anim.currentTime = elapsed;
+          } catch (err) {
+            // Einzelne Animation nicht setzbar: läuft dann eben von vorn.
+          }
+        }
+      }
+      const sec = el.querySelector(".avail-sec");
+      if (sec) sec.textContent = String(Math.floor(elapsed / 1000));
+    }
   }
 
   // Sekundenzähler direkt im DOM hochzählen, ohne den Dialog neu aufzubauen.
@@ -3490,6 +3525,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const pickerScroll = pickerList ? pickerList.scrollTop : 0;
     this._dialogHtml = html;
     dialog.innerHTML = html;
+    this._syncLoaders(dialog);
     dialog.scrollTop = scroll;
     const newList = dialog.querySelector(".picker-list");
     if (newList) newList.scrollTop = pickerScroll;
