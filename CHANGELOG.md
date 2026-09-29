@@ -5,6 +5,18 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.15.5] - 2026-09-29
+
+### Fixed
+
+- Pre-releases whose version number has no suffix (for example a tag
+  `v2.15.4` marked "Set as a pre-release" on GitHub) were shown as a normal
+  update: no violet "Beta" row and no hint or button to switch on
+  "Pre-release" in HACS. The panel now also treats a version as a
+  pre-release when GitHub lists it as one, not only by `b`/`rc` in the
+  number. With "Show pre-releases" off, such a version reported by HACS is
+  no longer offered as a stable update either.
+
 ## [2.15.4] - 2026-09-29
 
 ### Changed
@@ -1443,6 +1455,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.15.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.5
 [2.15.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.4
 [2.15.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.3
 [2.15.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.2

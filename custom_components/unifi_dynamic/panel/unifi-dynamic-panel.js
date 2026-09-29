@@ -2102,6 +2102,20 @@ class UnifiDynamicPanel extends HTMLElement {
     return Boolean(v) && this._versionKey(v)[3] < 3;
   }
 
+  // Vorabversion nach Nummer (2.16.0b1) oder weil GitHub genau diese Version
+  // als Pre-Release führt - auch ohne Zusatz in der Nummer (Tag v2.15.4 mit
+  // Häkchen "Set as a pre-release"). Die stabile Version von GitHub zählt nie.
+  _isPreVersion(ver, d) {
+    if (!ver) return false;
+    if (this._isPrerelease(ver)) return true;
+    return Boolean(
+      d &&
+        d.prerelease &&
+        this._cmpVersion(ver, d.prerelease) === 0 &&
+        (!d.latest || this._cmpVersion(ver, d.latest) > 0)
+    );
+  }
+
   // Schalter "Pre-release" von HACS für dieses Repository: eine Entität am
   // selben HACS-Gerät wie die Update-Entität. Standardmässig deaktiviert;
   // deaktiviert heisst hier: nicht in hass.states.
@@ -2216,7 +2230,12 @@ class UnifiDynamicPanel extends HTMLElement {
     v.error = null;
     this._renderSettingsVersion();
     const jobs = [
-      this._hass.callWS({ type: "unifi_dynamic/version", force, prerelease: Boolean(this._prerelease) }).then(
+      // Vorabversion immer mitabfragen (vom Backend zwischengespeichert):
+      // auch bei ausgeschaltetem Schalter muss das Panel wissen, welche
+      // Version GitHub als Pre-Release führt, damit es eine solche von HACS
+      // gemeldete Version nicht als stabil anbietet. Angezeigt wird sie
+      // nur mit eingeschaltetem Schalter (_versionState).
+      this._hass.callWS({ type: "unifi_dynamic/version", force, prerelease: true }).then(
         (r) => (v.data = r),
         (err) => (v.error = (err && err.message) || String(err))
       ),
@@ -2297,12 +2316,12 @@ class UnifiDynamicPanel extends HTMLElement {
     if (
       a.latest_version &&
       (!latest || this._cmpVersion(a.latest_version, latest) >= 0) &&
-      (this._prerelease || !this._isPrerelease(a.latest_version))
+      (this._prerelease || !this._isPreVersion(a.latest_version, d))
     ) {
       latest = a.latest_version;
       url = a.release_url || url;
     }
-    const beta = this._isPrerelease(latest);
+    const beta = this._isPreVersion(latest, d);
     const preSwitch = beta && hacs ? this._hacsPreReleaseSwitch() : null;
     const inProgress = Boolean(hacs && (a.in_progress === true || typeof a.in_progress === "number"));
     // HACS hat eine neuere Version auf die Platte gelegt, als gerade läuft.

@@ -339,7 +339,8 @@ just the note with the link, and you update manually.
 
 With the **"Show pre-releases"** switch below the version row (saved per
 user) the panel also offers beta versions if they are newer than the latest
-stable release. The row then turns violet with a "Beta" label. HACS only
+stable release. A version counts as a pre-release if it is marked as a
+pre-release on GitHub or carries a suffix such as `b1` or `rc1`. The row then turns violet with a "Beta" label. HACS only
 installs pre-releases if the "Pre-release" entity on this integration's HACS
 device is enabled and switched on. HACS creates it disabled; the **"Enable
 in HACS"** button in the note enables it, waits for HACS to reload (about 30

@@ -355,7 +355,9 @@ es nur den Hinweis mit Link, installiert wird dann manuell.
 
 Mit dem Schalter **„Vorabversionen anzeigen"** unter der Versionszeile
 (pro Benutzer gespeichert) bietet das Panel auch Beta-Versionen an, sofern
-sie neuer sind als das letzte stabile Release. Die Zeile ist dann violett
+sie neuer sind als das letzte stabile Release. Als Vorabversion gilt, was
+auf GitHub als Pre-Release markiert ist oder einen Zusatz wie `b1` oder
+`rc1` in der Nummer trägt. Die Zeile ist dann violett
 mit dem Etikett „Beta". HACS installiert Vorabversionen nur, wenn bei
 dieser Integration im HACS-Gerät die Entität „Pre-release" aktiviert und
 eingeschaltet ist. HACS legt sie deaktiviert an; der Knopf **„In HACS
