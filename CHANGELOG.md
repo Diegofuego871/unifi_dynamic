@@ -5,6 +5,24 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.13.0] - 2026-09-29
+
+### Added
+
+- Choose the loading animation shown while the availability history loads,
+  under Settings → Loader in the panel. Each option has a small live
+  preview:
+  - **Elephant**: balancing on a ball (as before, still the default).
+  - **Cat**: sneaks up, wiggles and pounces at a ball of yarn; the track
+    grows in bursts.
+  - **Hamster**: runs in its wheel, which rolls across the bar.
+  - **Penguin**: waddles along until a polar bear comes running, slides
+    away on its belly and dives into an ice hole; the bear stops, looks
+    around puzzled, and the penguin surfaces further ahead and waves.
+  - **Random**: a different one on each load.
+- The choice is stored per user, like the column selection, applies right
+  away without "Save" and follows you to all your devices.
+
 ## [2.12.1] - 2026-09-28
 
 ### Fixed
@@ -1242,6 +1260,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.13.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.0
 [2.12.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.1
 [2.12.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.0
 [2.11.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.11.4

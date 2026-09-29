@@ -279,6 +279,21 @@ const STRINGS = {
     availRanges: { "24h": "24 Std.", "7d": "7 Tage", "30d": "30 Tage" },
     availRangeGroup: "Zeitraum",
     availLoading: "Verlauf wird geladen…",
+    loaderTitle: "Loader",
+    loaderShort: "Lade-Animation, während der Verlauf geladen wird. Gilt nur für dich, auf allen Geräten.",
+    loaderNames: {
+      elephant: ["Elefant", "Balance auf dem Ball"],
+      cat: ["Katze", "Anschleichen und Anspringen"],
+      hamster: ["Hamster", "Im Laufrad"],
+      penguin: ["Pinguin", "…und der Eisbär"],
+      random: ["Zufall", "Jedes Mal eine andere"],
+    },
+    loaderSelect: (name) => `Loader ${name} wählen`,
+    loaderWords: {
+      cat: ["Schleicht sich an die Daten an…", "Hintern wackelt. Gleich…", "Sprung! Knapp daneben.", "Tut so, als wäre nichts gewesen."],
+      hamster: ["Rennt, so schnell er kann…", "Das Rad dreht, die Daten kommen.", "Keine Pause. Keine Ahnung wohin.", "Gleich drüben…"],
+      penguin: ["Watschelt durch den Verlauf…", "Da kommt wer! Abtauchen!", "Der Bär wundert sich noch.", "Taucht mit den Daten wieder auf…"],
+    },
     availLoadingWords: [
       "Balanciert durch den Verlauf…",
       "Wackelt. Fällt nicht. Wie der Controller.",
@@ -572,6 +587,21 @@ const STRINGS = {
     availRanges: { "24h": "24 h", "7d": "7 days", "30d": "30 days" },
     availRangeGroup: "Time range",
     availLoading: "Loading history…",
+    loaderTitle: "Loader",
+    loaderShort: "Animation shown while the history loads. Applies only to you, on all your devices.",
+    loaderNames: {
+      elephant: ["Elephant", "Balancing on a ball"],
+      cat: ["Cat", "Sneak and pounce"],
+      hamster: ["Hamster", "In the wheel"],
+      penguin: ["Penguin", "…and the polar bear"],
+      random: ["Random", "A different one each time"],
+    },
+    loaderSelect: (name) => `Choose loader ${name}`,
+    loaderWords: {
+      cat: ["Sneaking up on the data…", "Wiggling. Any second…", "Pounce! Just missed.", "Acts like nothing happened."],
+      hamster: ["Running as fast as he can…", "The wheel turns, the data comes.", "No break. No idea where to.", "Almost there…"],
+      penguin: ["Waddling through the history…", "Someone's coming! Dive!", "The bear is still puzzled.", "Surfacing with the data…"],
+    },
     availLoadingWords: [
       "Balancing through the history…",
       "Wobbles. Doesn't fall. Like the controller.",
@@ -691,6 +721,7 @@ const HIDEABLE_KEYS = HIDEABLE_COLUMNS.map(([key]) => key);
 
 // Material Design Icons als Pfade; das iframe kennt HAs ha-icon nicht.
 const ICONS = {
+  dice: "M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M7,5A2,2 0 0,0 5,7A2,2 0 0,0 7,9A2,2 0 0,0 9,7A2,2 0 0,0 7,5M17,15A2,2 0 0,0 15,17A2,2 0 0,0 17,19A2,2 0 0,0 19,17A2,2 0 0,0 17,15M17,5A2,2 0 0,0 15,7A2,2 0 0,0 17,9A2,2 0 0,0 19,7A2,2 0 0,0 17,5M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M7,15A2,2 0 0,0 5,17A2,2 0 0,0 7,19A2,2 0 0,0 9,17A2,2 0 0,0 7,15Z",
   alert: "M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
   key: "M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z",
   wifi: "M12,21L15.6,16.2C14.6,15.45 13.35,15 12,15C10.65,15 9.4,15.45 8.4,16.2L12,21M12,3C7.95,3 4.21,4.34 1.2,6.6L3,9C5.5,7.12 8.62,6 12,6C15.38,6 18.5,7.12 21,9L22.8,6.6C19.79,4.34 16.05,3 12,3M12,9C9.3,9 6.81,9.89 4.8,11.4L6.6,13.8C8.1,12.67 9.97,12 12,12C14.03,12 15.9,12.67 17.4,13.8L19.2,11.4C17.19,9.89 14.7,9 12,9Z",
@@ -752,7 +783,14 @@ const DEFAULT_PREFS = {
   availRange: "24h",
   // Gewählter Hub (entry_id) oder "all". Für Handy und Desktop gemeinsam.
   hub: "all",
+  // Lade-Animation beim Verlauf (siehe LOADERS) oder "random".
+  loader: "elephant",
 };
+
+// Lade-Animationen zur Auswahl in den Einstellungen. "random" wählt bei
+// jedem Laden eine andere.
+const LOADERS = ["elephant", "cat", "hamster", "penguin"];
+const LOADER_CHOICES = [...LOADERS, "random"];
 
 // Zeitraum -> Dauer in Sekunden.
 const AVAIL_RANGES = { "24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400 };
@@ -803,6 +841,7 @@ function sanitizePrefs(raw) {
     hideLinked: p.hideLinked === true,
     availRange: Object.prototype.hasOwnProperty.call(AVAIL_RANGES, p.availRange) ? p.availRange : "24h",
     hub: typeof p.hub === "string" && p.hub ? p.hub : "all",
+    loader: LOADER_CHOICES.includes(p.loader) ? p.loader : "elephant",
     // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
     // Kopie oder der Stand von HA neuer ist.
     updated: typeof p.updated === "number" ? p.updated : 0,
@@ -908,6 +947,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._hideLinked = prefs.hideLinked;
     this._availRange = prefs.availRange || "24h";
     this._hub = prefs.hub || "all";
+    this._loader = prefs.loader || "elephant";
   }
 
   _currentPrefs() {
@@ -923,6 +963,7 @@ class UnifiDynamicPanel extends HTMLElement {
       hideLinked: this._hideLinked,
       availRange: this._availRange,
       hub: this._hub,
+      loader: this._loader,
     };
   }
 
@@ -1547,9 +1588,44 @@ class UnifiDynamicPanel extends HTMLElement {
           </section>`;
         })
         .join("") +
+      this._loaderSectionHtml() +
       (reload ? `<div class="set-note">${esc(t("settingsReloadNote"))}</div>` : "") +
       (st.saveError ? `<div class="dlg-error">${esc(t("settingsSaveError"))} ${esc(st.saveError)}</div>` : "")
     );
+  }
+
+  // ---------------------------------------------------------------------
+  // Loader: Benutzereinstellung, gilt sofort (ohne "Speichern") und wird
+  // wie die Spaltenauswahl pro Benutzer gespeichert.
+  // ---------------------------------------------------------------------
+
+  _loaderSectionHtml() {
+    const st = this._settings;
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const names = t("loaderNames");
+    const open = st.open.has("loader");
+    const current = LOADER_CHOICES.includes(this._loader) ? this._loader : "elephant";
+    const body = open
+      ? `<div class="set-sec-body"><div class="opt-short ld-intro">${esc(t("loaderShort"))}</div><div class="ld-choices">${LOADER_CHOICES.map((k) => {
+          const [name, desc] = names[k];
+          const on = k === current;
+          const preview =
+            k === "random"
+              ? `<div class="ld-mini ld-dice" aria-hidden="true">${icon("dice")}</div>`
+              : `<div class="ld-mini ld-${k}" aria-hidden="true"><div class="ld-mini-in">${this._loaderTrackHtml(k)}</div></div>`;
+          return `<button type="button" class="ld-choice${on ? " on" : ""}" data-set="loader-pick" data-kind="${k}" aria-pressed="${on}" aria-label="${esc(
+            t("loaderSelect")(name)
+          )}">${preview}<span class="ld-name">${esc(name)}</span><span class="ld-desc">${esc(desc)}</span></button>`;
+        }).join("")}</div></div>`
+      : "";
+    return `<section class="set-sec${open ? " open" : ""}">
+        <button type="button" class="set-sec-head" data-set="section" data-id="loader" aria-expanded="${open}">
+          <span><span class="set-sec-title">${esc(t("loaderTitle"))}</span><span class="set-sec-sum">${esc(names[current].join(" · "))}</span></span>
+          ${icon("chevron")}
+        </button>
+        ${body}
+      </section>`;
   }
 
   // ---------------------------------------------------------------------
@@ -2073,7 +2149,14 @@ class UnifiDynamicPanel extends HTMLElement {
         st.draft.purge_exclude = st.draft.purge_exclude.filter((m) => m !== btn.dataset.mac);
         this._renderSettings();
       } else if (action === "save") this._saveSettings();
-      else if (action === "conn-edit") this._openConn(false);
+      else if (action === "loader-pick") {
+        if (LOADER_CHOICES.includes(btn.dataset.kind) && btn.dataset.kind !== this._loader) {
+          this._loader = btn.dataset.kind;
+          this._loaderPick = null;
+          this._savePrefs();
+          this._renderSettings();
+        }
+      } else if (action === "conn-edit") this._openConn(false);
       else if (action === "conn-renew") this._openConn(true);
     });
     // Zahlen und Uhrzeit: Entwurf beim Tippen nachführen, aber nur die
@@ -2647,7 +2730,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._ensureHistory(src);
     const h = this._history;
     if (!h || h.key !== `${src.id}|${range}` || (!h.states && h.loading)) {
-      return `${head}${this._availLoaderHtml()}`;
+      return `${head}${this._availLoaderHtml(`${src.id}|${range}`)}`;
     }
     if (h.error) return note(`${t("availError")} ${h.error}`);
 
@@ -2745,16 +2828,85 @@ class UnifiDynamicPanel extends HTMLElement {
       </div>`;
   }
 
-  // Lade-Animation: Elefant balanciert auf einem Ball über die Leiste,
+  // Lade-Animation beim Verlauf: gewählter Loader (Benutzereinstellung),
   // wechselnde Statuswörter und Sekundenzähler (siehe _tickLoader). Nur
-  // CSS-Animation; bei "Bewegung reduzieren" steht alles still.
-  _availLoaderHtml() {
+  // CSS-Animation; bei "Bewegung reduzieren" steht alles still. Bei "Zufall"
+  // gilt die Wahl pro Ladevorgang (key), damit ein Neuaufbau des Dialogs die
+  // Animation nicht wechselt.
+  _loaderKind(key) {
+    if (this._loader !== "random") return LOADERS.includes(this._loader) ? this._loader : "elephant";
+    if (!this._loaderPick || this._loaderPick.key !== key) {
+      const prev = this._loaderPick && this._loaderPick.kind;
+      const pool = LOADERS.filter((k) => k !== prev);
+      this._loaderPick = { key, kind: pool[Math.floor(Math.random() * pool.length)] };
+    }
+    return this._loaderPick.kind;
+  }
+
+  _availLoaderHtml(key) {
     const esc = (v) => this._escape(v);
-    const words = this._t("availLoadingWords");
-    return `<div class="avail avail-loading" role="status" aria-label="${esc(this._t("availLoading"))}">
+    const kind = this._loaderKind(key || "");
+    const words = kind === "elephant" ? this._t("availLoadingWords") : this._t("loaderWords")[kind];
+    return `<div class="avail avail-loading ld-${kind}" role="status" aria-label="${esc(this._t("availLoading"))}">
         <div class="ele-words">${words.map((w) => `<span class="shimmer">${esc(w)}</span>`).join("")}</div>
         <div class="ele-sec"><span class="avail-sec">0</span> s</div>
-        <div class="ele-track">
+        ${this._loaderTrackHtml(kind)}
+      </div>`;
+  }
+
+  // Nur die Leiste mit Tier, auch für die Vorschau in den Einstellungen.
+  _loaderTrackHtml(kind) {
+    if (kind === "cat") {
+      return `<div class="ele-track"><div class="ele-done ld-cat-done"></div>
+          <div class="ld-rider ld-catr"><svg viewBox="0 0 100 54" aria-hidden="true">
+            <g class="jump"><g class="crouch">
+              <g class="butt"><path class="tail" d="M13 26 C 5 26, 2 20, 3 14"/>
+                <rect class="sil leg l1" x="13" y="27" width="4" height="15" rx="2"/>
+                <rect class="sil leg l2" x="18" y="27" width="4" height="15" rx="2"/></g>
+              <rect class="sil leg l3" x="33" y="27" width="4" height="15" rx="2"/>
+              <rect class="sil leg l4" x="38" y="27" width="4" height="15" rx="2"/>
+              <ellipse class="sil" cx="27" cy="27" rx="16" ry="7.5"/>
+              <circle class="sil" cx="46" cy="22" r="7.5"/>
+              <path class="sil" d="M40 18 L40.5 9.5 L45.5 15.5 Z M46.5 15 L52 9.5 L52.5 18 Z"/>
+              <circle class="eye" cx="49.5" cy="21" r="1.4"/>
+              <path class="whisk" d="M52 24 l6 -1 M52 25 l6 1.5"/>
+            </g></g>
+            <g class="yarnball"><circle class="yarn" cx="88" cy="41" r="7"/>
+              <path class="strand" d="M82 38 q6 -4 12 1 M81.5 42 q7 -5 13 2 M84 46 q5 -3 9 0 M87 34.5 q-3 6 0 13"/></g>
+          </svg></div></div>`;
+    }
+    if (kind === "hamster") {
+      return `<div class="ele-track"><div class="ele-done"></div>
+          <div class="ld-rider ld-hamr"><svg viewBox="0 0 52 52" aria-hidden="true">
+            <g class="wheel"><circle class="rim" cx="26" cy="26" r="23"/><path class="spoke" d="M26 3 V49 M3 26 H49 M9.7 9.7 L42.3 42.3 M42.3 9.7 L9.7 42.3"/></g>
+            <g class="hbody"><rect class="sil leg l1" x="20" y="40" width="3" height="6" rx="1.5"/><rect class="sil leg l2" x="30" y="40" width="3" height="6" rx="1.5"/>
+              <ellipse class="sil" cx="25" cy="37" rx="10" ry="6.5"/><circle class="sil" cx="34" cy="33" r="5.5"/><circle class="sil" cx="32.5" cy="27.5" r="2.2"/>
+              <circle class="eye" cx="36" cy="32" r="1"/><circle class="nose" cx="39.3" cy="34" r="0.9"/></g>
+          </svg></div></div>`;
+    }
+    if (kind === "penguin") {
+      return `<div class="ele-track ld-ice"><div class="ele-done ld-pen-done"></div><div class="ld-hole h1"></div><div class="ld-hole h2"></div>
+          <div class="ld-stage free">
+            <div class="ld-actor ld-bear"><svg viewBox="0 0 72 46" aria-hidden="true"><g class="lean">
+              <rect class="fur leg l1" x="14" y="28" width="7" height="16" rx="3.5"/><rect class="fur leg l2" x="22" y="28" width="7" height="16" rx="3.5"/>
+              <rect class="fur leg l3" x="40" y="28" width="7" height="16" rx="3.5"/><rect class="fur leg l4" x="48" y="28" width="7" height="16" rx="3.5"/>
+              <circle class="fur" cx="12" cy="20" r="3"/><ellipse class="fur" cx="34" cy="23" rx="22" ry="12"/>
+              <g class="head"><circle class="fur" cx="51" cy="10" r="3.3"/><circle class="fur" cx="57" cy="18" r="9.5"/>
+                <ellipse class="fur" cx="65" cy="21" rx="6" ry="4"/><circle class="dark" cx="70" cy="20" r="1.6"/><circle class="dark" cx="60" cy="15" r="1.2"/></g>
+            </g></svg></div>
+            <div class="ld-q" aria-hidden="true">?</div><div class="ld-bang" aria-hidden="true">!</div>
+          </div>
+          <div class="ld-stage"><div class="ld-actor ld-peng"><svg viewBox="0 0 32 46" aria-hidden="true"><g class="pose"><g class="w">
+            <ellipse class="warm" cx="11" cy="44" rx="4" ry="1.6"/><ellipse class="warm" cx="20" cy="44" rx="4" ry="1.6"/>
+            <ellipse class="sil" cx="16" cy="26" rx="10" ry="16"/><ellipse class="belly" cx="18" cy="29" rx="6" ry="11.5"/>
+            <g class="wave"><path class="sil" d="M8 20 C3 26, 3 32, 5 35 C8 30, 9 26, 9 21 Z"/></g>
+            <circle class="peye" cx="20" cy="16" r="1.3"/><path class="warm" d="M24 17 L30 19 L24 21 Z"/>
+          </g></g></svg></div></div>
+          <div class="ld-drop d1"></div><div class="ld-drop d2"></div><div class="ld-drop d3"></div>
+          <div class="ld-drop up d1"></div><div class="ld-drop up d2"></div><div class="ld-drop up d3"></div>
+        </div>`;
+    }
+    return `<div class="ele-track">
           <div class="ele-done"></div>
           <div class="ele-rider"><svg viewBox="0 0 60 66" aria-hidden="true">
             <g class="body">
@@ -2771,8 +2923,7 @@ class UnifiDynamicPanel extends HTMLElement {
             </g>
             <g class="roll"><circle class="ball" cx="29" cy="53" r="12"/><path class="seam" d="M18.5 50 q10.5 8 21 0"/></g>
           </svg></div>
-        </div>
-      </div>`;
+        </div>`;
   }
 
   // Sekundenzähler direkt im DOM hochzählen, ohne den Dialog neu aufzubauen.
@@ -5556,12 +5707,413 @@ class UnifiDynamicPanel extends HTMLElement {
         @keyframes ele-roll {
           to { transform: rotate(360deg); }
         }
+        /* Weitere Loader (Einstellungen -> Loader). Gemeinsam mit dem
+           Elefanten: Wörter, Sekunden, Leiste und Spur (.ele-*). */
+        .ld-rider,
+        .ld-actor {
+          position: absolute;
+        }
+        .ld-rider svg,
+        .ld-actor svg {
+          display: block;
+          width: 100%;
+          height: 100%;
+          overflow: visible;
+        }
+        .avail-loading .sil,
+        .ld-mini .sil {
+          fill: var(--udc-text2);
+        }
+        .avail-loading .eye,
+        .ld-mini .eye {
+          fill: var(--udc-subtle);
+        }
+        .ld-catr .tail {
+          fill: none;
+          stroke: var(--udc-text2);
+          stroke-width: 3.6;
+          stroke-linecap: round;
+        }
+        .ld-catr .whisk {
+          stroke: var(--udc-text3);
+          stroke-width: 0.7;
+          stroke-linecap: round;
+        }
+        .ld-catr .yarn {
+          fill: color-mix(in srgb, #d9738f 55%, var(--udc-card));
+          stroke: #d9738f;
+          stroke-width: 1.3;
+        }
+        .ld-catr .strand {
+          fill: none;
+          stroke: #d9738f;
+          stroke-width: 1.2;
+          stroke-linecap: round;
+        }
+        /* Katze: anschleichen, Hintern wackeln, Sprung; die Spur wächst in
+           Schüben. */
+        .ld-catr {
+          bottom: 10px;
+          width: 100px;
+          height: 54px;
+          animation: ld-cat-ride 7s linear infinite;
+        }
+        .ld-cat-done {
+          animation: ld-cat-fill 7s linear infinite;
+        }
+        .ld-catr .leg {
+          transform-box: fill-box;
+          transform-origin: 50% 10%;
+          animation: ld-creep 0.8s ease-in-out infinite alternate;
+        }
+        .ld-catr .l2,
+        .ld-catr .l4 {
+          animation-direction: alternate-reverse;
+        }
+        .ld-catr .jump {
+          animation: ld-cat-jump 7s ease-in-out infinite;
+        }
+        .ld-catr .crouch {
+          transform-origin: 26px 30px;
+          animation: ld-cat-crouch 7s ease-in-out infinite;
+        }
+        .ld-catr .butt {
+          transform-origin: 14px 28px;
+          animation: ld-cat-wiggle 7s ease-in-out infinite;
+        }
+        .ld-catr .yarnball {
+          transform-origin: 88px 41px;
+          animation: ld-cat-ball 7s ease-in-out infinite;
+        }
+        @keyframes ld-cat-ride {
+          0% { left: -100px; } 28% { left: 12%; } 40% { left: 14%; } 50% { left: 44%; }
+          76% { left: 56%; } 86% { left: 58%; } 96% { left: 92%; } 100% { left: 100%; }
+        }
+        @keyframes ld-cat-fill {
+          0% { width: 0; } 28% { width: calc(12% + 50px); } 40% { width: calc(14% + 50px); } 50% { width: calc(44% + 50px); }
+          76% { width: calc(56% + 50px); } 86% { width: calc(58% + 50px); } 96% { width: calc(92% + 50px); } 100% { width: calc(100% + 50px); }
+        }
+        @keyframes ld-cat-jump {
+          0%, 40% { transform: none; } 45% { transform: translateY(-20px) rotate(-10deg); } 50%, 86% { transform: none; }
+          91% { transform: translateY(-20px) rotate(-10deg); } 96%, 100% { transform: none; }
+        }
+        @keyframes ld-cat-crouch {
+          0%, 28% { transform: scaleY(0.8) translateY(6px); } 40% { transform: scaleY(0.72) translateY(8px); } 44%, 52% { transform: none; }
+          56%, 76% { transform: scaleY(0.8) translateY(6px); } 86% { transform: scaleY(0.72) translateY(8px); } 90%, 98% { transform: none; }
+          100% { transform: scaleY(0.8) translateY(6px); }
+        }
+        @keyframes ld-cat-wiggle {
+          0%, 29% { transform: none; } 31% { transform: rotate(-7deg); } 33% { transform: rotate(7deg); } 35% { transform: rotate(-7deg); } 37% { transform: rotate(7deg); }
+          39%, 77% { transform: none; } 79% { transform: rotate(-7deg); } 81% { transform: rotate(7deg); } 83% { transform: rotate(-7deg); } 85% { transform: rotate(7deg); }
+          87%, 100% { transform: none; }
+        }
+        @keyframes ld-cat-ball {
+          0%, 44% { transform: none; } 48% { transform: translate(6px, -6px) rotate(200deg); } 52%, 90% { transform: rotate(360deg); }
+          94% { transform: translate(6px, -6px) rotate(560deg); } 98%, 100% { transform: rotate(720deg); }
+        }
+        @keyframes ld-creep {
+          from { transform: rotate(14deg); }
+          to { transform: rotate(-14deg); }
+        }
+        /* Hamster im Laufrad */
+        .ld-hamr {
+          bottom: 19px;
+          width: 52px;
+          height: 52px;
+          animation: ele-ride 7s linear infinite;
+        }
+        .ld-hamr .wheel {
+          transform-origin: 26px 26px;
+          animation: ele-roll 1s linear infinite;
+        }
+        .ld-hamr .rim {
+          fill: none;
+          stroke: var(--udc-text3);
+          stroke-width: 2.2;
+        }
+        .ld-hamr .spoke {
+          stroke: var(--udc-text3);
+          stroke-width: 1;
+        }
+        .ld-hamr .nose {
+          fill: #f0a030;
+        }
+        .ld-hamr .hbody {
+          animation: ld-bob 0.22s ease-in-out infinite alternate;
+        }
+        .ld-hamr .leg {
+          transform-box: fill-box;
+          transform-origin: 50% 0;
+          animation: ld-gallop 0.22s ease-in-out infinite alternate;
+        }
+        .ld-hamr .l2 {
+          animation-direction: alternate-reverse;
+        }
+        @keyframes ld-bob {
+          from { transform: translateY(0); }
+          to { transform: translateY(-2px); }
+        }
+        @keyframes ld-gallop {
+          from { transform: rotate(28deg); }
+          to { transform: rotate(-28deg); }
+        }
+        /* Pinguin und Eisbär: Pinguin watschelt, Bär rennt heran, Pinguin
+           rutscht davon und taucht im Eisloch ab, der Bär wundert sich, der
+           Pinguin taucht weiter vorne wieder auf. */
+        .ld-ice {
+          background: color-mix(in srgb, #7fc8f0 14%, var(--udc-card));
+        }
+        .ld-pen-done {
+          animation: ld-pen-fill 9s linear infinite;
+        }
+        .ld-stage {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 11px;
+          height: 90px;
+          overflow: hidden;
+          pointer-events: none;
+        }
+        .ld-stage.free {
+          overflow: visible;
+        }
+        .ld-actor {
+          bottom: 11px;
+        }
+        .ld-hole {
+          position: absolute;
+          top: -3px;
+          width: 36px;
+          height: 9px;
+          margin-left: -4px;
+          border-radius: 50%;
+          background: color-mix(in srgb, #0b3a57 80%, var(--udc-card));
+          box-shadow: 0 0 0 2px color-mix(in srgb, #7fc8f0 55%, var(--udc-card));
+        }
+        .ld-hole.h1 { left: 64%; }
+        .ld-hole.h2 { left: 88%; }
+        .ld-peng .warm { fill: #f0a030; }
+        .ld-peng .belly { fill: color-mix(in srgb, var(--udc-text) 78%, var(--udc-card)); }
+        .ld-peng .peye { fill: var(--udc-text); }
+        .ld-bear .fur {
+          fill: color-mix(in srgb, #fff 88%, var(--udc-card));
+          stroke: color-mix(in srgb, var(--udc-text2) 70%, var(--udc-card));
+          stroke-width: 1;
+        }
+        .ld-bear .dark { fill: #222; }
+        .ld-peng {
+          width: 32px;
+          height: 46px;
+          animation: ld-pen-ride 9s linear infinite;
+        }
+        .ld-peng .pose {
+          transform-origin: 16px 44px;
+          animation: ld-pen-pose 9s ease-in-out infinite;
+        }
+        .ld-peng .w {
+          transform-origin: 16px 44px;
+          animation: ld-pen-waddle 9s linear infinite;
+        }
+        .ld-peng .wave {
+          transform-origin: 8px 20px;
+          animation: ld-pen-wave 9s ease-in-out infinite;
+        }
+        .ld-bang,
+        .ld-q {
+          position: absolute;
+          bottom: 58px;
+          font-weight: 700;
+        }
+        .ld-bang {
+          color: #f0a030;
+          font-size: 18px;
+          animation: ld-bang 9s linear infinite;
+        }
+        .ld-q {
+          color: var(--udc-text2);
+          font-size: 20px;
+          animation: ld-q 9s ease-in-out infinite;
+        }
+        .ld-bear {
+          width: 72px;
+          height: 46px;
+          animation: ld-bear-ride 9s linear infinite;
+        }
+        .ld-bear .lean {
+          transform-origin: 36px 44px;
+          animation: ld-bear-lean 9s ease-out infinite;
+        }
+        .ld-bear .leg {
+          transform-box: fill-box;
+          transform-origin: 50% 10%;
+          animation: ld-bear-legs 9s linear infinite;
+        }
+        .ld-bear .l2,
+        .ld-bear .l3 {
+          animation-name: ld-bear-legs2;
+        }
+        .ld-bear .head {
+          transform-origin: 56px 20px;
+          animation: ld-bear-look 9s ease-in-out infinite;
+        }
+        .ld-drop {
+          position: absolute;
+          bottom: 12px;
+          left: calc(64% + 14px);
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: #7fc8f0;
+          opacity: 0;
+          animation: ld-drop 9s ease-out infinite;
+        }
+        .ld-drop.d1 { --dx: 12px; }
+        .ld-drop.d2 { --dx: -12px; }
+        .ld-drop.d3 { --dx: 2px; }
+        .ld-drop.up {
+          left: calc(88% + 14px);
+          animation-name: ld-drop2;
+        }
+        @keyframes ld-pen-ride {
+          0% { left: 2%; opacity: 0; } 3% { opacity: 1; } 30% { left: 30%; } 36% { left: 32%; }
+          46% { left: 62%; } 50% { left: 64%; opacity: 1; } 51% { left: 64%; opacity: 0; }
+          83% { left: 88%; opacity: 0; } 84% { left: 88%; opacity: 1; } 96% { left: 88%; opacity: 1; } 100% { left: 88%; opacity: 0; }
+        }
+        @keyframes ld-pen-fill {
+          0% { width: 2%; } 30% { width: calc(30% + 16px); } 36% { width: calc(32% + 16px); } 46% { width: calc(62% + 16px); }
+          50%, 83% { width: calc(64% + 16px); } 90%, 100% { width: calc(88% + 16px); }
+        }
+        @keyframes ld-pen-pose {
+          0%, 30% { transform: none; } 32% { transform: translateY(-10px); } 34% { transform: none; }
+          37%, 46% { transform: translateY(8px) rotate(90deg); }
+          50% { transform: translate(4px, 50px) rotate(150deg); }
+          83% { transform: translateY(50px); } 87% { transform: translateY(-4px); } 89%, 100% { transform: none; }
+        }
+        @keyframes ld-pen-waddle { 0%, 3% { transform: rotate(0); } 5.5% { transform: rotate(9deg); } 8.0% { transform: rotate(-9deg); } 10.5% { transform: rotate(9deg); } 13.0% { transform: rotate(-9deg); } 15.5% { transform: rotate(9deg); } 18.0% { transform: rotate(-9deg); } 20.5% { transform: rotate(9deg); } 23.0% { transform: rotate(-9deg); } 25.5% { transform: rotate(9deg); } 28.0% { transform: rotate(-9deg); } 31%, 100% { transform: rotate(0); } }
+        @keyframes ld-pen-wave {
+          0%, 88% { transform: none; } 90% { transform: rotate(-70deg); } 92% { transform: rotate(-40deg); } 94% { transform: rotate(-70deg); } 96%, 100% { transform: none; }
+        }
+        @keyframes ld-bang {
+          0%, 29% { opacity: 0; left: 30%; } 30%, 35% { opacity: 1; left: calc(30% + 10px); } 36%, 100% { opacity: 0; left: calc(32% + 10px); }
+        }
+        @keyframes ld-bear-ride {
+          0%, 11% { left: -80px; opacity: 0; } 12% { left: -80px; opacity: 1; }
+          52% { left: calc(64% - 84px); } 56% { left: calc(64% - 76px); }
+          94% { left: calc(64% - 76px); opacity: 1; } 100% { left: calc(64% - 76px); opacity: 0; }
+        }
+        @keyframes ld-bear-lean {
+          0%, 51% { transform: none; } 54% { transform: rotate(-10deg); } 58%, 100% { transform: none; }
+        }
+        @keyframes ld-bear-legs { 0%, 12% { transform: rotate(0); } 13.6% { transform: rotate(30deg); } 15.2% { transform: rotate(-30deg); } 16.8% { transform: rotate(30deg); } 18.4% { transform: rotate(-30deg); } 20.0% { transform: rotate(30deg); } 21.6% { transform: rotate(-30deg); } 23.2% { transform: rotate(30deg); } 24.8% { transform: rotate(-30deg); } 26.4% { transform: rotate(30deg); } 28.0% { transform: rotate(-30deg); } 29.6% { transform: rotate(30deg); } 31.2% { transform: rotate(-30deg); } 32.8% { transform: rotate(30deg); } 34.4% { transform: rotate(-30deg); } 36.0% { transform: rotate(30deg); } 37.6% { transform: rotate(-30deg); } 39.2% { transform: rotate(30deg); } 40.8% { transform: rotate(-30deg); } 42.4% { transform: rotate(30deg); } 44.0% { transform: rotate(-30deg); } 45.6% { transform: rotate(30deg); } 47.2% { transform: rotate(-30deg); } 48.8% { transform: rotate(30deg); } 50.4% { transform: rotate(-30deg); } 52.0% { transform: rotate(30deg); } 53%, 100% { transform: rotate(0); } }
+        @keyframes ld-bear-legs2 { 0%, 12.8% { transform: rotate(0); } 14.4% { transform: rotate(-30deg); } 16.0% { transform: rotate(30deg); } 17.6% { transform: rotate(-30deg); } 19.2% { transform: rotate(30deg); } 20.8% { transform: rotate(-30deg); } 22.4% { transform: rotate(30deg); } 24.0% { transform: rotate(-30deg); } 25.6% { transform: rotate(30deg); } 27.2% { transform: rotate(-30deg); } 28.8% { transform: rotate(30deg); } 30.4% { transform: rotate(-30deg); } 32.0% { transform: rotate(30deg); } 33.6% { transform: rotate(-30deg); } 35.2% { transform: rotate(30deg); } 36.8% { transform: rotate(-30deg); } 38.4% { transform: rotate(30deg); } 40.0% { transform: rotate(-30deg); } 41.6% { transform: rotate(30deg); } 43.2% { transform: rotate(-30deg); } 44.8% { transform: rotate(30deg); } 46.4% { transform: rotate(-30deg); } 48.0% { transform: rotate(30deg); } 49.6% { transform: rotate(-30deg); } 51.2% { transform: rotate(30deg); } 53%, 100% { transform: rotate(0); } }
+        @keyframes ld-bear-look {
+          0%, 60% { transform: none; } 63%, 68% { transform: rotate(18deg); } 70%, 75% { transform: scaleX(-1); }
+          78%, 84% { transform: rotate(-8deg); } 88%, 100% { transform: rotate(22deg); }
+        }
+        @keyframes ld-q {
+          0%, 60% { opacity: 0; left: calc(64% - 30px); transform: translateY(6px); }
+          63% { opacity: 1; transform: none; } 70% { transform: rotate(-12deg); } 78% { transform: rotate(12deg); }
+          86% { opacity: 1; left: calc(64% - 30px); transform: none; } 90%, 100% { opacity: 0; left: calc(64% - 30px); }
+        }
+        @keyframes ld-drop {
+          0%, 48% { opacity: 0; transform: none; } 50% { opacity: 1; } 55% { opacity: 0; transform: translate(var(--dx), -16px); } 100% { opacity: 0; }
+        }
+        @keyframes ld-drop2 {
+          0%, 83% { opacity: 0; transform: none; } 85% { opacity: 1; } 90% { opacity: 0; transform: translate(var(--dx), -16px); } 100% { opacity: 0; }
+        }
+        /* Auswahl in den Einstellungen mit Mini-Vorschau */
+        .ld-intro {
+          margin: 0 0 10px;
+        }
+        .ld-choices {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+          gap: 10px;
+        }
+        .ld-choice {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 1px;
+          min-width: 0;
+          padding: 8px 10px 10px;
+          border: 1px solid var(--udc-divider);
+          border-radius: 12px;
+          background: none;
+          color: var(--udc-text);
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+        .ld-choice:hover {
+          background: var(--udc-hover);
+        }
+        .ld-choice.on {
+          border-color: var(--udc-primary);
+          box-shadow: inset 0 0 0 1px var(--udc-primary);
+        }
+        .ld-name {
+          font-size: 13px;
+          font-weight: 500;
+        }
+        .ld-desc {
+          color: var(--udc-text2);
+          font-size: 11px;
+        }
+        .ld-mini {
+          position: relative;
+          width: 100%;
+          height: 58px;
+          margin-bottom: 6px;
+          overflow: hidden;
+          pointer-events: none;
+        }
+        .ld-mini-in {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 180%;
+          transform: scale(0.55);
+          transform-origin: left bottom;
+        }
+        .ld-mini .ele-track {
+          margin-top: 0;
+        }
+        .ld-dice {
+          display: grid;
+          place-items: center;
+          color: var(--udc-text2);
+        }
+        .ld-dice svg {
+          width: 30px;
+          height: 30px;
+        }
         @media (prefers-reduced-motion: reduce) {
           .ele-rider,
           .ele-rider *,
           .ele-done,
-          .ele-words span {
+          .ele-words span,
+          .ld-rider,
+          .ld-rider *,
+          .ld-actor,
+          .ld-actor *,
+          .ld-q,
+          .ld-bang,
+          .ld-drop {
             animation: none !important;
+          }
+          .ld-rider,
+          .ld-peng {
+            left: 40%;
+          }
+          .ld-bear {
+            left: 10%;
+          }
+          .ld-q,
+          .ld-bang,
+          .ld-drop {
+            opacity: 0;
           }
           .ele-rider {
             left: 40%;

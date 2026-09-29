@@ -348,7 +348,7 @@ of how long the recorder keeps its data. That's why even the 30-day view
 loads instantly. For the time before the log was running (the first days
 after updating to 2.7.0), the panel adds the recorder history of the online
 entity; for long ranges that can take a few seconds — meanwhile an
-elephant balances on a ball across the timeline. Periods without data (before the client
+loading animation runs (selectable under Settings → Loader: elephant on a ball, cat, hamster in its wheel, penguin with polar bear, or random; stored per user). Periods without data (before the client
 was known, while Home Assistant wasn't running or the UniFi controller was
 unreachable) are hatched and don't count. If the recording covers less than
 10 % of the selected range (for example shortly after installing), the bar
