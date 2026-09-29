@@ -253,13 +253,21 @@ WIRELESS_ONLY: dict[str, str] = {
 
 class _PingSensor(_UnifiDynamicSensor):
     """
-    Basis der Ping-Entitäten: Werte der letzten Ping-Runde.
+    Basis der Ping-Entitäten: Werte des letzten abgeschlossenen 5-Minuten-
+    Blocks.
 
-    Aktualisiert sich nach jeder Runde der Messung, nicht mit dem Poll des
+    Aktualisiert sich höchstens alle 5 Minuten, nicht mit dem Poll des
     Controllers. Ohne Messwert (Client offline, Ping aus) unbekannt.
+
+    Die Attribute kommen nicht in den Recorder: sie ändern sich laufend und
+    würden jedes Mal eine neue Attribut-Zeile anlegen. Live bleiben sie
+    sichtbar; ihr Verlauf liegt im eigenen Speicher der Messung.
     """
 
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _unrecorded_attributes = frozenset(
+        {"jitter", "median_24h", "jitter_24h", "packet_loss_24h", "ip"}
+    )
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -270,7 +278,7 @@ class _PingSensor(_UnifiDynamicSensor):
     @property
     def _last(self) -> dict[str, Any] | None:
         monitor = self.coordinator.ping
-        return monitor.last(self._mac) if monitor is not None else None
+        return monitor.entity_values(self._mac) if monitor is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

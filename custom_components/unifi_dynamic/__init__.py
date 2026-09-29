@@ -41,6 +41,7 @@ from .const import (
     DEFAULT_VERIFY_SSL,
     PING_HOUR_SECONDS,
     PING_RANGES,
+    PING_RECORDER_KEEP_DAYS,
     ATTR_DEVICE_ID,
     ATTR_DRY_RUN,
     ATTR_ENTRY_ID,
@@ -204,9 +205,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Beim Start nur melden, wenn tatsächlich etwas entfernt wurde. Sonst
         # gäbe es nach jedem Neustart eine Meldung.
         await _async_run_purge(hass, entry, report_empty=False)
+        await _async_purge_ping_recorder(hass, entry)
 
     async def _run_daily_purge(_now=None) -> None:
         await _async_run_purge(hass, entry, report_empty=True)
+        await _async_purge_ping_recorder(hass, entry)
 
     # Einmal verzögert nach dem Start: Plattform-Setup und Restore-States von
     # Home Assistant sind dann sicher durch.
@@ -273,6 +276,38 @@ def _cleanup_ping_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
     for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
         if reg_entry.domain == "sensor" and str(reg_entry.unique_id).startswith(prefixes):
             ent_reg.async_remove(reg_entry.entity_id)
+
+
+async def _async_purge_ping_recorder(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """
+    Recorder-Verlauf der Ping-Entitäten auf 30 Tage begrenzen.
+
+    Unabhängig von purge_keep_days des Recorders: wer diesen länger stellt,
+    soll durch die Ping-Werte nicht unnötig viele Daten ansammeln. Ist er
+    kürzer, räumt der Recorder selbst früher auf und hier passiert nichts.
+    Die Langzeitstatistik (Stundenwerte) bleibt unberührt.
+    """
+    if not ping_mod.ping_enabled(entry):
+        return
+    if not hass.services.has_service("recorder", "purge_entities"):
+        return
+    prefixes = tuple(f"{DOMAIN}.{entry.entry_id}.{kind}." for kind in ping_mod.PING_ENTITY_KINDS)
+    entity_ids = [
+        reg_entry.entity_id
+        for reg_entry in er.async_entries_for_config_entry(er.async_get(hass), entry.entry_id)
+        if reg_entry.domain == "sensor" and str(reg_entry.unique_id).startswith(prefixes)
+    ]
+    if not entity_ids:
+        return
+    try:
+        await hass.services.async_call(
+            "recorder",
+            "purge_entities",
+            {"entity_id": entity_ids, "keep_days": PING_RECORDER_KEEP_DAYS},
+            blocking=False,
+        )
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Recorder-Bereinigung der Ping-Entitäten fehlgeschlagen: %s", err)
 
 
 def _reload_signature(entry: ConfigEntry) -> tuple[int, str, bool, int]:

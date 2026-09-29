@@ -180,16 +180,21 @@ Hinweise:
   Assistant mit Root-Rechten laufen. Fehlt die Berechtigung, bleibt die
   Messung aus und das Panel zeigt einen Hinweis.
 - **Entitäten:** Solange die Messung an ist, bekommt jeder Client
-  `sensor.unifi_dynamic_<client>_ping` (Median der letzten Runde in ms) und
+  `sensor.unifi_dynamic_<client>_ping` (Median in ms) und
   `sensor.unifi_dynamic_<client>_packet_loss` (%), mit den 24-Stunden-Werten
   als Attribute – für Automationen, Dashboards und den Verlauf wie jede
-  andere Messgrösse in Home Assistant. Ausschalten entfernt sie wieder.
-- **Recorder:** Bei vielen Clients und kurzem Intervall kommen viele
-  Einträge zusammen (etwa 70 Clients bei 60 Sekunden: rund 100 000 pro Tag,
-  vor allem vom Ping-Wert; der Paketverlust ist meist konstant 0). Wer das
-  nicht braucht, erhöht das Intervall oder schliesst die Sensoren im
-  Recorder aus, z. B. `recorder: exclude: entity_globs:
-  - sensor.unifi_dynamic_*_ping`.
+  andere Messgrösse in Home Assistant. Der Wert ist der des letzten
+  abgeschlossenen 5-Minuten-Blocks und ändert sich höchstens alle 5 Minuten,
+  unabhängig vom Intervall. Ausschalten entfernt die Entitäten wieder.
+- **Recorder:** Die Attribute (Jitter, 24-Stunden-Werte, IP) werden nicht im
+  Recorder gespeichert; live sind sie weiterhin sichtbar, ihr Verlauf steht
+  im Panel. Pro Client und Sensor entstehen höchstens 288 Einträge pro Tag
+  (etwa 70 Clients: rund 20 000). Zusätzlich löscht die Integration täglich
+  zur Purge-Zeit (und kurz nach dem Start) Recorder-Einträge der
+  Ping-Entitäten, die älter als 30 Tage sind – auch wenn `purge_keep_days`
+  des Recorders länger eingestellt ist. Die Langzeitstatistik bleibt
+  erhalten. Wer die Sensoren gar nicht im Recorder will, schliesst sie aus,
+  z. B. `recorder: exclude: entity_globs: - sensor.unifi_dynamic_*_ping`.
 
 ## Aktion `unifi_dynamic.purge_now`
 

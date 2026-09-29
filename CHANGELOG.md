@@ -5,6 +5,25 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.15.2] - 2026-09-29
+
+### Changed
+
+- The "Ping" and "Packet loss" sensors now show the last completed 5-minute
+  block (median, jitter, loss) and change at most every 5 minutes instead of
+  every round. This cuts recorder entries by about a factor of 5 at the
+  default 60-second interval; the panel still shows every round.
+- The sensor attributes (jitter, median_24h, jitter_24h, packet_loss_24h,
+  ip) are no longer stored in the recorder. They stay visible live; their
+  history is in the panel as before.
+
+### Added
+
+- Recorder history of the ping sensors is limited to 30 days: daily at the
+  purge time and shortly after startup, older entries are removed via
+  `recorder.purge_entities`, even if the recorder keeps data longer.
+  Long-term statistics are not affected.
+
 ## [2.15.1] - 2026-09-29
 
 ### Changed
@@ -1395,6 +1414,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.15.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.2
 [2.15.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.1
 [2.15.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.0
 [2.14.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.2

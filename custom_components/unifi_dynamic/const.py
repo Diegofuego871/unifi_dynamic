@@ -247,6 +247,9 @@ PING_HOURLY_KEEP_SECONDS = 31 * 86400
 PING_RANGES = {"24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400}
 PING_STORE_SUFFIX = "ping"
 PING_SAVE_DELAY = 300
+# Recorder-Verlauf der Ping-Entitäten: höchstens so viele Tage behalten,
+# auch wenn purge_keep_days des Recorders länger ist.
+PING_RECORDER_KEEP_DAYS = 30
 
 
 # GitHub-Repository für die Versionsprüfung im Panel.

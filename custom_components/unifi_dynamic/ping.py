@@ -4,8 +4,9 @@ Antwortzeit der Clients per Ping (ICMP).
 Pingt in einem festen Intervall alle Clients, die laut UniFi gerade online
 sind und eine IP haben - die IP kommt aus UniFi, damit klappt es auch mit
 DHCP ohne Pflege. Pro Client und Runde gehen mehrere Pings raus; die Werte
-landen in 5-Minuten-Blöcken (24 Stunden, eigene Datei) für das Panel und in
-der letzten Runde für die Entitäten (Ping, Paketverlust) jedes Clients.
+landen in 5-Minuten-Blöcken (24 Stunden, eigene Datei) für das Panel. Die
+Entitäten (Ping, Paketverlust) jedes Clients zeigen den letzten
+abgeschlossenen 5-Minuten-Block und ändern sich damit höchstens alle 5 Minuten.
 
 Kennzahlen:
 - Median statt Mittelwert: ein einzelner Ausreisser (Handy wacht gerade auf)
@@ -174,8 +175,12 @@ class PingMonitor:
         # Laufende Stunde pro MAC: [Start, Block-Mediane, Block-Jitter,
         # gesendet, empfangen].
         self._open_hour: dict[str, list[Any]] = {}
-        # Letzte Runde pro MAC, für die Entitäten.
+        # Letzte Runde pro MAC, für das Panel.
         self._last: dict[str, dict[str, Any]] = {}
+        # Werte der Entitäten pro MAC: letzter abgeschlossener 5-Minuten-Block.
+        # Ändert sich nur alle 5 Minuten statt jede Runde: weniger Zustände im
+        # Recorder, und der Median über 5 Minuten ist aussagekräftiger.
+        self._entity: dict[str, dict[str, Any]] = {}
         self._privileged: bool | None = None
         self._unsub: Callable[[], None] | None = None
         self._listeners: list[Callable[[], None]] = []
@@ -290,10 +295,13 @@ class PingMonitor:
                 results = {host.address: host for host in hosts}
             self._record(targets, results, now)
             self.last_round = now
+            changed = self._update_entities(now)
         finally:
             self._running = False
-        for target in list(self._listeners):
-            target()
+        # Entitäten nur schreiben, wenn sich ihr Wert geändert hat.
+        if changed:
+            for target in list(self._listeners):
+                target()
 
     def _record(self, targets: dict[str, list[str]], results: dict[str, Any], now: float) -> None:
         pinged: set[str] = set()
@@ -321,6 +329,38 @@ class PingMonitor:
                 self._last.pop(mac)
         self._prune(now)
         self._store.async_delay_save(self._store_data, PING_SAVE_DELAY)
+
+    def _update_entities(self, now: float) -> bool:
+        """
+        Werte der Entitäten aus dem letzten abgeschlossenen 5-Minuten-Block.
+
+        Abgelaufene laufende Blöcke werden hier abgeschlossen, auch von Clients,
+        die nicht mehr gepingt werden. Ein Client zählt nur, solange er in
+        dieser Runde gepingt wurde und sein letzter Block frisch ist (höchstens
+        ein Intervall plus einen Block alt); sonst ist die Entität unbekannt.
+        Rückgabe: ob sich ein Wert geändert hat.
+        """
+        start = now - (now % PING_BUCKET_SECONDS)
+        for mac in [m for m, o in self._open.items() if o[0] != start]:
+            self._close(mac)
+        oldest = start - PING_BUCKET_SECONDS - ping_interval(self.entry)
+        values: dict[str, dict[str, Any]] = {}
+        for mac, last in self._last.items():
+            buckets = self._buckets.get(mac)
+            if not buckets or buckets[-1][0] < oldest:
+                continue
+            summary = summarize([buckets[-1]])
+            if summary is None:
+                continue
+            values[mac] = {
+                "median": summary["median"],
+                "jitter": summary["jitter"],
+                "loss": summary["loss"],
+                "ip": last.get("ip"),
+            }
+        changed = values != self._entity
+        self._entity = values
+        return changed
 
     def _add(self, mac: str, rtts: list[float], sent: int, received: int, now: float) -> None:
         start = now - (now % PING_BUCKET_SECONDS)
@@ -458,4 +498,9 @@ class PingMonitor:
         return summarize(self.history(mac, span))
 
     def last(self, mac: str) -> dict[str, Any] | None:
+        """Letzte Runde (Panel)."""
         return self._last.get(mac.lower())
+
+    def entity_values(self, mac: str) -> dict[str, Any] | None:
+        """Letzter abgeschlossener 5-Minuten-Block (Entitäten)."""
+        return self._entity.get(mac.lower())

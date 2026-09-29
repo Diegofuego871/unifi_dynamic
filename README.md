@@ -175,14 +175,20 @@ Notes:
   run as root. Without permission measuring stays off and the panel shows a
   notice.
 - **Entities:** while measuring is on, every client gets
-  `sensor.unifi_dynamic_<client>_ping` (median of the last round in ms) and
+  `sensor.unifi_dynamic_<client>_ping` (median in ms) and
   `sensor.unifi_dynamic_<client>_packet_loss` (%), with the 24-hour values
   as attributes – for automations, dashboards and history like any other
-  measurement in Home Assistant. Switching it off removes them.
-- **Recorder:** with many clients and a short interval this adds up (about
-  70 clients at 60 seconds: roughly 100,000 entries per day, mostly from the
-  ping value; packet loss is usually a constant 0). If you don't need it,
-  raise the interval or exclude the sensors from the recorder, e.g.
+  measurement in Home Assistant. The value is that of the last completed
+  5-minute block and changes at most every 5 minutes, regardless of the
+  interval. Switching it off removes the entities.
+- **Recorder:** the attributes (jitter, 24-hour values, IP) are not stored
+  in the recorder; they stay visible live and their history is in the
+  panel. Each client and sensor produces at most 288 entries per day (about
+  70 clients: roughly 20,000). In addition, the integration deletes
+  recorder entries of the ping entities older than 30 days, daily at the
+  purge time (and shortly after startup) – even if the recorder's
+  `purge_keep_days` is longer. Long-term statistics are kept. If you don't
+  want the sensors in the recorder at all, exclude them, e.g.
   `recorder: exclude: entity_globs: - sensor.unifi_dynamic_*_ping`.
 
 ## Action `unifi_dynamic.purge_now`
