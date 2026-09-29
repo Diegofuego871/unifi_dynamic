@@ -187,6 +187,7 @@ const STRINGS = {
     colPing: "Ping",
     pingNoReplyShort: "keine Antwort",
     pingLossShort: (p) => `${p} % Verlust`,
+    pingTierNames: ["", "schlecht", "langsam", "ok", "gut", "sehr gut"],
     pingTitle: "Antwortzeit",
     pingRange: "Letzte 24 Std.",
     pingMedian: "Median",
@@ -532,6 +533,7 @@ const STRINGS = {
     colPing: "Ping",
     pingNoReplyShort: "no reply",
     pingLossShort: (p) => `${p} % loss`,
+    pingTierNames: ["", "poor", "slow", "fair", "good", "very good"],
     pingTitle: "Response time",
     pingRange: "Last 24 h",
     pingMedian: "Median",
@@ -793,6 +795,20 @@ const HIDEABLE_COLUMNS = [
   ["status", "colStatus", 9],
 ];
 const HIDEABLE_KEYS = HIDEABLE_COLUMNS.map(([key]) => key);
+
+// Ping-Stufen: Grenzen in ms. Unter der ersten Grenze 5 Balken (sehr gut),
+// ab der letzten 1 Balken (schlecht). Gilt für Tabelle und Diagramm.
+const PING_TIERS = [5, 15, 40, 100];
+
+function pingTier(ms) {
+  if (ms == null) return 0;
+  const i = PING_TIERS.findIndex((limit) => ms < limit);
+  return i === -1 ? 1 : 5 - i;
+}
+
+function pingBarsHtml(tier) {
+  return `<span class="pbars t${tier}" aria-hidden="true"><u></u><u></u><u></u><u></u><u></u></span>`;
+}
 
 // Material Design Icons als Pfade; das iframe kennt HAs ha-icon nicht.
 const ICONS = {
@@ -2549,7 +2565,10 @@ class UnifiDynamicPanel extends HTMLElement {
     if (p.status === "no_reply") return `<span class="muted">${esc(this._t("pingNoReplyShort"))}</span>`;
     if (p.median == null) return `<span class="muted">–</span>`;
     const loss = p.loss > 0 ? `<small class="ping-loss">${esc(this._t("pingLossShort")(this._fmtNum(p.loss)))}</small>` : "";
-    return `<span class="ping-val">${esc(this._fmtMs(p.median))}${loss}</span>`;
+    const tier = pingTier(p.median);
+    return `<span class="ping-val"><span class="ping-line" title="${esc(this._t("pingTierNames")[tier])}">${pingBarsHtml(
+      tier
+    )}${esc(this._fmtMs(p.median))}</span>${loss}</span>`;
   }
 
   _fmtNum(v) {
@@ -2605,7 +2624,8 @@ class UnifiDynamicPanel extends HTMLElement {
     else {
       const s = data.summary;
       const stat = (label, value, warn) => `<div class="ping-stat${warn ? " warn" : ""}"><span>${esc(label)}</span><b>${esc(value)}</b></div>`;
-      body = `<div class="ping-stats">${stat(t("pingMedian"), this._fmtMs(s.median))}${stat(t("pingJitter"), this._fmtMs(s.jitter))}${stat(
+      const medianTier = pingTier(s.median);
+      body = `<div class="ping-stats">${stat(t("pingMedian"), this._fmtMs(s.median)).replace("<b>", `<b>${pingBarsHtml(medianTier)}`)}${stat(t("pingJitter"), this._fmtMs(s.jitter))}${stat(
         t("pingLoss"),
         `${this._fmtNum(s.loss)} %`,
         s.loss > 0
@@ -2641,11 +2661,18 @@ class UnifiDynamicPanel extends HTMLElement {
           return `<i class="pb none" style="left:${left.toFixed(2)}%" title="${esc(tip)}"></i>`;
         }
         const hgt = Math.max(4, Math.min(100, (b[1] / scale) * 100));
-        return `<i class="pb${lossPct > 0 ? " lossy" : ""}" style="left:${left.toFixed(2)}%;height:${hgt.toFixed(1)}%" title="${esc(tip)}"></i>`;
+        return `<i class="pb t${pingTier(b[1])}${lossPct > 0 ? " lossy" : ""}" style="left:${left.toFixed(2)}%;height:${hgt.toFixed(1)}%" title="${esc(tip)}"></i>`;
       })
       .join("");
     return `<div class="ping-chart" style="--n:${n}"><span class="ping-scale">${esc(t("pingScale")(scale))}</span>${bars}</div>
-      <div class="ping-axis"><span>${esc(t("pingAgo"))}</span><span>${esc(t("availNow"))}</span></div>`;
+      <div class="ping-axis"><span>${esc(t("pingAgo"))}</span><span>${esc(t("availNow"))}</span></div>
+      <div class="ping-legend">${[5, 4, 3, 2, 1]
+        .map((tier, i) => {
+          const range =
+            i === 0 ? `< ${PING_TIERS[0]}` : i === 4 ? `≥ ${PING_TIERS[3]}` : `${PING_TIERS[i - 1]}–${PING_TIERS[i]}`;
+          return `<span><i class="t${tier}"></i>${esc(range)} ms</span>`;
+        })
+        .join("")}<span><i class="lossmark"></i>${esc(t("pingLoss"))}</span></div>`;
   }
 
   async _setPingEntity(c, enabled) {
@@ -4406,6 +4433,12 @@ class UnifiDynamicPanel extends HTMLElement {
           --udc-success-soft: color-mix(in srgb, var(--udc-success) 16%, transparent);
           --udc-warning-soft: color-mix(in srgb, var(--udc-warning) 16%, transparent);
           --udc-input: var(--primary-background-color, #fff);
+          /* Ping-Stufen (blasse Töne, auf hell und dunkel lesbar) */
+          --udc-ping5: #4caf50;
+          --udc-ping4: #8bc34a;
+          --udc-ping3: #eba43f;
+          --udc-ping2: #a37fe0;
+          --udc-ping1: #e5625f;
           --udc-shadow: 0 10px 30px rgba(0,0,0,0.25);
         }
         svg {
@@ -7505,8 +7538,40 @@ class UnifiDynamicPanel extends HTMLElement {
           white-space: nowrap;
         }
         .ping-loss {
-          color: var(--udc-warning);
+          color: var(--udc-ping1);
           font-size: 11px;
+        }
+        .ping-line {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+        }
+        /* 5 Balken wie die Signalstärke, Farbe je Stufe */
+        .pbars {
+          display: inline-flex;
+          align-items: flex-end;
+          gap: 2px;
+          height: 14px;
+          flex: 0 0 auto;
+        }
+        .pbars u {
+          width: 3px;
+          border-radius: 1px;
+          background: color-mix(in srgb, var(--udc-text) 14%, transparent);
+        }
+        .pbars u:nth-child(1) { height: 3px; }
+        .pbars u:nth-child(2) { height: 5.5px; }
+        .pbars u:nth-child(3) { height: 8px; }
+        .pbars u:nth-child(4) { height: 11px; }
+        .pbars u:nth-child(5) { height: 14px; }
+        .pbars.t5 u { background: var(--udc-ping5); }
+        .pbars.t4 u:nth-child(-n+4) { background: var(--udc-ping4); }
+        .pbars.t3 u:nth-child(-n+3) { background: var(--udc-ping3); }
+        .pbars.t2 u:nth-child(-n+2) { background: var(--udc-ping2); }
+        .pbars.t1 u:nth-child(1) { background: var(--udc-ping1); }
+        .ping-stat b .pbars {
+          margin-right: 7px;
+          vertical-align: -1px;
         }
         section.ping {
           margin-top: 18px;
@@ -7543,7 +7608,7 @@ class UnifiDynamicPanel extends HTMLElement {
           white-space: nowrap;
         }
         .ping-stat.warn b {
-          color: var(--udc-warning);
+          color: var(--udc-ping1);
         }
         .ping-chart {
           position: relative;
@@ -7558,10 +7623,43 @@ class UnifiDynamicPanel extends HTMLElement {
           bottom: 0;
           width: max(1px, calc(100% / var(--n) - 0.5px));
           border-radius: 1px 1px 0 0;
-          background: color-mix(in srgb, var(--udc-primary) 70%, var(--udc-card));
+          background: var(--udc-ping5);
         }
+        .ping-chart .pb.t4 { background: var(--udc-ping4); }
+        .ping-chart .pb.t3 { background: var(--udc-ping3); }
+        .ping-chart .pb.t2 { background: var(--udc-ping2); }
+        .ping-chart .pb.t1 { background: var(--udc-ping1); }
+        /* Paketverlust: roter Deckel auf der Säule */
         .ping-chart .pb.lossy {
-          background: var(--udc-warning);
+          box-shadow: inset 0 3px 0 var(--udc-ping1);
+        }
+        .ping-legend {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 4px 12px;
+          margin-top: 6px;
+          color: var(--udc-text2);
+          font-size: 11px;
+        }
+        .ping-legend span {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          white-space: nowrap;
+        }
+        .ping-legend i {
+          width: 9px;
+          height: 9px;
+          border-radius: 2px;
+        }
+        .ping-legend i.t5 { background: var(--udc-ping5); }
+        .ping-legend i.t4 { background: var(--udc-ping4); }
+        .ping-legend i.t3 { background: var(--udc-ping3); }
+        .ping-legend i.t2 { background: var(--udc-ping2); }
+        .ping-legend i.t1 { background: var(--udc-ping1); }
+        .ping-legend i.lossmark {
+          background: var(--udc-subtle);
+          box-shadow: inset 0 3px 0 var(--udc-ping1);
         }
         .ping-chart .pb.none {
           height: 4px;

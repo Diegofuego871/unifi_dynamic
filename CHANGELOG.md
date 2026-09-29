@@ -5,6 +5,18 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.14.1] - 2026-09-29
+
+### Changed
+
+- Ping values are easier to read at a glance: five bars in five colors,
+  like the WiFi signal strength. Under 5 ms green (5 bars), 5–15 ms light
+  green (4), 15–40 ms orange (3), 40–100 ms violet (2), from 100 ms red
+  (1). The same colors are used for the columns of the 24-hour chart in
+  the device view, which now has a legend; blocks with packet loss get a
+  red cap. Packet loss is shown in red instead of orange so it no longer
+  looks like the "fair" level.
+
 ## [2.14.0] - 2026-09-29
 
 ### Added
@@ -1310,6 +1322,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.14.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.1
 [2.14.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.0
 [2.13.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.1
 [2.13.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.0

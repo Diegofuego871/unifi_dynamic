@@ -164,6 +164,10 @@ Einstellungen lassen sich auch direkt im Panel über das Zahnrad bearbeiten
 
 Hinweise:
 
+- **Darstellung:** Fünf Balken in fünf Farben wie bei der Signalstärke:
+  unter 5 ms grün (5 Balken), 5–15 ms hellgrün (4), 15–40 ms orange (3),
+  40–100 ms violett (2), ab 100 ms rot (1). Dieselben Farben im Diagramm der
+  Geräteansicht; Blöcke mit Paketverlust haben einen roten Deckel.
 - **Median statt Mittelwert:** Ein einzelner Ausreisser, etwa ein Handy, das
   gerade aufwacht, verzerrt den Wert nicht.
 - **Keine Antwort ist kein Fehler:** Windows-PCs blockieren Ping in der

@@ -159,6 +159,10 @@ also be edited right in the panel with the gear button (see
 
 Notes:
 
+- **Display:** five bars in five colors, like the signal strength: under
+  5 ms green (5 bars), 5–15 ms light green (4), 15–40 ms orange (3),
+  40–100 ms violet (2), from 100 ms red (1). The same colors in the device
+  view chart; blocks with packet loss get a red cap.
 - **Median instead of mean:** a single outlier, such as a phone waking up,
   does not distort the value.
 - **No reply is not an error:** Windows PCs block ping in their firewall,
