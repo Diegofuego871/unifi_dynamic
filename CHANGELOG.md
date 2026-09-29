@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - If Home Assistant may not send ICMP packets (some Docker or Core
   installations), measuring stays off and the settings explain why.
 
+### Fixed
+
+- Reordering columns no longer mixes up the order while a column is hidden
+  because no hub is measuring (the new "Ping" column).
+
 ## [2.13.1] - 2026-09-29
 
 ### Changed
