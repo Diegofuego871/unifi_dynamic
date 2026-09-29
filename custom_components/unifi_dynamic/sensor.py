@@ -5,14 +5,21 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import PERCENTAGE, UnitOfTime
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from . import ping as ping_mod
 from .const import DOMAIN
 from .coordinator import (
     UnifiDynamicCoordinator,
@@ -70,6 +77,39 @@ async def async_setup_entry(
 
     _add_new_entities()
     entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
+
+    # Ping-Entitäten: nur für Clients, die der Nutzer in der Geräteansicht
+    # ausgewählt hat. Abgewählte entfernt der WebSocket-Befehl aus der
+    # Registry; hier werden sie nur vergessen, damit ein erneutes Anwählen
+    # sie wieder anlegt.
+    ping_known: set[str] = set()
+
+    @callback
+    def _sync_ping_entities() -> None:
+        wanted = set(ping_mod.ping_entity_macs(entry))
+        ping_known.intersection_update(wanted)
+        cache = coordinator.data or {}
+        new: list[SensorEntity] = []
+        for mac in sorted(wanted - ping_known):
+            if mac not in cache:
+                continue
+            ping_known.add(mac)
+            slug = client_slug(cache[mac] or {}, mac)
+            for cls in (PingSensor, PacketLossSensor):
+                sensor = cls(coordinator, entry.entry_id, mac)
+                sensor.entity_id = f"sensor.{DOMAIN}_{slug}_{cls._kind}"
+                new.append(sensor)
+        if new:
+            async_add_entities(new)
+
+    entry.async_on_unload(coordinator.async_add_removal_callback(ping_known.discard))
+    _sync_ping_entities()
+    entry.async_on_unload(
+        async_dispatcher_connect(
+            hass, ping_mod.ping_entities_signal(entry.entry_id), _sync_ping_entities
+        )
+    )
+    entry.async_on_unload(coordinator.async_add_listener(_sync_ping_entities))
 
 
 class _UnifiDynamicSensor(CoordinatorEntity[UnifiDynamicCoordinator], SensorEntity):
@@ -216,3 +256,67 @@ WIRELESS_ONLY: dict[str, str] = {
     "ssid": "essid",
     "access_point": "ap_mac",
 }
+
+
+class _PingSensor(_UnifiDynamicSensor):
+    """
+    Basis der Ping-Entitäten: Werte der letzten Ping-Runde.
+
+    Aktualisiert sich nach jeder Runde der Messung, nicht mit dem Poll des
+    Controllers. Ohne Messwert (Client offline, Ping aus) unbekannt.
+    """
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        monitor = self.coordinator.ping
+        if monitor is not None:
+            self.async_on_remove(monitor.async_add_listener(self.async_write_ha_state))
+
+    @property
+    def _last(self) -> dict[str, Any] | None:
+        monitor = self.coordinator.ping
+        return monitor.last(self._mac) if monitor is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        monitor = self.coordinator.ping
+        summary = monitor.summary(self._mac) if monitor is not None else None
+        last = self._last or {}
+        return {
+            "jitter": last.get("jitter"),
+            "median_24h": summary["median"] if summary else None,
+            "jitter_24h": summary["jitter"] if summary else None,
+            "packet_loss_24h": summary["loss"] if summary else None,
+            "ip": last.get("ip"),
+        }
+
+
+class PingSensor(_PingSensor):
+    """Median der Antwortzeit der letzten Runde (Millisekunden)."""
+
+    _kind = "ping"
+    _attr_name = "Ping"
+    _attr_icon = "mdi:timer-outline"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.MILLISECONDS
+    _attr_suggested_display_precision = 1
+
+    @property
+    def native_value(self) -> float | None:
+        return (self._last or {}).get("median")
+
+
+class PacketLossSensor(_PingSensor):
+    """Paketverlust der letzten Runde in Prozent."""
+
+    _kind = "packet_loss"
+    _attr_name = "Packet loss"
+    _attr_icon = "mdi:lan-disconnect"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 0
+
+    @property
+    def native_value(self) -> float | None:
+        return (self._last or {}).get("loss")

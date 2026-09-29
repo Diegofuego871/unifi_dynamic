@@ -15,6 +15,8 @@
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/Diegofuego871/unifi_dynamic/issues",
-  "requirements": [],
-  "version": "2.13.1"
+  "requirements": [
+    "icmplib>=3.0"
+  ],
+  "version": "2.14.0"
 }

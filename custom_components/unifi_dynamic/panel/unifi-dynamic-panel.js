@@ -171,6 +171,38 @@ const STRINGS = {
     secCleanup: "Automatisches Entfernen",
     secPush: "Push-Benachrichtigung",
     secPersistent: "Anhaltende Benachrichtigung",
+    secPing: "Ping (Antwortzeit)",
+    sumPingOff: "Aus",
+    sumPingBlocked: "Eingeschaltet, aber Ping ist nicht erlaubt",
+    sumPingOn: (sec) => `Alle ${sec} s · Median, Schwankung, Paketverlust`,
+    optPingEnabled: "Antwortzeit messen",
+    optPingEnabledShort: "Pingt alle Online-Clients über ihre aktuelle IP aus UniFi.",
+    optPingEnabledInfo:
+      "Schickt pro Runde drei Pings an jeden Client, der laut UniFi online ist, und hält Median, Schwankung und Paketverlust 24 Stunden lang fest. Die Werte stehen in der Geräteansicht und in der Spalte „Ping“; Entitäten legst du pro Client in der Geräteansicht an. Viele Geräte antworten grundsätzlich nicht auf Ping (Windows-Firewall, Handys im Standby, IoT-Geräte, Firewall zwischen VLANs) – sie erscheinen als „antwortet nicht auf Ping“, das ist kein Fehler. Ein- und Ausschalten lädt die Integration kurz neu.",
+    optPingInterval: "Intervall",
+    optPingIntervalShort: "Abstand zwischen zwei Runden. 60 s sind ein guter Kompromiss.",
+    pingPermission:
+      "Home Assistant darf keine Ping-Pakete (ICMP) senden, die Messung ist deshalb aus. In Home Assistant OS funktioniert Ping; bei Docker- oder Core-Installationen muss unprivilegierter Ping erlaubt sein (net.ipv4.ping_group_range) oder Home Assistant mit Root-Rechten laufen.",
+    pingUnavailable: "Die Ping-Bibliothek (icmplib) fehlt. Nach einem Neustart von Home Assistant wird sie installiert.",
+    colPing: "Ping",
+    pingNoReplyShort: "keine Antwort",
+    pingLossShort: (p) => `${p} % Verlust`,
+    pingTitle: "Antwortzeit",
+    pingRange: "Letzte 24 Std.",
+    pingMedian: "Median",
+    pingJitter: "Schwankung",
+    pingLoss: "Paketverlust",
+    pingLoading: "Messwerte werden geladen…",
+    pingNoData: "Noch keine Messwerte – der Client wird gepingt, sobald er online ist und eine IP hat.",
+    pingNoReply:
+      "Antwortet nicht auf Ping. Das ist bei vielen Geräten normal (Windows-Firewall, Handys im Standby, IoT-Geräte, Firewall zwischen VLANs) und kein Fehler.",
+    pingAgo: "vor 24 Std.",
+    pingScale: (ms) => `bis ${ms} ms`,
+    pingBarTip: (time, ms, loss) => `${time} · ${ms} · ${loss}`,
+    pingEntity: "Als Entitäten anlegen",
+    pingEntityShort: "„Ping“ (ms) und „Packet loss“ (%) am Gerät, für Automationen und den Verlauf in Home Assistant.",
+    pingEntityOn: "Ping-Entitäten angelegt",
+    pingEntityOff: "Ping-Entitäten entfernt",
     secUpdates: "Updates",
     sumUpdatesOn: "Tägliche Prüfung auf neue Versionen",
     sumUpdatesOff: "Keine automatische Prüfung",
@@ -283,7 +315,7 @@ const STRINGS = {
     loaderShort: "Lade-Animation, während der Verlauf geladen wird. Gilt nur für dich, auf allen Geräten, und wird sofort übernommen – ohne „Speichern“.",
     loaderPicked: (name) => `Loader „${name}“ übernommen`,
     loaderNow: "sofort wirksam",
-    settingsSaveHint: "„Speichern“ gilt für Abfrage, Automatisches Entfernen, Benachrichtigungen und Updates. Loader und Verbindung werden direkt übernommen.",
+    settingsSaveHint: "„Speichern“ gilt für Abfrage, Automatisches Entfernen, Benachrichtigungen, Updates und Ping. Loader und Verbindung werden direkt übernommen.",
     loaderNames: {
       elephant: ["Elefant", "Balance auf dem Ball"],
       cat: ["Katze", "Anschleichen und Anspringen"],
@@ -484,6 +516,38 @@ const STRINGS = {
     secCleanup: "Automatic removal",
     secPush: "Push notification",
     secPersistent: "Persistent notification",
+    secPing: "Ping (response time)",
+    sumPingOff: "Off",
+    sumPingBlocked: "On, but ping is not permitted",
+    sumPingOn: (sec) => `Every ${sec} s · median, jitter, packet loss`,
+    optPingEnabled: "Measure response time",
+    optPingEnabledShort: "Pings all online clients at their current IP from UniFi.",
+    optPingEnabledInfo:
+      "Sends three pings per round to every client that UniFi reports online and keeps median, jitter and packet loss for 24 hours. The values appear in the device view and in the \"Ping\" column; entities are created per client in the device view. Many devices never answer ping (Windows firewall, phones in standby, IoT devices, firewalls between VLANs) – they show up as \"does not answer ping\", which is not an error. Switching it on or off briefly reloads the integration.",
+    optPingInterval: "Interval",
+    optPingIntervalShort: "Time between two rounds. 60 s is a good compromise.",
+    pingPermission:
+      "Home Assistant is not allowed to send ping (ICMP) packets, so measuring is off. Ping works on Home Assistant OS; on Docker or Core installations unprivileged ping must be allowed (net.ipv4.ping_group_range) or Home Assistant must run as root.",
+    pingUnavailable: "The ping library (icmplib) is missing. It is installed after restarting Home Assistant.",
+    colPing: "Ping",
+    pingNoReplyShort: "no reply",
+    pingLossShort: (p) => `${p} % loss`,
+    pingTitle: "Response time",
+    pingRange: "Last 24 h",
+    pingMedian: "Median",
+    pingJitter: "Jitter",
+    pingLoss: "Packet loss",
+    pingLoading: "Loading measurements…",
+    pingNoData: "No measurements yet – the client is pinged as soon as it is online and has an IP.",
+    pingNoReply:
+      "Does not answer ping. That is normal for many devices (Windows firewall, phones in standby, IoT devices, firewalls between VLANs) and not an error.",
+    pingAgo: "24 h ago",
+    pingScale: (ms) => `up to ${ms} ms`,
+    pingBarTip: (time, ms, loss) => `${time} · ${ms} · ${loss}`,
+    pingEntity: "Create entities",
+    pingEntityShort: "\"Ping\" (ms) and \"Packet loss\" (%) on the device, for automations and history in Home Assistant.",
+    pingEntityOn: "Ping entities created",
+    pingEntityOff: "Ping entities removed",
     secUpdates: "Updates",
     sumUpdatesOn: "Daily check for new versions",
     sumUpdatesOff: "No automatic check",
@@ -596,7 +660,7 @@ const STRINGS = {
     loaderShort: "Animation shown while the history loads. Applies only to you, on all your devices, and takes effect right away – no \"Save\" needed.",
     loaderPicked: (name) => `Loader "${name}" applied`,
     loaderNow: "applies instantly",
-    settingsSaveHint: "\"Save\" applies to polling, automatic removal, notifications and updates. Loader and connection take effect directly.",
+    settingsSaveHint: "\"Save\" applies to polling, automatic removal, notifications, updates and ping. Loader and connection take effect directly.",
     loaderNames: {
       elephant: ["Elephant", "Balancing on a ball"],
       cat: ["Cat", "Sneak and pounce"],
@@ -706,7 +770,7 @@ const USER_DATA_SAVE_DELAY_MS = 400;
 // gibt es getrennt für schmal und breit, sonst fehlte eine am Handy
 // ausgeblendete Spalte auch am Desktop.
 const NARROW_QUERY = "(max-width: 600px)";
-const SORT_KEYS = ["name", "linked", "ip", "mac", "essid", "ap_name", "conn", "seen_at", "status"];
+const SORT_KEYS = ["name", "linked", "ip", "mac", "essid", "ap_name", "conn", "ping", "seen_at", "status"];
 const ONLINE_FILTERS = ["all", "online", "offline"];
 const CONN_FILTERS = ["all", "wired", "wireless"];
 const SEEN_FILTERS = ["all", "1h", "24h", "7d"];
@@ -724,6 +788,7 @@ const HIDEABLE_COLUMNS = [
   ["essid", "colSsid", 5],
   ["ap_name", "colAp", 6],
   ["conn", "colConn", 7],
+  ["ping", "colPing", 7],
   ["seen_at", "colSeen", 8],
   ["status", "colStatus", 9],
 ];
@@ -1219,6 +1284,7 @@ class UnifiDynamicPanel extends HTMLElement {
           ? hubs.hubs
           : [...new Map(this._allClients.map((c) => [c.entry_id, { entry_id: c.entry_id, title: c.host, host: c.host }])).values()];
       this._applyHub();
+      this._applyColumnVisibility();
       this._lastFetchAt = new Date();
       this._error = null;
       this._retryCount = 0;
@@ -1348,7 +1414,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const errors = {};
     if (!st || !st.draft) return errors;
     const limits = st.data.limits || {};
-    for (const key of ["scan_interval", "offline_after_failures", "purge_days"]) {
+    for (const key of ["scan_interval", "offline_after_failures", "purge_days", "ping_interval"]) {
+      if (!(key in st.draft) || (key === "ping_interval" && !st.draft.ping_enabled)) continue;
       const v = st.draft[key];
       const [min, max] = limits[key] || [0, Infinity];
       if (!Number.isInteger(v) || v < min || v > max) errors[key] = this._t("settingsRange")(min, max);
@@ -1381,7 +1448,12 @@ class UnifiDynamicPanel extends HTMLElement {
       ],
       ["persistent", ["persistent_notification", "persistent_when_empty", "persistent_controller_offline"]],
       ["updates", ["update_check"]],
-    ].filter(([id]) => id !== "updates" || !this._settings || !this._settings.draft || "update_check" in this._settings.draft);
+      ["ping", ["ping_enabled", "ping_interval"]],
+    ].filter(([id, keys]) => {
+      // Fehlt die Option (älteres Backend), Abschnitt ausblenden.
+      if (id !== "updates" && id !== "ping") return true;
+      return !this._settings || !this._settings.draft || keys[0] in this._settings.draft;
+    });
   }
 
   _settingsSummary(id, d) {
@@ -1400,6 +1472,13 @@ class UnifiDynamicPanel extends HTMLElement {
       return [target ? target.label : d.notify_service, parts.join(", ")].filter(Boolean).join(" · ");
     }
     if (id === "updates") return t(d.update_check ? "sumUpdatesOn" : "sumUpdatesOff");
+    if (id === "ping") {
+      if (!d.ping_enabled) return t("sumPingOff");
+      const status = this._settings.data.ping_status;
+      // Eingeschaltet, aber Messung nicht möglich: das zählt mehr als das Intervall.
+      if (status === "permission" || status === "unavailable") return t("sumPingBlocked");
+      return t("sumPingOn")(d.ping_interval);
+    }
     if (!d.persistent_notification && !d.persistent_controller_offline) return t("sumPersistentOff");
     return [
       d.persistent_notification && t("sumReport"),
@@ -1572,6 +1651,14 @@ class UnifiDynamicPanel extends HTMLElement {
       // Fehlt die Option (älteres Backend), blendet _settingsSections den
       // Abschnitt aus.
       updates: row("update_check", t("optUpdateCheck"), sw("update_check"), t("optUpdateCheckShort"), t("optUpdateCheckInfo")),
+      ping:
+        (st.data.ping_status === "permission" || st.data.ping_status === "unavailable"
+          ? `<div class="set-note ping-note">${esc(t(st.data.ping_status === "permission" ? "pingPermission" : "pingUnavailable"))}</div>`
+          : "") +
+        row("ping_enabled", t("optPingEnabled"), sw("ping_enabled"), t("optPingEnabledShort"), t("optPingEnabledInfo")) +
+        (d.ping_enabled
+          ? row("ping_interval", t("optPingInterval"), num("ping_interval", t("unitSeconds")), t("optPingIntervalShort"), null)
+          : ""),
     };
     const titles = {
       polling: "secPolling",
@@ -1579,8 +1666,9 @@ class UnifiDynamicPanel extends HTMLElement {
       push: "secPush",
       persistent: "secPersistent",
       updates: "secUpdates",
+      ping: "secPing",
     };
-    const reload = changes.has("scan_interval") || changes.has("purge_time");
+    const reload = ["scan_interval", "purge_time", "ping_enabled", "ping_interval"].some((k) => changes.has(k));
     return (
       this._connBannerHtml() +
       `<div class="ver-slot">${this._versionHtml()}</div>` +
@@ -2240,7 +2328,7 @@ class UnifiDynamicPanel extends HTMLElement {
         title.appendChild(badge);
       } else if (!changed && badge) badge.remove();
     }
-    for (const key of ["scan_interval", "offline_after_failures", "purge_days", "purge_time"]) {
+    for (const key of ["scan_interval", "offline_after_failures", "purge_days", "purge_time", "ping_interval"]) {
       const input = dialog.querySelector(`input[data-opt="${key}"]`);
       const opt = input && input.closest(".opt");
       if (!opt) continue;
@@ -2262,7 +2350,7 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     const body = dialog.querySelector(".dlg-body");
     let note = dialog.querySelector(".set-note");
-    const reload = changes.includes("scan_interval") || changes.includes("purge_time");
+    const reload = ["scan_interval", "purge_time", "ping_enabled", "ping_interval"].some((k) => changes.includes(k));
     if (reload && !note && body) {
       note = document.createElement("div");
       note.className = "set-note";
@@ -2277,6 +2365,7 @@ class UnifiDynamicPanel extends HTMLElement {
       scan_interval: "optScanIntervalShort",
       purge_days: "optPurgeDaysShort",
       purge_time: "optPurgeTimeShort",
+      ping_interval: "optPingIntervalShort",
     };
     return map[key] ? this._t(map[key]) : "";
   }
@@ -2446,6 +2535,135 @@ class UnifiDynamicPanel extends HTMLElement {
       else dialog.setAttribute("open", "");
     }
     dialog.scrollTop = 0;
+  }
+
+  // ---------------------------------------------------------------------
+  // Ping (Antwortzeit): Tabellenzelle, Abschnitt in der Geräteansicht und
+  // Schalter für die Entitäten. Verlauf über unifi_dynamic/ping_history.
+  // ---------------------------------------------------------------------
+
+  _pingCellHtml(c) {
+    const p = c.ping;
+    const esc = (v) => this._escape(v);
+    if (!p || !c.online) return `<span class="muted">–</span>`;
+    if (p.status === "no_reply") return `<span class="muted">${esc(this._t("pingNoReplyShort"))}</span>`;
+    if (p.median == null) return `<span class="muted">–</span>`;
+    const loss = p.loss > 0 ? `<small class="ping-loss">${esc(this._t("pingLossShort")(this._fmtNum(p.loss)))}</small>` : "";
+    return `<span class="ping-val">${esc(this._fmtMs(p.median))}${loss}</span>`;
+  }
+
+  _fmtNum(v) {
+    const lang = pickLang(this._hass) === "de" ? "de-CH" : "en-US";
+    return Number(v).toLocaleString(lang, { maximumFractionDigits: v < 10 ? 1 : 0 });
+  }
+
+  _fmtMs(v) {
+    return v == null ? "–" : `${this._fmtNum(v)} ms`;
+  }
+
+  // Verlauf höchstens eine Minute alt zeigen, dann neu holen.
+  _ensurePing(c) {
+    const key = `${c.entry_id}|${c.mac}`;
+    const h = this._pingHist;
+    if (h && h.key === key && (h.loading || Date.now() - h.at < 60000)) return;
+    const prev = h && h.key === key ? h.data : null;
+    this._pingHist = { key, loading: true, data: prev, at: Date.now() };
+    this._hass
+      .callWS({ type: "unifi_dynamic/ping_history", entry_id: c.entry_id, mac: c.mac })
+      .then((data) => {
+        if (!this._pingHist || this._pingHist.key !== key) return;
+        this._pingHist = { key, loading: false, data, at: Date.now() };
+        this._renderDialog();
+      })
+      .catch((err) => {
+        if (!this._pingHist || this._pingHist.key !== key) return;
+        this._pingHist = { key, loading: false, data: prev, error: (err && err.message) || String(err), at: Date.now() };
+        this._renderDialog();
+      });
+  }
+
+  _pingSectionHtml(c) {
+    // Nur wenn der Hub misst (list_clients liefert dann "ping").
+    if (!c.ping) return "";
+    this._ensurePing(c);
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const h = this._pingHist;
+    const data = h && h.key === `${c.entry_id}|${c.mac}` ? h.data : null;
+    const entityOn = data ? Boolean(data.entity) : Boolean(c.ping.entity);
+    const busy = this._pingBusy === `${c.entry_id}|${c.mac}`;
+    const toggle = `<div class="opt ping-entity">
+        <div class="opt-line"><span class="opt-label">${esc(t("pingEntity"))}</span>
+          <button type="button" class="sw-btn${entityOn ? " on" : ""}" role="switch" aria-checked="${entityOn}" data-dlg="ping-entity" ${busy ? "disabled" : ""} aria-label="${esc(t("pingEntity"))}"><span></span></button></div>
+        <div class="opt-short">${esc(t("pingEntityShort"))}</div>
+      </div>`;
+    const head = `<h3 class="avail-h3"><span>${esc(t("pingTitle"))}</span><span class="ping-range">${esc(t("pingRange"))}</span></h3>`;
+    let body;
+    if (!data) body = `<p class="dlg-note">${esc(h && h.error ? h.error : t("pingLoading"))}</p>`;
+    else if (!data.summary) body = `<p class="dlg-note">${esc(t("pingNoData"))}</p>`;
+    else if (data.summary.status === "no_reply") body = `<p class="dlg-note">${esc(t("pingNoReply"))}</p>`;
+    else {
+      const s = data.summary;
+      const stat = (label, value, warn) => `<div class="ping-stat${warn ? " warn" : ""}"><span>${esc(label)}</span><b>${esc(value)}</b></div>`;
+      body = `<div class="ping-stats">${stat(t("pingMedian"), this._fmtMs(s.median))}${stat(t("pingJitter"), this._fmtMs(s.jitter))}${stat(
+        t("pingLoss"),
+        `${this._fmtNum(s.loss)} %`,
+        s.loss > 0
+      )}</div>${this._pingChartHtml(data)}`;
+    }
+    return `<section class="ping">${head}${body}${toggle}</section>`;
+  }
+
+  // Säulen pro 5-Minuten-Block über 24 Stunden. Höhe = Median, Farbe warnt
+  // bei Paketverlust; Blöcke ganz ohne Antwort als roter Strich unten.
+  _pingChartHtml(data) {
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const size = data.bucket || 300;
+    const end = data.now || Date.now() / 1000;
+    const start = end - 86400;
+    const n = Math.round(86400 / size);
+    const buckets = (data.buckets || []).filter((b) => b[0] >= start - size);
+    const medians = buckets.map((b) => b[1]).filter((v) => v != null).sort((a, b) => a - b);
+    if (!buckets.length) return "";
+    // Skala am 95. Perzentil, damit ein Ausreisser nicht alles plattdrückt.
+    const p95 = medians.length ? medians[Math.min(medians.length - 1, Math.floor(medians.length * 0.95))] : 1;
+    const scale = Math.max(5, Math.ceil(p95 * 1.2));
+    const lang = pickLang(this._hass) === "de" ? "de-CH" : "en-US";
+    const bars = buckets
+      .map((b) => {
+        const idx = Math.max(0, Math.min(n - 1, Math.floor((b[0] - start) / size)));
+        const left = (idx / n) * 100;
+        const lossPct = b[3] ? Math.round((1 - b[4] / b[3]) * 100) : 0;
+        const time = new Date(b[0] * 1000).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+        const tip = t("pingBarTip")(time, b[1] == null ? t("pingNoReplyShort") : this._fmtMs(b[1]), t("pingLossShort")(lossPct));
+        if (b[1] == null) {
+          return `<i class="pb none" style="left:${left.toFixed(2)}%" title="${esc(tip)}"></i>`;
+        }
+        const hgt = Math.max(4, Math.min(100, (b[1] / scale) * 100));
+        return `<i class="pb${lossPct > 0 ? " lossy" : ""}" style="left:${left.toFixed(2)}%;height:${hgt.toFixed(1)}%" title="${esc(tip)}"></i>`;
+      })
+      .join("");
+    return `<div class="ping-chart" style="--n:${n}"><span class="ping-scale">${esc(t("pingScale")(scale))}</span>${bars}</div>
+      <div class="ping-axis"><span>${esc(t("pingAgo"))}</span><span>${esc(t("availNow"))}</span></div>`;
+  }
+
+  async _setPingEntity(c, enabled) {
+    const key = `${c.entry_id}|${c.mac}`;
+    this._pingBusy = key;
+    this._renderDialog();
+    try {
+      await this._hass.callWS({ type: "unifi_dynamic/ping_entity", entry_id: c.entry_id, mac: c.mac, enabled });
+      this._toast(this._t(enabled ? "pingEntityOn" : "pingEntityOff"));
+      if (this._pingHist && this._pingHist.key === key && this._pingHist.data) {
+        this._pingHist = { ...this._pingHist, data: { ...this._pingHist.data, entity: enabled } };
+      }
+      if (c.ping) c.ping = { ...c.ping, entity: enabled };
+    } catch (err) {
+      this._dialogError = (err && err.message) || String(err);
+    }
+    this._pingBusy = null;
+    this._renderDialog();
   }
 
   _closeDialog() {
@@ -3488,6 +3706,7 @@ class UnifiDynamicPanel extends HTMLElement {
         <div class="dlg-body">
           ${errorHtml}
           ${this._availSectionHtml(c)}
+          ${this._pingSectionHtml(c)}
           <h3>${esc(t("secNetwork"))}</h3>
           <div class="tiles">${tiles.join("")}</div>
           <h3>${esc(t("secLinked"))}</h3>
@@ -3596,6 +3815,11 @@ class UnifiDynamicPanel extends HTMLElement {
       this._renderDialog();
       return;
     }
+    if (action === "ping-entity") {
+      const cl = this._clientByKey(this._dialogKey);
+      if (cl) this._setPingEntity(cl, btn.getAttribute("aria-checked") !== "true");
+      return;
+    }
     if (action === "avail-range") {
       if (btn.dataset.range !== this._availRange) {
         this._availRange = btn.dataset.range;
@@ -3672,6 +3896,7 @@ class UnifiDynamicPanel extends HTMLElement {
     if (key === "conn") return client.is_wired;
     if (key === "linked") return client.linked_device ? client.linked_device.name : null;
     if (key === "status") return client.online;
+    if (key === "ping") return client.ping && client.ping.median != null ? client.ping.median : null;
     return client[key];
   }
 
@@ -3738,6 +3963,7 @@ class UnifiDynamicPanel extends HTMLElement {
       seen_at: `<select class="col-filter filter-seen" data-col="seen" aria-label="${this._escape(
         t("colSeen")
       )}">${this._seenOptionsHtml()}</select>`,
+      ping: "",
       status: `<select class="col-filter filter-status" data-col="status" aria-label="${this._escape(
         t("colStatus")
       )}">${this._statusOptionsHtml()}</select>`,
@@ -3894,7 +4120,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const root = this.shadowRoot;
     const style = root.querySelector("style.colvis");
     if (!style) return;
-    const css = HIDEABLE_KEYS.filter((key) => this._hiddenCols.has(key))
+    // Ping-Spalte nur, solange ein Hub misst.
+    const css = HIDEABLE_KEYS.filter((key) => this._hiddenCols.has(key) || (key === "ping" && !this._pingActive()))
       .map((key) => `table .c-${key} { display: none; }`)
       .join("\n");
     if (style.textContent !== css) style.textContent = css;
@@ -3903,6 +4130,11 @@ class UnifiDynamicPanel extends HTMLElement {
       badge.textContent = String(this._hiddenCols.size);
       badge.hidden = this._hiddenCols.size === 0;
     }
+  }
+
+  // Misst mindestens ein Hub die Antwortzeit?
+  _pingActive() {
+    return this._hubs.some((h) => h.ping === "ok");
   }
 
   _setColumnVisible(key, visible) {
@@ -3917,6 +4149,7 @@ class UnifiDynamicPanel extends HTMLElement {
   // Beschriftung, Schalter zum Ein-/Ausblenden.
   _columnTogglesHtml(attr) {
     return `<div class="col-list">${this._colOrder
+      .filter((key) => key !== "ping" || this._pingActive())
       .map((key) => {
         const label = this._escape(this._columnLabel(key));
         return `<div class="col-row" data-colkey="${key}">
@@ -3931,6 +4164,15 @@ class UnifiDynamicPanel extends HTMLElement {
           } /></label></div>`;
       })
       .join("")}</div>`;
+  }
+
+  // Die Liste zeigt nicht immer alle Spalten (Ping nur, solange ein Hub
+  // misst). Neue Reihenfolge der sichtbaren Einträge in die gesamte
+  // Reihenfolge übernehmen; ausgeblendete behalten ihren Platz.
+  _mergeVisibleOrder(visible) {
+    const set = new Set(visible);
+    const queue = [...visible];
+    return this._colOrder.map((k) => (set.has(k) ? queue.shift() : k));
   }
 
   _setColumnOrder(order) {
@@ -4000,10 +4242,10 @@ class UnifiDynamicPanel extends HTMLElement {
         });
         row.classList.remove("dragging");
         if (to !== from) {
-          const order = [...this._colOrder];
-          const [key] = order.splice(from, 1);
-          order.splice(to, 0, key);
-          this._setColumnOrder(order);
+          const visible = rows.map((r) => r.dataset.colkey);
+          const [key] = visible.splice(from, 1);
+          visible.splice(to, 0, key);
+          this._setColumnOrder(this._mergeVisibleOrder(visible));
           this._refreshColumnLists();
         }
       };
@@ -4017,12 +4259,12 @@ class UnifiDynamicPanel extends HTMLElement {
       if (!handle || (ev.key !== "ArrowUp" && ev.key !== "ArrowDown")) return;
       ev.preventDefault();
       const key = handle.dataset.colmove;
-      const order = [...this._colOrder];
-      const i = order.indexOf(key);
+      const visible = [...handle.closest(".col-list").querySelectorAll(".col-row")].map((r) => r.dataset.colkey);
+      const i = visible.indexOf(key);
       const j = ev.key === "ArrowUp" ? i - 1 : i + 1;
-      if (j < 0 || j >= order.length) return;
-      [order[i], order[j]] = [order[j], order[i]];
-      this._setColumnOrder(order);
+      if (j < 0 || j >= visible.length) return;
+      [visible[i], visible[j]] = [visible[j], visible[i]];
+      this._setColumnOrder(this._mergeVisibleOrder(visible));
       this._refreshColumnLists(key);
     });
   }
@@ -7255,6 +7497,134 @@ class UnifiDynamicPanel extends HTMLElement {
           border-color: var(--udc-error);
           background: var(--udc-error);
         }
+        /* Ping: Tabellenzelle, Geräteansicht, Schalter */
+        .ping-val {
+          display: inline-flex;
+          flex-direction: column;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .ping-loss {
+          color: var(--udc-warning);
+          font-size: 11px;
+        }
+        section.ping {
+          margin-top: 18px;
+        }
+        .ping-range {
+          color: var(--udc-text3);
+          font-size: 12px;
+          font-weight: 400;
+          text-transform: none;
+          letter-spacing: 0;
+        }
+        .ping-stats {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .ping-stat {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: var(--udc-subtle);
+          min-width: 0;
+        }
+        .ping-stat span {
+          color: var(--udc-text2);
+          font-size: 12px;
+        }
+        .ping-stat b {
+          font-size: 16px;
+          font-weight: 500;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .ping-stat.warn b {
+          color: var(--udc-warning);
+        }
+        .ping-chart {
+          position: relative;
+          height: 56px;
+          margin-top: 12px;
+          border-radius: 8px;
+          background: var(--udc-subtle);
+          overflow: hidden;
+        }
+        .ping-chart .pb {
+          position: absolute;
+          bottom: 0;
+          width: max(1px, calc(100% / var(--n) - 0.5px));
+          border-radius: 1px 1px 0 0;
+          background: color-mix(in srgb, var(--udc-primary) 70%, var(--udc-card));
+        }
+        .ping-chart .pb.lossy {
+          background: var(--udc-warning);
+        }
+        .ping-chart .pb.none {
+          height: 4px;
+          background: var(--udc-error);
+        }
+        .ping-scale {
+          position: absolute;
+          top: 3px;
+          left: 6px;
+          color: var(--udc-text3);
+          font-size: 11px;
+          pointer-events: none;
+        }
+        .ping-axis {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 3px;
+          color: var(--udc-text3);
+          font-size: 11px;
+        }
+        .ping-entity {
+          margin-top: 8px;
+          border-bottom: none;
+        }
+        .sw-btn {
+          position: relative;
+          flex: 0 0 auto;
+          width: 36px;
+          height: 20px;
+          padding: 0;
+          border: none;
+          border-radius: 99px;
+          background: color-mix(in srgb, var(--udc-text) 25%, transparent);
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .sw-btn span {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #fff;
+          transition: left 0.15s;
+        }
+        .sw-btn.on {
+          background: var(--udc-primary);
+        }
+        .sw-btn.on span {
+          left: 18px;
+        }
+        .sw-btn:disabled {
+          opacity: 0.5;
+          cursor: default;
+        }
+        .sw-btn:focus-visible {
+          outline: 2px solid var(--udc-primary);
+          outline-offset: 2px;
+        }
+        .ping-note {
+          margin: 6px 0 4px;
+        }
         .set-note {
           margin-top: 12px;
           padding: 10px 12px;
@@ -7845,7 +8215,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const foot = root.querySelector(".foot-count");
     if (this._loading) {
       // Platzhalterzeilen in etwa der Breite echter Inhalte.
-      const widths = { name: 150, linked: 110, ip: 95, mac: 120, essid: 70, ap_name: 90, conn: 80, seen_at: 90, status: 60, actions: 20 };
+      const widths = { name: 150, linked: 110, ip: 95, mac: 120, essid: 70, ap_name: 90, conn: 80, ping: 60, seen_at: 90, status: 60, actions: 20 };
       const keys = ["name", ...this._colOrder, "actions"];
       tbody.innerHTML = Array.from(
         { length: 8 },
@@ -7918,6 +8288,7 @@ class UnifiDynamicPanel extends HTMLElement {
           ap_name: () => `<td class="c-ap_name">${c.ap_name ? esc(c.ap_name) : dash}</td>`,
           conn: () =>
             `<td class="c-conn"><span class="conn">${icon(kind)}${esc(connText)}${barsHtml}</span></td>`,
+          ping: () => `<td class="c-ping">${this._pingCellHtml(c)}</td>`,
           seen_at: () => `<td class="c-seen_at">${seen}</td>`,
           status: () => `<td class="c-status">${status}</td>`,
         };

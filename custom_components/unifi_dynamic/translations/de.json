@@ -132,6 +132,18 @@
             "data_description": {
               "update_check": "Fragt einmal täglich die veröffentlichten Releases auf GitHub ab und meldet eine neue Version unter Einstellungen → Reparaturen, mit Link zu den Release Notes. Ergänzt HACS, das nur alle paar Tage prüft; wer die doppelte Meldung nicht möchte, schaltet es aus."
             }
+          },
+          "ping": {
+            "name": "Ping (Antwortzeit)",
+            "description": "Misst, wie schnell die Clients antworten. Gepingt werden nur Clients, die laut UniFi online sind, über ihre aktuelle IP. Die Werte erscheinen in der Geräteansicht des Panels; Entitäten werden pro Client auf Wunsch angelegt (Schalter in der Geräteansicht).",
+            "data": {
+              "ping_enabled": "Antwortzeit messen",
+              "ping_interval": "Intervall (Sekunden)"
+            },
+            "data_description": {
+              "ping_enabled": "Schickt pro Runde drei Pings an jeden Online-Client und hält Median, Schwankung und Paketverlust 24 Stunden lang fest. Viele Geräte antworten grundsätzlich nicht auf Ping (Windows-Firewall, schlafende Handys und IoT-Geräte, Firewall zwischen VLANs); sie erscheinen als „antwortet nicht auf Ping“, das ist kein Fehler. Home Assistant braucht die Berechtigung, ICMP-Pakete zu senden; fehlt sie, zeigt das Panel einen Hinweis. Standardmässig aus.",
+              "ping_interval": "Abstand zwischen zwei Runden. 60 Sekunden sind ein guter Kompromiss; kürzere Intervalle erzeugen vor allem mehr Netzwerkverkehr."
+            }
           }
         }
       }

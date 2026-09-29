@@ -7,6 +7,7 @@ import logging
 
 from datetime import time as dt_time
 from pathlib import Path
+import time
 from time import monotonic
 from typing import Any
 
@@ -27,15 +28,17 @@ from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.util import dt as dt_util
 
-from . import connection as conn_api, options_api, update_check
+from . import connection as conn_api, options_api, ping as ping_mod, update_check
 from .const import (
     ACTION_EXCLUDE,
     CONF_API_KEY,
     CONF_HOST,
     CONF_VERIFY_SSL,
+    CONF_PING_ENTITIES,
     DEFAULT_VERIFY_SSL,
     ATTR_DEVICE_ID,
     ATTR_DRY_RUN,
@@ -74,6 +77,8 @@ from .const import (
     WS_TYPE_GET_OPTIONS,
     WS_TYPE_LIST_HUBS,
     WS_TYPE_SET_CONNECTION,
+    WS_TYPE_PING_ENTITY,
+    WS_TYPE_PING_HISTORY,
     WS_TYPE_SET_OPTIONS,
     WS_TYPE_VERSION,
     WS_TYPE_LIST_CLIENTS,
@@ -139,6 +144,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await coordinator.async_load_cache()
     await coordinator.async_config_entry_first_refresh()
+    coordinator.ping = ping_mod.PingMonitor(hass, coordinator)
 
     # Migration vor dem Plattform-Setup, damit HA direkt die neuen IDs nutzt.
     _migrate_entity_ids(hass, entry, coordinator)
@@ -150,6 +156,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _sync_device_names(hass, coordinator)
+
+    # Nach dem Plattform-Setup: die Ping-Entitäten hören auf die Messung.
+    await coordinator.ping.async_start()
 
     @callback
     def _handle_coordinator_update() -> None:
@@ -231,6 +240,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             entry.entry_id, None
         )
         if coordinator is not None:
+            if coordinator.ping is not None:
+                await coordinator.ping.async_stop()
             await coordinator.async_close()
 
         if not hass.data.get(DOMAIN):
@@ -241,7 +252,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-def _reload_signature(entry: ConfigEntry) -> tuple[int, str]:
+def _reload_signature(entry: ConfigEntry) -> tuple[int, str, bool, int]:
     """
     Die Options, die einen Reload erfordern.
 
@@ -249,7 +260,9 @@ def _reload_signature(entry: ConfigEntry) -> tuple[int, str]:
     in async_track_time_change übernommen und ändern sich sonst nicht mehr.
     Alle übrigen Options - Schwelle, Ausnahmeliste, Meldungsziel und -inhalt -
     werden bei jeder Verwendung frisch aus dem Entry gelesen und brauchen
-    keinen Reload.
+    keinen Reload. Ebenfalls mit Reload: Ping ein/aus und das Ping-Intervall
+    (Zeitplan der Messung). Die Auswahl der Ping-Entitäten nicht, die legt
+    der WebSocket-Befehl direkt an bzw. entfernt sie.
     """
     raw = entry.options.get(
         CONF_SCAN_INTERVAL, entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
@@ -259,7 +272,12 @@ def _reload_signature(entry: ConfigEntry) -> tuple[int, str]:
     except (TypeError, ValueError):
         scan_interval = DEFAULT_SCAN_INTERVAL
 
-    return scan_interval, _purge_time(entry).isoformat()
+    return (
+        scan_interval,
+        _purge_time(entry).isoformat(),
+        ping_mod.ping_enabled(entry),
+        ping_mod.ping_interval(entry),
+    )
 
 
 @callback
@@ -700,6 +718,7 @@ def _ws_list_clients(
                     "excluded": row["mac"] in excluded,
                     "device_id": device.id if device is not None else None,
                     "linked_device": linked,
+                    "ping": _ping_row(coordinator, row["mac"]),
                 }
             )
 
@@ -806,6 +825,21 @@ def _hub_summary(coordinator: UnifiDynamicCoordinator) -> dict[str, Any]:
         "title": entry.title,
         "host": coordinator.host,
         "clients": len(coordinator.panel_clients()),
+        "ping": coordinator.ping.status if coordinator.ping is not None else "disabled",
+    }
+
+
+def _ping_row(coordinator: UnifiDynamicCoordinator, mac: str) -> dict[str, Any] | None:
+    """Kurzfassung für die Tabelle; None, solange Ping aus ist."""
+    monitor = coordinator.ping
+    if monitor is None or monitor.status != ping_mod.STATUS_OK:
+        return None
+    summary = monitor.summary(mac)
+    return {
+        "median": summary["median"] if summary else None,
+        "loss": summary["loss"] if summary else None,
+        "status": summary["status"] if summary else None,
+        "entity": monitor.entity_enabled(mac),
     }
 
 
@@ -869,7 +903,9 @@ def _ws_get_options(
                 "scan_interval": options_api.SCAN_INTERVAL_RANGE,
                 "offline_after_failures": options_api.OFFLINE_AFTER_RANGE,
                 "purge_days": options_api.PURGE_DAYS_RANGE,
+                "ping_interval": ping_mod.PING_INTERVAL_RANGE,
             },
+            "ping_status": coordinator.ping.status if coordinator.ping is not None else "disabled",
         },
     )
 
@@ -901,6 +937,92 @@ def _ws_set_options(
         msg["id"],
         {"changed": changed, "reload": changed and _reload_signature(entry) != before},
     )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_PING_HISTORY,
+        vol.Required("entry_id"): str,
+        vol.Required("mac"): str,
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_ping_history(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Ping-Verlauf eines Clients (24 Stunden in 5-Minuten-Blöcken)."""
+    coordinator: UnifiDynamicCoordinator | None = hass.data.get(DOMAIN, {}).get(
+        msg["entry_id"]
+    )
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+    monitor = coordinator.ping
+    mac = msg["mac"].lower()
+    status = monitor.status if monitor is not None else ping_mod.STATUS_DISABLED
+    ok = status == ping_mod.STATUS_OK
+    connection.send_result(
+        msg["id"],
+        {
+            "status": status,
+            "interval": ping_mod.ping_interval(coordinator.entry),
+            "bucket": ping_mod.PING_BUCKET_SECONDS,
+            "buckets": monitor.history(mac) if ok else [],
+            "summary": monitor.summary(mac) if ok else None,
+            "last": monitor.last(mac) if ok else None,
+            "entity": mac in ping_mod.ping_entity_macs(coordinator.entry),
+            "now": time.time(),
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_PING_ENTITY,
+        vol.Required("entry_id"): str,
+        vol.Required("mac"): str,
+        vol.Required("enabled"): bool,
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_ping_entity(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """
+    Ping-Entitäten eines Clients anlegen oder entfernen.
+
+    Ohne Reload: die Sensor-Plattform legt neue per Signal an, entfernte
+    verschwinden hier aus der Entity-Registry (samt Verlauf im Recorder, wie
+    bei jeder gelöschten Entität).
+    """
+    entry = hass.config_entries.async_get_entry(msg["entry_id"])
+    if entry is None or entry.domain != DOMAIN:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+    mac = msg["mac"].strip().lower()
+    macs = ping_mod.ping_entity_macs(entry)
+    if msg["enabled"] and mac not in macs:
+        macs.append(mac)
+    elif not msg["enabled"] and mac in macs:
+        macs.remove(mac)
+    else:
+        connection.send_result(msg["id"], {"changed": False})
+        return
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, CONF_PING_ENTITIES: macs}
+    )
+    if not msg["enabled"]:
+        ent_reg = er.async_get(hass)
+        for kind in ping_mod.PING_ENTITY_KINDS:
+            entity_id = ent_reg.async_get_entity_id(
+                "sensor", DOMAIN, f"{DOMAIN}.{entry.entry_id}.{kind}.{mac}"
+            )
+            if entity_id:
+                ent_reg.async_remove(entity_id)
+    async_dispatcher_send(hass, ping_mod.ping_entities_signal(entry.entry_id))
+    connection.send_result(msg["id"], {"changed": True})
 
 
 @websocket_api.websocket_command(
@@ -1080,6 +1202,8 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_get_options)
     websocket_api.async_register_command(hass, _ws_set_options)
     websocket_api.async_register_command(hass, _ws_set_connection)
+    websocket_api.async_register_command(hass, _ws_ping_history)
+    websocket_api.async_register_command(hass, _ws_ping_entity)
     websocket_api.async_register_command(hass, _ws_version)
 
 

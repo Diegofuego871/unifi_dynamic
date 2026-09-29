@@ -5,6 +5,27 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.14.0] - 2026-09-29
+
+### Added
+
+- Optional response time measurement via ping (off by default, Settings →
+  Ping). Every online client is pinged at its current IP from UniFi, so it
+  works with DHCP without any upkeep. Three pings per round, interval
+  adjustable (default 60 s).
+- The panel shows median, jitter and packet loss of the last 24 hours in
+  the device view, with a chart in 5-minute blocks, plus an optional
+  "Ping" column in the table (only while a hub is measuring).
+- Entities per client on request: "Create entities" in the device view
+  adds `sensor.<client>_ping` (ms) and `sensor.<client>_packet_loss` (%)
+  with the 24-hour values as attributes; switching it off removes them.
+  Deliberately opt-in so the recorder doesn't grow for every client.
+- Devices that never answer ping (Windows firewall, sleeping phones and IoT
+  devices, firewalls between VLANs) are shown neutrally as "does not
+  answer ping", not as an error.
+- If Home Assistant may not send ICMP packets (some Docker or Core
+  installations), measuring stays off and the settings explain why.
+
 ## [2.13.1] - 2026-09-29
 
 ### Changed
@@ -1284,6 +1305,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.14.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.0
 [2.13.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.1
 [2.13.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.0
 [2.12.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.1

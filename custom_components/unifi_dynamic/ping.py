@@ -1,0 +1,382 @@
+"""
+Antwortzeit der Clients per Ping (ICMP).
+
+Pingt in einem festen Intervall alle Clients, die laut UniFi gerade online
+sind und eine IP haben - die IP kommt aus UniFi, damit klappt es auch mit
+DHCP ohne Pflege. Pro Client und Runde gehen mehrere Pings raus; die Werte
+landen in 5-Minuten-Blöcken (24 Stunden, eigene Datei) für das Panel und in
+der letzten Runde für die optionalen Entitäten.
+
+Kennzahlen:
+- Median statt Mittelwert: ein einzelner Ausreisser (Handy wacht gerade auf)
+  verzerrt ihn nicht.
+- Schwankung (Jitter): mittlere Differenz aufeinanderfolgender Antwortzeiten.
+- Paketverlust in Prozent.
+
+Viele Geräte antworten grundsätzlich nicht auf Ping (Windows-Firewall,
+schlafende Handys und IoT-Geräte, Firewall zwischen VLANs). Das ist kein
+Fehler und wird als "antwortet nicht auf Ping" geführt.
+
+Ping braucht entweder Root-Rechte oder die Freigabe für unprivilegierten
+Ping im System. Fehlt beides, bleibt die Messung aus und das Panel zeigt
+einen Hinweis (status "permission").
+"""
+
+from __future__ import annotations
+
+import logging
+import statistics
+import time
+from collections.abc import Callable
+from datetime import timedelta
+from typing import TYPE_CHECKING, Any
+
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.storage import Store
+
+from .const import (
+    CONF_PING_ENABLED,
+    CONF_PING_ENTITIES,
+    CONF_PING_INTERVAL,
+    DEFAULT_PING_ENABLED,
+    DEFAULT_PING_INTERVAL,
+    DOMAIN,
+    PING_BUCKET_SECONDS,
+    PING_CONCURRENCY,
+    PING_COUNT,
+    PING_KEEP_SECONDS,
+    PING_SAVE_DELAY,
+    PING_SPACING,
+    PING_STORE_SUFFIX,
+    PING_TIMEOUT,
+    STORAGE_VERSION,
+)
+# Wertebereich des Intervalls, gemeinsam für Optionsdialog und Panel.
+from .options_api import PING_INTERVAL_RANGE
+
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+
+    from .coordinator import UnifiDynamicCoordinator
+
+_LOGGER = logging.getLogger(__name__)
+
+
+STATUS_DISABLED = "disabled"
+STATUS_STARTING = "starting"
+STATUS_OK = "ok"
+STATUS_PERMISSION = "permission"
+STATUS_UNAVAILABLE = "unavailable"
+
+# Entitäten pro Client (Schlüssel in unique_id und entity_id).
+PING_ENTITY_KINDS = ("ping", "packet_loss")
+
+
+def ping_entities_signal(entry_id: str) -> str:
+    """Signal: Auswahl der Ping-Entitäten eines Hubs hat sich geändert."""
+    return f"{DOMAIN}_ping_entities_{entry_id}"
+
+
+# Zustand eines Clients
+CLIENT_OK = "ok"
+CLIENT_NO_REPLY = "no_reply"
+
+
+def ping_enabled(entry: ConfigEntry) -> bool:
+    return bool(entry.options.get(CONF_PING_ENABLED, DEFAULT_PING_ENABLED))
+
+
+def ping_interval(entry: ConfigEntry) -> int:
+    try:
+        value = int(entry.options.get(CONF_PING_INTERVAL, DEFAULT_PING_INTERVAL))
+    except (TypeError, ValueError):
+        value = DEFAULT_PING_INTERVAL
+    low, high = PING_INTERVAL_RANGE
+    return min(high, max(low, value))
+
+
+def ping_entity_macs(entry: ConfigEntry) -> list[str]:
+    return [
+        str(mac).strip().lower()
+        for mac in (entry.options.get(CONF_PING_ENTITIES) or [])
+        if str(mac).strip()
+    ]
+
+
+# -- Kennzahlen (rein, ohne Home Assistant; auch für Tests) --------------------
+
+
+def jitter(rtts: list[float]) -> float | None:
+    """Mittlere Differenz aufeinanderfolgender Antwortzeiten."""
+    if len(rtts) < 2:
+        return None
+    return sum(abs(b - a) for a, b in zip(rtts, rtts[1:])) / (len(rtts) - 1)
+
+
+def bucket_from(rtts: list[float], sent: int, received: int, start: float) -> list[Any]:
+    """Block als Liste: [Start, Median, Jitter, gesendet, empfangen]."""
+    return [
+        round(start),
+        round(statistics.median(rtts), 2) if rtts else None,
+        round(jitter(rtts), 2) if jitter(rtts) is not None else None,
+        int(sent),
+        int(received),
+    ]
+
+
+def summarize(buckets: list[list[Any]]) -> dict[str, Any] | None:
+    """
+    Zusammenfassung über mehrere Blöcke.
+
+    Median: Median der Block-Mediane (jeder Block zählt gleich, egal wie viele
+    Antworten er hatte). Schwankung: Mittel der Block-Werte. Verlust: über alle
+    gesendeten Pings.
+    """
+    sent = sum(b[3] for b in buckets)
+    if not sent:
+        return None
+    received = sum(b[4] for b in buckets)
+    medians = [b[1] for b in buckets if b[1] is not None]
+    jitters = [b[2] for b in buckets if b[2] is not None]
+    return {
+        "median": round(statistics.median(medians), 1) if medians else None,
+        "jitter": round(sum(jitters) / len(jitters), 1) if jitters else None,
+        "loss": round((1 - received / sent) * 100, 1),
+        "sent": sent,
+        "received": received,
+        "status": CLIENT_OK if received else CLIENT_NO_REPLY,
+    }
+
+
+# -- Messung ------------------------------------------------------------------
+
+
+class PingMonitor:
+    """Ping-Messung eines Hubs."""
+
+    def __init__(self, hass: HomeAssistant, coordinator: UnifiDynamicCoordinator) -> None:
+        self.hass = hass
+        self.coordinator = coordinator
+        self.entry = coordinator.entry
+        self.status = STATUS_DISABLED if not ping_enabled(self.entry) else STATUS_STARTING
+        self._store: Store[dict[str, Any]] = Store(
+            hass, STORAGE_VERSION, f"{DOMAIN}_{self.entry.entry_id}_{PING_STORE_SUFFIX}"
+        )
+        # Abgeschlossene Blöcke pro MAC, älteste zuerst.
+        self._buckets: dict[str, list[list[Any]]] = {}
+        # Laufender Block pro MAC: [Start, Antwortzeiten, gesendet, empfangen].
+        self._open: dict[str, list[Any]] = {}
+        # Letzte Runde pro MAC, für die Entitäten.
+        self._last: dict[str, dict[str, Any]] = {}
+        self._privileged: bool | None = None
+        self._unsub: Callable[[], None] | None = None
+        self._listeners: list[Callable[[], None]] = []
+        self._running = False
+        self.last_round: float | None = None
+
+    # -- Lebenszyklus ------------------------------------------------------
+
+    async def async_start(self) -> None:
+        if not ping_enabled(self.entry):
+            self.status = STATUS_DISABLED
+            return
+        stored = await self._store.async_load() or {}
+        self._buckets = {
+            str(mac): [list(b) for b in buckets if isinstance(b, list) and len(b) == 5]
+            for mac, buckets in (stored.get("buckets") or {}).items()
+            if isinstance(buckets, list)
+        }
+        self._prune(time.time())
+        self.status = await self._async_detect()
+        if self.status != STATUS_OK:
+            _LOGGER.warning(
+                "Ping-Messung nicht möglich (%s): Home Assistant darf keine "
+                "ICMP-Pakete senden",
+                self.status,
+            )
+            return
+        self._unsub = async_track_time_interval(
+            self.hass,
+            self._async_tick,
+            timedelta(seconds=ping_interval(self.entry)),
+            name=f"{DOMAIN} ping {self.entry.entry_id}",
+        )
+        # Erste Runde kurz nach dem Start, nicht erst nach einem Intervall.
+        self.hass.async_create_background_task(
+            self._async_round(), f"{DOMAIN} ping first round"
+        )
+
+    async def async_stop(self) -> None:
+        if self._unsub is not None:
+            self._unsub()
+            self._unsub = None
+        if self.status == STATUS_OK:
+            await self._store.async_save(self._store_data())
+
+    async def _async_detect(self) -> str:
+        """Wie die Ping-Integration von HA: erst unprivilegiert, dann privilegiert."""
+        try:
+            from icmplib import (  # noqa: PLC0415
+                SocketPermissionError,
+                async_ping,
+            )
+        except ImportError:
+            return STATUS_UNAVAILABLE
+        for privileged in (False, True):
+            try:
+                await async_ping("127.0.0.1", count=0, timeout=0, privileged=privileged)
+            except SocketPermissionError:
+                continue
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("Ping-Test fehlgeschlagen: %s", err)
+                continue
+            self._privileged = privileged
+            return STATUS_OK
+        return STATUS_PERMISSION
+
+    # -- Abonnenten (Entitäten) ------------------------------------------------
+
+    @callback
+    def async_add_listener(self, target: Callable[[], None]) -> Callable[[], None]:
+        self._listeners.append(target)
+
+        @callback
+        def _remove() -> None:
+            if target in self._listeners:
+                self._listeners.remove(target)
+
+        return _remove
+
+    # -- Runde -----------------------------------------------------------------
+
+    async def _async_tick(self, _now: Any = None) -> None:
+        await self._async_round()
+
+    def _targets(self) -> dict[str, list[str]]:
+        """IP -> MACs aller Clients, die online sind und eine IP haben."""
+        targets: dict[str, list[str]] = {}
+        for row in self.coordinator.panel_clients():
+            ip = row.get("ip")
+            if row.get("online") and ip:
+                targets.setdefault(str(ip), []).append(row["mac"])
+        return targets
+
+    async def _async_round(self) -> None:
+        if self._running or self.status != STATUS_OK:
+            return
+        self._running = True
+        try:
+            from icmplib import async_multiping  # noqa: PLC0415
+
+            targets = self._targets()
+            now = time.time()
+            results: dict[str, Any] = {}
+            if targets:
+                try:
+                    hosts = await async_multiping(
+                        list(targets),
+                        count=PING_COUNT,
+                        interval=PING_SPACING,
+                        timeout=PING_TIMEOUT,
+                        concurrent_tasks=PING_CONCURRENCY,
+                        privileged=bool(self._privileged),
+                    )
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.warning("Ping-Runde fehlgeschlagen: %s", err)
+                    return
+                results = {host.address: host for host in hosts}
+            self._record(targets, results, now)
+            self.last_round = now
+        finally:
+            self._running = False
+        for target in list(self._listeners):
+            target()
+
+    def _record(self, targets: dict[str, list[str]], results: dict[str, Any], now: float) -> None:
+        pinged: set[str] = set()
+        for ip, macs in targets.items():
+            host = results.get(ip)
+            if host is None:
+                continue
+            rtts = [float(r) for r in (host.rtts or [])]
+            sent = int(host.packets_sent)
+            received = int(host.packets_received)
+            for mac in macs:
+                pinged.add(mac)
+                self._add(mac, rtts, sent, received, now)
+                self._last[mac] = {
+                    "at": now,
+                    "ip": ip,
+                    "median": round(statistics.median(rtts), 1) if rtts else None,
+                    "jitter": round(jitter(rtts), 1) if jitter(rtts) is not None else None,
+                    "loss": round((1 - received / sent) * 100, 1) if sent else None,
+                }
+        # Nicht (mehr) gepingte Clients: letzte Runde verwerfen, damit die
+        # Entität nicht einen alten Wert als aktuell zeigt.
+        for mac in list(self._last):
+            if mac not in pinged:
+                self._last.pop(mac)
+        self._prune(now)
+        self._store.async_delay_save(self._store_data, PING_SAVE_DELAY)
+
+    def _add(self, mac: str, rtts: list[float], sent: int, received: int, now: float) -> None:
+        start = now - (now % PING_BUCKET_SECONDS)
+        current = self._open.get(mac)
+        if current is not None and current[0] != start:
+            self._close(mac)
+            current = None
+        if current is None:
+            current = [start, [], 0, 0]
+            self._open[mac] = current
+        current[1].extend(rtts)
+        current[2] += sent
+        current[3] += received
+
+    def _close(self, mac: str) -> None:
+        current = self._open.pop(mac, None)
+        if current is None or not current[2]:
+            return
+        self._buckets.setdefault(mac, []).append(
+            bucket_from(current[1], current[2], current[3], current[0])
+        )
+
+    def _prune(self, now: float) -> None:
+        limit = now - PING_KEEP_SECONDS
+        for mac in list(self._buckets):
+            kept = [b for b in self._buckets[mac] if b[0] >= limit]
+            if kept:
+                self._buckets[mac] = kept
+            else:
+                self._buckets.pop(mac)
+
+    def _store_data(self) -> dict[str, Any]:
+        # Laufende Blöcke mitspeichern, sonst gingen bei einem Neustart bis zu
+        # fünf Minuten verloren.
+        buckets = {mac: list(items) for mac, items in self._buckets.items()}
+        for mac, current in self._open.items():
+            if current[2]:
+                buckets.setdefault(mac, []).append(
+                    bucket_from(current[1], current[2], current[3], current[0])
+                )
+        return {"buckets": buckets}
+
+    # -- Abfragen --------------------------------------------------------------
+
+    def history(self, mac: str) -> list[list[Any]]:
+        """Blöcke der letzten 24 Stunden inkl. laufendem Block."""
+        mac = mac.lower()
+        out = list(self._buckets.get(mac, []))
+        current = self._open.get(mac)
+        if current is not None and current[2]:
+            out.append(bucket_from(current[1], current[2], current[3], current[0]))
+        return out
+
+    def summary(self, mac: str) -> dict[str, Any] | None:
+        return summarize(self.history(mac))
+
+    def last(self, mac: str) -> dict[str, Any] | None:
+        return self._last.get(mac.lower())
+
+    def entity_enabled(self, mac: str) -> bool:
+        return mac.lower() in ping_entity_macs(self.entry)

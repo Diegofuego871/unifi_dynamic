@@ -23,6 +23,8 @@ from .const import (
     CONF_PERSISTENT_CONTROLLER_OFFLINE,
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PERSISTENT_WHEN_EMPTY,
+    CONF_PING_ENABLED,
+    CONF_PING_INTERVAL,
     CONF_PURGE_DAYS,
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
@@ -38,6 +40,8 @@ from .const import (
     DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
     DEFAULT_PERSISTENT_NOTIFICATION,
     DEFAULT_PERSISTENT_WHEN_EMPTY,
+    DEFAULT_PING_ENABLED,
+    DEFAULT_PING_INTERVAL,
     DEFAULT_PURGE_DAYS,
     DEFAULT_PURGE_TIME,
     DEFAULT_SCAN_INTERVAL,
@@ -49,7 +53,12 @@ from .const import (
 )
 from . import connection
 from .coordinator import preferred_client_name
-from .options_api import OFFLINE_AFTER_RANGE, PURGE_DAYS_RANGE, SCAN_INTERVAL_RANGE
+from .options_api import (
+    OFFLINE_AFTER_RANGE,
+    PING_INTERVAL_RANGE,
+    PURGE_DAYS_RANGE,
+    SCAN_INTERVAL_RANGE,
+)
 
 # Options-Keys aus früheren Versionen, die beim Speichern verworfen werden.
 OBSOLETE_OPTIONS = ("notification_icon", "icon_url")
@@ -62,6 +71,7 @@ SECTION_CLEANUP = "cleanup"
 SECTION_PUSH = "push"
 SECTION_PERSISTENT = "persistent"
 SECTION_UPDATES = "updates"
+SECTION_PING = "ping"
 
 SECTIONS = (
     SECTION_POLLING,
@@ -69,6 +79,7 @@ SECTIONS = (
     SECTION_PUSH,
     SECTION_PERSISTENT,
     SECTION_UPDATES,
+    SECTION_PING,
 )
 
 
@@ -552,6 +563,25 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                                     current.get(CONF_UPDATE_CHECK, DEFAULT_UPDATE_CHECK)
                                 ),
                             ): bool,
+                        }
+                    ),
+                    {"collapsed": True},
+                ),
+                vol.Required(SECTION_PING): section(
+                    vol.Schema(
+                        {
+                            vol.Required(
+                                CONF_PING_ENABLED,
+                                default=bool(
+                                    current.get(CONF_PING_ENABLED, DEFAULT_PING_ENABLED)
+                                ),
+                            ): bool,
+                            vol.Required(
+                                CONF_PING_INTERVAL,
+                                default=_int_or(
+                                    current.get(CONF_PING_INTERVAL), DEFAULT_PING_INTERVAL
+                                ),
+                            ): vol.All(vol.Coerce(int), vol.Range(*PING_INTERVAL_RANGE)),
                         }
                     ),
                     {"collapsed": True},

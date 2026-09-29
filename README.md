@@ -47,6 +47,10 @@ the client has not been reported by the UniFi controller for a while.
   run, toggled separately from the push notification.
 - SSID and access point sensors only for clients that have been seen on
   wireless. Wired-only clients do not get them.
+- Optional: response time via ping. Online clients are pinged at their
+  current IP from UniFi (works with DHCP, nothing to maintain). Median,
+  jitter and packet loss of the last 24 hours in the panel; "Ping" and
+  "Packet loss" entities per client on request.
 - A panel pinned in the sidebar shows a searchable, filterable table of every
   client across all configured UniFi hosts (alias, linked HA device, IP, MAC, SSID, access
   point, connection type, last seen, online status), with a per-row menu to
@@ -102,7 +106,7 @@ entities, links, protection list, history and settings are kept.
 ## Options
 
 Available afterwards via **Configure** on the integration. The dialog is
-grouped into five sections, collapsed when opened. The same settings can
+grouped into six sections, collapsed when opened. The same settings can
 also be edited right in the panel with the gear button (see
 [Panel](#panel)); both write to the same options.
 
@@ -145,6 +149,32 @@ also be edited right in the panel with the gear button (see
 | Option | Meaning | Default |
 | --- | --- | --- |
 | Check for updates daily | Queries the published releases on GitHub once a day (first check at a random time 5–65 minutes after startup) and reports a new version under **Settings → Repairs**, with a link to the release notes. The notice disappears after updating or when turned off. Complements HACS, which only checks every few days; turn it off if you don't want the duplicate notice. Applies to the whole integration as long as it is on for at least one hub. | on |
+
+### Ping (response time)
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| Measure response time | Sends three pings per round to every client that UniFi reports online and that has an IP. Median, jitter and packet loss are kept in 5-minute blocks for 24 hours in a separate file, not in the recorder. Switching it on or off briefly reloads the integration. | off |
+| Interval (seconds) | Time between two rounds, 30–3600. | 60 |
+
+Notes:
+
+- **Median instead of mean:** a single outlier, such as a phone waking up,
+  does not distort the value.
+- **No reply is not an error:** Windows PCs block ping in their firewall,
+  phones in standby and battery-powered IoT devices often don't answer, and a
+  firewall between VLANs may block ICMP. Such clients show up as "does not
+  answer ping".
+- **Permission:** Home Assistant must be allowed to send ICMP packets. This
+  works on Home Assistant OS; on Docker or Core installations unprivileged
+  ping must be allowed (`net.ipv4.ping_group_range`) or Home Assistant must
+  run as root. Without permission measuring stays off and the panel shows a
+  notice.
+- **Entities:** per client in the panel's device view with "Create
+  entities": `sensor.unifi_dynamic_<client>_ping` (median of the last round
+  in ms) and `sensor.unifi_dynamic_<client>_packet_loss` (%), with the
+  24-hour values as attributes. Deliberately not for every client, so the
+  recorder doesn't grow needlessly. Switching it off removes the entities.
 
 ## Action `unifi_dynamic.purge_now`
 
@@ -250,8 +280,8 @@ With several hubs (UniFi controllers) set up, a hub switch appears next to
 "Columns": "All hubs" shows the clients of every controller together, a
 single hub only its own clients with matching counts. The choice is saved
 per user. Right next to it the gear opens the **settings** of the selected
-hub — the same five sections as Home Assistant's options dialog (Polling,
-Automatic removal, Push notification, Persistent notification, Updates), with a
+hub — the same six sections as Home Assistant's options dialog (Polling,
+Automatic removal, Push notification, Persistent notification, Updates, Ping), with a
 summary per section. Each field has a short explanation, and the ⓘ symbol
 expands the detailed text; below "Offline after" the resulting reaction
 time is shown, for example "At a 30 s interval: after 15 min". Protected

@@ -28,6 +28,8 @@ from .const import (
     CONF_PERSISTENT_CONTROLLER_OFFLINE,
     CONF_PERSISTENT_NOTIFICATION,
     CONF_PERSISTENT_WHEN_EMPTY,
+    CONF_PING_ENABLED,
+    CONF_PING_INTERVAL,
     CONF_PURGE_DAYS,
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
@@ -42,6 +44,8 @@ from .const import (
     DEFAULT_PERSISTENT_CONTROLLER_OFFLINE,
     DEFAULT_PERSISTENT_NOTIFICATION,
     DEFAULT_PERSISTENT_WHEN_EMPTY,
+    DEFAULT_PING_ENABLED,
+    DEFAULT_PING_INTERVAL,
     DEFAULT_PURGE_DAYS,
     DEFAULT_PURGE_TIME,
     DEFAULT_SCAN_INTERVAL,
@@ -55,6 +59,8 @@ from .const import (
 SCAN_INTERVAL_RANGE = (10, 3600)
 OFFLINE_AFTER_RANGE = (1, 2880)
 PURGE_DAYS_RANGE = (0, 3650)
+# Gleicher Wert wie ping.PING_INTERVAL_RANGE (dort ohne Import-Kreis).
+PING_INTERVAL_RANGE = (30, 3600)
 
 BOOL_OPTIONS: tuple[tuple[str, bool], ...] = (
     (CONF_NOTIFY_WHEN_EMPTY, DEFAULT_NOTIFY_WHEN_EMPTY),
@@ -65,6 +71,7 @@ BOOL_OPTIONS: tuple[tuple[str, bool], ...] = (
     (CONF_PERSISTENT_WHEN_EMPTY, DEFAULT_PERSISTENT_WHEN_EMPTY),
     (CONF_PERSISTENT_CONTROLLER_OFFLINE, DEFAULT_PERSISTENT_CONTROLLER_OFFLINE),
     (CONF_UPDATE_CHECK, DEFAULT_UPDATE_CHECK),
+    (CONF_PING_ENABLED, DEFAULT_PING_ENABLED),
 )
 
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$")
@@ -120,6 +127,9 @@ PANEL_SCHEMA = vol.Schema(
         vol.Optional(CONF_PURGE_DAYS): vol.All(
             vol.Coerce(int), vol.Range(*PURGE_DAYS_RANGE)
         ),
+        vol.Optional(CONF_PING_INTERVAL): vol.All(
+            vol.Coerce(int), vol.Range(*PING_INTERVAL_RANGE)
+        ),
         vol.Optional(CONF_PURGE_TIME): _time,
         vol.Optional(CONF_PURGE_EXCLUDE): _mac_list,
         vol.Optional(CONF_NOTIFY_SERVICE): _notify_target,
@@ -154,6 +164,7 @@ def current_values(entry: ConfigEntry) -> dict[str, Any]:
             options.get(CONF_NOTIFY_SERVICE, DEFAULT_NOTIFY_SERVICE) or NOTIFY_NONE
         ),
         CONF_NOTIFY_CLICK_TARGET: click if click in CLICK_TARGETS else DEFAULT_NOTIFY_CLICK_TARGET,
+        CONF_PING_INTERVAL: _int_or(options.get(CONF_PING_INTERVAL), DEFAULT_PING_INTERVAL),
     }
     for key, default in BOOL_OPTIONS:
         values[key] = bool(options.get(key, default))

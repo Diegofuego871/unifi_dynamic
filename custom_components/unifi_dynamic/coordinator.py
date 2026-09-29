@@ -272,6 +272,8 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         self._migration_done = False
         self._removal_callbacks: list[Callable[[str], None]] = []
+        # Ping-Messung (ping.PingMonitor), gesetzt in __init__.py.
+        self.ping: Any = None
         self._new_client_callback: (
             Callable[[list[tuple[str, dict[str, Any]]]], Awaitable[None]] | None
         ) = None

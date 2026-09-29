@@ -198,7 +198,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "40"
+PANEL_VERSION = "41"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
@@ -218,6 +218,31 @@ WS_TYPE_GET_OPTIONS = f"{DOMAIN}/get_options"
 WS_TYPE_SET_OPTIONS = f"{DOMAIN}/set_options"
 WS_TYPE_VERSION = f"{DOMAIN}/version"
 WS_TYPE_SET_CONNECTION = f"{DOMAIN}/set_connection"
+WS_TYPE_PING_HISTORY = f"{DOMAIN}/ping_history"
+WS_TYPE_PING_ENTITY = f"{DOMAIN}/ping_entity"
+
+# --- Ping (Antwortzeit) ----------------------------------------------------
+
+# Aus-/Einschalter und Intervall der Ping-Messung, pro Hub. Standard aus:
+# nicht jedes Netz erlaubt Ping, und viele Geräte antworten nicht darauf.
+CONF_PING_ENABLED = "ping_enabled"
+DEFAULT_PING_ENABLED = False
+CONF_PING_INTERVAL = "ping_interval"
+DEFAULT_PING_INTERVAL = 60
+# MACs, für die Entitäten (Antwortzeit, Paketverlust) angelegt werden. Nur
+# auf Wunsch pro Client, damit der Recorder nicht für jeden Client wächst.
+CONF_PING_ENTITIES = "ping_entities"
+# Pings pro Client und Runde, Abstand und Wartezeit in Sekunden.
+PING_COUNT = 3
+PING_SPACING = 0.2
+PING_TIMEOUT = 1.0
+PING_CONCURRENCY = 64
+# Verlauf in 5-Minuten-Blöcken, 24 Stunden lang, eigene Datei.
+PING_BUCKET_SECONDS = 300
+PING_KEEP_SECONDS = 86400
+PING_STORE_SUFFIX = "ping"
+PING_SAVE_DELAY = 300
+
 
 # GitHub-Repository für die Versionsprüfung im Panel.
 GITHUB_REPO = "Diegofuego871/unifi_dynamic"

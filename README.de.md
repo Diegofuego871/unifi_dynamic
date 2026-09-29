@@ -55,6 +55,10 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
   gesehen, Online-Status), mit Menü pro Zeile zum Entfernen oder Eintragen
   in die Ausnahmeliste. Ein Tipp auf eine Zeile öffnet eine Geräteansicht mit
   allen Angaben, den Entitäten und denselben Aktionen.
+- Optional: Antwortzeit per Ping. Gepingt werden die Online-Clients über ihre
+  aktuelle IP aus UniFi (funktioniert mit DHCP ohne Pflege). Median,
+  Schwankung und Paketverlust der letzten 24 Stunden im Panel; Entitäten
+  „Ping" und „Packet loss" pro Client auf Wunsch.
 
 ## Installation
 
@@ -107,7 +111,7 @@ Einstellungen bleiben erhalten.
 ## Optionen
 
 Nachträglich über **Konfigurieren** an der Integration erreichbar. Der Dialog
-ist in fünf Abschnitte gegliedert, die beim Öffnen zugeklappt sind. Dieselben
+ist in sechs Abschnitte gegliedert, die beim Öffnen zugeklappt sind. Dieselben
 Einstellungen lassen sich auch direkt im Panel über das Zahnrad bearbeiten
 (siehe [Panel](#panel)); beide Wege schreiben in dieselben Optionen.
 
@@ -150,6 +154,33 @@ Einstellungen lassen sich auch direkt im Panel über das Zahnrad bearbeiten
 | Option | Bedeutung | Vorgabe |
 | --- | --- | --- |
 | Täglich nach Updates suchen | Fragt einmal täglich die veröffentlichten Releases auf GitHub ab (erste Prüfung zufällig 5–65 Minuten nach dem Start) und meldet eine neue Version unter **Einstellungen → Reparaturen**, mit Link zu den Release Notes. Die Meldung verschwindet nach dem Update oder beim Ausschalten. Ergänzt HACS, das nur alle paar Tage prüft; wer die doppelte Meldung nicht möchte, schaltet es aus. Gilt für die ganze Integration, solange es bei mindestens einem Hub an ist. | an |
+
+### Ping (Antwortzeit)
+
+| Option | Bedeutung | Vorgabe |
+| --- | --- | --- |
+| Antwortzeit messen | Schickt pro Runde drei Pings an jeden Client, der laut UniFi online ist und eine IP hat. Median, Schwankung (Jitter) und Paketverlust werden in 5-Minuten-Blöcken 24 Stunden lang in einer eigenen Datei gehalten, nicht im Recorder. Ein- und Ausschalten lädt die Integration kurz neu. | aus |
+| Intervall (Sekunden) | Abstand zwischen zwei Runden, 30–3600. | 60 |
+
+Hinweise:
+
+- **Median statt Mittelwert:** Ein einzelner Ausreisser, etwa ein Handy, das
+  gerade aufwacht, verzerrt den Wert nicht.
+- **Keine Antwort ist kein Fehler:** Windows-PCs blockieren Ping in der
+  Firewall, Handys im Standby und batteriebetriebene IoT-Geräte antworten oft
+  nicht, eine Firewall zwischen VLANs kann ICMP sperren. Solche Clients
+  erscheinen als „antwortet nicht auf Ping".
+- **Berechtigung:** Home Assistant muss ICMP-Pakete senden dürfen. In Home
+  Assistant OS klappt das; bei Docker- oder Core-Installationen muss
+  unprivilegierter Ping erlaubt sein (`net.ipv4.ping_group_range`) oder Home
+  Assistant mit Root-Rechten laufen. Fehlt die Berechtigung, bleibt die
+  Messung aus und das Panel zeigt einen Hinweis.
+- **Entitäten:** Pro Client in der Geräteansicht des Panels mit „Als
+  Entitäten anlegen": `sensor.unifi_dynamic_<client>_ping` (Median der
+  letzten Runde in ms) und `sensor.unifi_dynamic_<client>_packet_loss` (%),
+  mit den 24-Stunden-Werten als Attribute. Bewusst nicht für alle Clients,
+  damit der Recorder nicht unnötig wächst. Abschalten entfernt die
+  Entitäten wieder.
 
 ## Aktion `unifi_dynamic.purge_now`
 
@@ -260,9 +291,9 @@ Sind mehrere Hubs (UniFi-Controller) eingerichtet, erscheint neben „Spalten"
 eine Hub-Auswahl: „Alle Hubs" zeigt die Clients aller Controller gemeinsam,
 ein einzelner Hub nur dessen Clients samt passender Zählung. Die Wahl wird
 pro Benutzer gespeichert. Gleich daneben öffnet das Zahnrad die
-**Einstellungen** des gewählten Hubs — dieselben fünf Abschnitte wie im
+**Einstellungen** des gewählten Hubs — dieselben sechs Abschnitte wie im
 Optionsdialog von Home Assistant (Abfrage, Automatisches Entfernen,
-Push-Benachrichtigung, Anhaltende Benachrichtigung, Updates), mit einer
+Push-Benachrichtigung, Anhaltende Benachrichtigung, Updates, Ping), mit einer
 Zusammenfassung pro Abschnitt. Jedes Feld hat eine kurze Erklärung, das
 ⓘ-Symbol klappt den ausführlichen Text auf; unter „Als ausgefallen nach"
 steht die resultierende Reaktionszeit, zum Beispiel „Bei 30 s Intervall:
