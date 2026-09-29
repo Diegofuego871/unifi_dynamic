@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - On phones the device table can no longer be dragged past its edges
   (iOS rubber-band effect), which pulled the whole table sideways or down.
 
+### Changed
+
+- The "Connection" section in the settings is now collapsible like the
+  other sections, collapsed by default (host and status as summary) and
+  moved to the bottom, since it is rarely needed. If the API key is
+  rejected, the banner at the top still leads straight to the dialog.
+
 ## [2.15.2] - 2026-09-29
 
 ### Changed

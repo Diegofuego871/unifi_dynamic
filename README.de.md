@@ -320,7 +320,8 @@ neu, worauf der Dialog vorher hinweist. Bei „Alle Hubs" ist das Zahnrad
 gesperrt, weil die Einstellungen pro Hub gelten; mit nur einem Hub gibt es
 keine Auswahl, nur das Zahnrad.
 
-Unter den Abschnitten zeigt **Verbindung** Host/IP, SSL-Prüfung, ob ein
+Zuunterst zeigt der zuklappbare Abschnitt **Verbindung** (zugeklappt mit
+Host und Status als Zusammenfassung) Host/IP, SSL-Prüfung, ob ein
 API-Key hinterlegt ist, und den Status („Verbunden", „API-Key ungültig",
 „Nicht erreichbar"). Der Key selbst wird nie angezeigt, auch nicht
 teilweise. „Verbindung ändern…" öffnet einen kleinen Dialog für Host, neuen

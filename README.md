@@ -308,7 +308,8 @@ integration briefly reloads, which the dialog points out beforehand. With
 "All hubs" the gear is disabled, since settings apply per hub; with only
 one hub there is no switch, just the gear.
 
-Below the sections, **Connection** shows host/IP, SSL verification, whether
+At the very bottom, the collapsible **Connection** section (collapsed with
+host and status as summary) shows host/IP, SSL verification, whether
 an API key is stored, and the status ("Connected", "API key invalid", "Not
 reachable"). The key itself is never shown, not even partially. "Change
 connection…" opens a small dialog for host, new API key (leave empty to keep

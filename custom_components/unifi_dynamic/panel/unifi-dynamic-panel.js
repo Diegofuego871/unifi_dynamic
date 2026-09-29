@@ -1787,7 +1787,6 @@ class UnifiDynamicPanel extends HTMLElement {
       this._connBannerHtml() +
       `<div class="ver-slot">${this._versionHtml()}</div>` +
       `<div class="avail-slot">${this._settingsAvailHtml()}</div>` +
-      this._connSectionHtml() +
       this._settingsSections()
         .map(([id, keys]) => {
           const open = st.open.has(id);
@@ -1804,6 +1803,8 @@ class UnifiDynamicPanel extends HTMLElement {
         })
         .join("") +
       this._loaderSectionHtml() +
+      // Verbindung zuunterst: wird nur selten gebraucht.
+      this._connSectionHtml() +
       (reload ? `<div class="set-note">${esc(t("settingsReloadNote"))}</div>` : "") +
       (st.saveError ? `<div class="dlg-error">${esc(t("settingsSaveError"))} ${esc(st.saveError)}</div>` : "")
     );
@@ -1873,15 +1874,26 @@ class UnifiDynamicPanel extends HTMLElement {
     const status = { ok: "connOk", auth_failed: "connAuthFailed", offline: "connOffline" }[c.status] || "connOk";
     const line = (label, value) =>
       `<div class="opt"><div class="opt-line"><span class="opt-label">${esc(label)}</span>${value}</div></div>`;
-    return `<section class="set-sec open conn-sec">
-        <div class="set-sec-head static"><span><span class="set-sec-title">${esc(t("secConnection"))}</span></span></div>
-        <div class="set-sec-body">
+    // Zuklappbar wie die übrigen Abschnitte, standardmässig zu. Bei einem
+    // Anmeldefehler bietet das Banner oben den direkten Weg zum Dialog.
+    const open = this._settings.open.has("connection");
+    const sum = `${c.host} · ${t(status)}`;
+    return `<section class="set-sec conn-sec${open ? " open" : ""}">
+        <button type="button" class="set-sec-head" data-set="section" data-id="connection" aria-expanded="${open}">
+          <span><span class="set-sec-title">${esc(t("secConnection"))}</span><span class="set-sec-sum">${esc(sum)}</span></span>
+          ${icon("chevron")}
+        </button>
+        ${
+          open
+            ? `<div class="set-sec-body">
           ${line(t("connHost"), `<span class="conn-val">${esc(c.host)}</span>`)}
           ${line(t("connSsl"), `<span class="conn-val">${esc(c.verify_ssl ? t("connYes") : t("connNo"))}</span>`)}
           ${line(t("connKey"), `<span class="conn-val">${esc(c.has_key ? t("connKeyStored") : t("connKeyMissing"))}</span>`)}
           ${line(t("connStatus"), `<span class="conn-status ${esc(c.status)}">${esc(t(status))}</span>`)}
           <div class="conn-actions"><button type="button" class="dlg-btn" data-set="conn-edit">${esc(t("connEdit"))}</button></div>
-        </div>
+        </div>`
+            : ""
+        }
       </section>`;
   }
 
@@ -8180,9 +8192,6 @@ class UnifiDynamicPanel extends HTMLElement {
           display: flex;
           justify-content: flex-end;
           padding-top: 10px;
-        }
-        .set-sec-head.static {
-          cursor: default;
         }
         .conn-banner {
           display: flex;
