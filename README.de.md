@@ -159,7 +159,7 @@ Einstellungen lassen sich auch direkt im Panel über das Zahnrad bearbeiten
 
 | Option | Bedeutung | Vorgabe |
 | --- | --- | --- |
-| Antwortzeit messen | Schickt pro Runde drei Pings an jeden Client, der laut UniFi online ist und eine IP hat. Median, Schwankung (Jitter) und Paketverlust werden in 5-Minuten-Blöcken 24 Stunden lang in einer eigenen Datei gehalten, nicht im Recorder. Ein- und Ausschalten lädt die Integration kurz neu. | aus |
+| Antwortzeit messen | Schickt pro Runde drei Pings an jeden Client, der laut UniFi online ist und eine IP hat. Median, Schwankung (Jitter) und Paketverlust werden in einer eigenen Datei gehalten, nicht im Recorder: 24 Stunden in 5-Minuten-Blöcken, dazu 31 Tage in Stunden-Blöcken. In der Geräteansicht gilt der Schalter 24 Std./7 Tage/30 Tage auch für die Antwortzeit; Tabellenspalte und Entitäten zeigen die letzten 24 Stunden. Ein- und Ausschalten lädt die Integration kurz neu. | aus |
 | Intervall (Sekunden) | Abstand zwischen zwei Runden, 30–3600. | 60 |
 
 Hinweise:

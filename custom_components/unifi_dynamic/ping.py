@@ -45,7 +45,10 @@ from .const import (
     PING_BUCKET_SECONDS,
     PING_CONCURRENCY,
     PING_COUNT,
+    PING_HOUR_SECONDS,
+    PING_HOURLY_KEEP_SECONDS,
     PING_KEEP_SECONDS,
+    PING_RANGES,
     PING_SAVE_DELAY,
     PING_SPACING,
     PING_STORE_SUFFIX,
@@ -125,6 +128,17 @@ def bucket_from(rtts: list[float], sent: int, received: int, start: float) -> li
     ]
 
 
+def hour_from(hour: list[Any]) -> list[Any]:
+    """Stunden-Block aus [Start, Block-Mediane, Block-Jitter, gesendet, empfangen]."""
+    return [
+        round(hour[0]),
+        round(statistics.median(hour[1]), 2) if hour[1] else None,
+        round(sum(hour[2]) / len(hour[2]), 2) if hour[2] else None,
+        int(hour[3]),
+        int(hour[4]),
+    ]
+
+
 def summarize(buckets: list[list[Any]]) -> dict[str, Any] | None:
     """
     Zusammenfassung über mehrere Blöcke.
@@ -167,6 +181,13 @@ class PingMonitor:
         self._buckets: dict[str, list[list[Any]]] = {}
         # Laufender Block pro MAC: [Start, Antwortzeiten, gesendet, empfangen].
         self._open: dict[str, list[Any]] = {}
+        # Stunden-Blöcke für 7 und 30 Tage, gleiches Format wie die 5-Minuten-
+        # Blöcke. Daraus statt aus allen Pings: 30 Tage in 5-Minuten-Auflösung
+        # wären bei vielen Clients eine zu grosse Datei.
+        self._hourly: dict[str, list[list[Any]]] = {}
+        # Laufende Stunde pro MAC: [Start, Block-Mediane, Block-Jitter,
+        # gesendet, empfangen].
+        self._open_hour: dict[str, list[Any]] = {}
         # Letzte Runde pro MAC, für die Entitäten.
         self._last: dict[str, dict[str, Any]] = {}
         self._privileged: bool | None = None
@@ -182,12 +203,7 @@ class PingMonitor:
             self.status = STATUS_DISABLED
             return
         stored = await self._store.async_load() or {}
-        self._buckets = {
-            str(mac): [list(b) for b in buckets if isinstance(b, list) and len(b) == 5]
-            for mac, buckets in (stored.get("buckets") or {}).items()
-            if isinstance(buckets, list)
-        }
-        self._prune(time.time())
+        self._load(stored, time.time())
         self.status = await self._async_detect()
         if self.status != STATUS_OK:
             _LOGGER.warning(
@@ -337,43 +353,123 @@ class PingMonitor:
         current = self._open.pop(mac, None)
         if current is None or not current[2]:
             return
-        self._buckets.setdefault(mac, []).append(
-            bucket_from(current[1], current[2], current[3], current[0])
-        )
+        bucket = bucket_from(current[1], current[2], current[3], current[0])
+        self._buckets.setdefault(mac, []).append(bucket)
+        self._feed_hour(mac, bucket)
+
+    def _feed_hour(self, mac: str, bucket: list[Any]) -> None:
+        """Fertigen 5-Minuten-Block in die laufende Stunde übernehmen."""
+        start = bucket[0] - (bucket[0] % PING_HOUR_SECONDS)
+        hour = self._open_hour.get(mac)
+        if hour is not None and hour[0] != start:
+            self._close_hour(mac)
+            hour = None
+        if hour is None:
+            hour = [start, [], [], 0, 0]
+            self._open_hour[mac] = hour
+        if bucket[1] is not None:
+            hour[1].append(bucket[1])
+        if bucket[2] is not None:
+            hour[2].append(bucket[2])
+        hour[3] += bucket[3]
+        hour[4] += bucket[4]
+
+    def _close_hour(self, mac: str) -> None:
+        hour = self._open_hour.pop(mac, None)
+        if hour is not None and hour[3]:
+            self._hourly.setdefault(mac, []).append(hour_from(hour))
 
     def _prune(self, now: float) -> None:
-        limit = now - PING_KEEP_SECONDS
-        for mac in list(self._buckets):
-            kept = [b for b in self._buckets[mac] if b[0] >= limit]
-            if kept:
-                self._buckets[mac] = kept
-            else:
-                self._buckets.pop(mac)
+        for store, keep in ((self._buckets, PING_KEEP_SECONDS), (self._hourly, PING_HOURLY_KEEP_SECONDS)):
+            limit = now - keep
+            for mac in list(store):
+                kept = [b for b in store[mac] if b[0] >= limit]
+                if kept:
+                    store[mac] = kept
+                else:
+                    store.pop(mac)
+
+    def _load(self, stored: dict[str, Any], now: float) -> None:
+        def blocks(raw: Any) -> dict[str, list[list[Any]]]:
+            return {
+                str(mac): [list(b) for b in items if isinstance(b, list) and len(b) == 5]
+                for mac, items in (raw or {}).items()
+                if isinstance(items, list)
+            }
+
+        self._buckets = blocks(stored.get("buckets"))
+        self._hourly = blocks(stored.get("hourly"))
+        self._open = {
+            str(mac): [o[0], list(o[1]), int(o[2]), int(o[3])]
+            for mac, o in (stored.get("open") or {}).items()
+            if isinstance(o, list) and len(o) == 4
+        }
+        self._open_hour = {
+            str(mac): [o[0], list(o[1]), list(o[2]), int(o[3]), int(o[4])]
+            for mac, o in (stored.get("open_hours") or {}).items()
+            if isinstance(o, list) and len(o) == 5
+        }
+        if "hourly" not in stored:
+            # Stand von 2.14.0/2.14.1: nur 5-Minuten-Blöcke. Die Stunden
+            # daraus nachbilden, damit 7 und 30 Tage nicht leer beginnen.
+            for mac, items in self._buckets.items():
+                for bucket in sorted(items, key=lambda b: b[0]):
+                    self._feed_hour(mac, bucket)
+        self._prune(now)
 
     def _store_data(self) -> dict[str, Any]:
-        # Laufende Blöcke mitspeichern, sonst gingen bei einem Neustart bis zu
-        # fünf Minuten verloren.
-        buckets = {mac: list(items) for mac, items in self._buckets.items()}
-        for mac, current in self._open.items():
-            if current[2]:
-                buckets.setdefault(mac, []).append(
-                    bucket_from(current[1], current[2], current[3], current[0])
-                )
-        return {"buckets": buckets}
+        # Laufende Blöcke roh mitspeichern: nach einem Neustart geht es in
+        # denselben Block weiter, statt ihn doppelt anzulegen.
+        return {
+            "buckets": {mac: list(items) for mac, items in self._buckets.items()},
+            "hourly": {mac: list(items) for mac, items in self._hourly.items()},
+            "open": {mac: list(o) for mac, o in self._open.items() if o[2]},
+            "open_hours": {mac: list(o) for mac, o in self._open_hour.items() if o[3]},
+        }
 
     # -- Abfragen --------------------------------------------------------------
 
-    def history(self, mac: str) -> list[list[Any]]:
-        """Blöcke der letzten 24 Stunden inkl. laufendem Block."""
+    def history(self, mac: str, span: str = "24h") -> list[list[Any]]:
+        """
+        Blöcke des Zeitraums inkl. laufendem Block.
+
+        24 Stunden in 5-Minuten-Blöcken, 7 und 30 Tage in Stunden-Blöcken.
+        """
         mac = mac.lower()
-        out = list(self._buckets.get(mac, []))
         current = self._open.get(mac)
-        if current is not None and current[2]:
-            out.append(bucket_from(current[1], current[2], current[3], current[0]))
+        open_block = (
+            bucket_from(current[1], current[2], current[3], current[0])
+            if current is not None and current[2]
+            else None
+        )
+        if span not in PING_RANGES or span == "24h":
+            out = list(self._buckets.get(mac, []))
+            if open_block is not None:
+                out.append(open_block)
+            return out
+        limit = time.time() - PING_RANGES[span]
+        out = [b for b in self._hourly.get(mac, []) if b[0] >= limit]
+        # Laufende Stunde samt laufendem Block, damit die letzte Stunde nicht fehlt.
+        hour = self._open_hour.get(mac)
+        hour = [hour[0], list(hour[1]), list(hour[2]), hour[3], hour[4]] if hour else None
+        if open_block is not None:
+            start = open_block[0] - (open_block[0] % PING_HOUR_SECONDS)
+            if hour is None or hour[0] != start:
+                if hour is not None and hour[3]:
+                    out.append(hour_from(hour))
+                hour = [start, [], [], 0, 0]
+            if open_block[1] is not None:
+                hour[1].append(open_block[1])
+            if open_block[2] is not None:
+                hour[2].append(open_block[2])
+            hour[3] += open_block[3]
+            hour[4] += open_block[4]
+        if hour is not None and hour[3]:
+            out.append(hour_from(hour))
         return out
 
-    def summary(self, mac: str) -> dict[str, Any] | None:
-        return summarize(self.history(mac))
+    def summary(self, mac: str, span: str = "24h") -> dict[str, Any] | None:
+        return summarize(self.history(mac, span))
 
     def last(self, mac: str) -> dict[str, Any] | None:
         return self._last.get(mac.lower())

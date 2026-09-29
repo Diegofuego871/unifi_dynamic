@@ -154,7 +154,7 @@ also be edited right in the panel with the gear button (see
 
 | Option | Meaning | Default |
 | --- | --- | --- |
-| Measure response time | Sends three pings per round to every client that UniFi reports online and that has an IP. Median, jitter and packet loss are kept in 5-minute blocks for 24 hours in a separate file, not in the recorder. Switching it on or off briefly reloads the integration. | off |
+| Measure response time | Sends three pings per round to every client that UniFi reports online and that has an IP. Median, jitter and packet loss are kept in a separate file, not in the recorder: 24 hours in 5-minute blocks plus 31 days in hourly blocks. In the device view the 24 h / 7 days / 30 days switch also applies to the response time; the table column and the entities show the last 24 hours. Switching it on or off briefly reloads the integration. | off |
 | Interval (seconds) | Time between two rounds, 30–3600. | 60 |
 
 Notes:

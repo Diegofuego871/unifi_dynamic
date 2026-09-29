@@ -198,7 +198,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "42"
+PANEL_VERSION = "43"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
@@ -240,6 +240,11 @@ PING_CONCURRENCY = 64
 # Verlauf in 5-Minuten-Blöcken, 24 Stunden lang, eigene Datei.
 PING_BUCKET_SECONDS = 300
 PING_KEEP_SECONDS = 86400
+# Für 7 und 30 Tage: Stunden-Blöcke, 31 Tage lang.
+PING_HOUR_SECONDS = 3600
+PING_HOURLY_KEEP_SECONDS = 31 * 86400
+# Zeiträume wie beim Verfügbarkeits-Zeitstrahl im Panel.
+PING_RANGES = {"24h": 86400, "7d": 7 * 86400, "30d": 30 * 86400}
 PING_STORE_SUFFIX = "ping"
 PING_SAVE_DELAY = 300
 

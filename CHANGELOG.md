@@ -5,6 +5,23 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.14.2] - 2026-09-29
+
+### Changed
+
+- The 24 h / 7 days / 30 days switch in the device view now also applies to
+  the response time: median, jitter, packet loss and chart follow the
+  selected range. The last 24 hours stay in 5-minute blocks; for 7 and 30
+  days the integration now keeps hourly blocks for 31 days (a 5-minute
+  resolution over 30 days would make the file too large with many
+  clients). Measurements recorded with 2.14.0/2.14.1 are converted on the
+  first start, so the longer views don't start empty.
+- While the response time loads, the selected loader animation is shown,
+  as for the availability. With "Random", both can run side by side
+  without swapping animals.
+- The table column and the entity attributes keep showing the last 24
+  hours.
+
 ## [2.14.1] - 2026-09-29
 
 ### Changed
@@ -1322,6 +1339,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.14.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.2
 [2.14.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.1
 [2.14.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.0
 [2.13.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.1

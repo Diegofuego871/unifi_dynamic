@@ -189,15 +189,14 @@ const STRINGS = {
     pingLossShort: (p) => `${p} % Verlust`,
     pingTierNames: ["", "schlecht", "langsam", "ok", "gut", "sehr gut"],
     pingTitle: "Antwortzeit",
-    pingRange: "Letzte 24 Std.",
+    pingRange: { "24h": "Letzte 24 Std.", "7d": "Letzte 7 Tage", "30d": "Letzte 30 Tage" },
     pingMedian: "Median",
     pingJitter: "Schwankung",
     pingLoss: "Paketverlust",
-    pingLoading: "Messwerte werden geladen…",
     pingNoData: "Noch keine Messwerte – der Client wird gepingt, sobald er online ist und eine IP hat.",
     pingNoReply:
       "Antwortet nicht auf Ping. Das ist bei vielen Geräten normal (Windows-Firewall, Handys im Standby, IoT-Geräte, Firewall zwischen VLANs) und kein Fehler.",
-    pingAgo: "vor 24 Std.",
+    pingAgo: { "24h": "vor 24 Std.", "7d": "vor 7 Tagen", "30d": "vor 30 Tagen" },
     pingScale: (ms) => `bis ${ms} ms`,
     pingBarTip: (time, ms, loss) => `${time} · ${ms} · ${loss}`,
     pingEntity: "Als Entitäten anlegen",
@@ -535,15 +534,14 @@ const STRINGS = {
     pingLossShort: (p) => `${p} % loss`,
     pingTierNames: ["", "poor", "slow", "fair", "good", "very good"],
     pingTitle: "Response time",
-    pingRange: "Last 24 h",
+    pingRange: { "24h": "Last 24 h", "7d": "Last 7 days", "30d": "Last 30 days" },
     pingMedian: "Median",
     pingJitter: "Jitter",
     pingLoss: "Packet loss",
-    pingLoading: "Loading measurements…",
     pingNoData: "No measurements yet – the client is pinged as soon as it is online and has an IP.",
     pingNoReply:
       "Does not answer ping. That is normal for many devices (Windows firewall, phones in standby, IoT devices, firewalls between VLANs) and not an error.",
-    pingAgo: "24 h ago",
+    pingAgo: { "24h": "24 h ago", "7d": "7 days ago", "30d": "30 days ago" },
     pingScale: (ms) => `up to ${ms} ms`,
     pingBarTip: (time, ms, loss) => `${time} · ${ms} · ${loss}`,
     pingEntity: "Create entities",
@@ -2581,14 +2579,18 @@ class UnifiDynamicPanel extends HTMLElement {
   }
 
   // Verlauf höchstens eine Minute alt zeigen, dann neu holen.
+  // Zeitraum wie beim Verfügbarkeits-Zeitstrahl (gemeinsamer Schalter).
   _ensurePing(c) {
-    const key = `${c.entry_id}|${c.mac}`;
+    const range = this._availRange || "24h";
+    const key = `${c.entry_id}|${c.mac}|${range}`;
     const h = this._pingHist;
     if (h && h.key === key && (h.loading || Date.now() - h.at < 60000)) return;
     const prev = h && h.key === key ? h.data : null;
-    this._pingHist = { key, loading: true, data: prev, at: Date.now() };
+    const startedAt = Date.now();
+    this._pingHist = { key, loading: true, data: prev, at: startedAt, startedAt };
+    this._tickLoader();
     this._hass
-      .callWS({ type: "unifi_dynamic/ping_history", entry_id: c.entry_id, mac: c.mac })
+      .callWS({ type: "unifi_dynamic/ping_history", entry_id: c.entry_id, mac: c.mac, range })
       .then((data) => {
         if (!this._pingHist || this._pingHist.key !== key) return;
         this._pingHist = { key, loading: false, data, at: Date.now() };
@@ -2608,7 +2610,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const t = (k) => this._t(k);
     const esc = (v) => this._escape(v);
     const h = this._pingHist;
-    const data = h && h.key === `${c.entry_id}|${c.mac}` ? h.data : null;
+    const range = this._availRange || "24h";
+    const data = h && h.key === `${c.entry_id}|${c.mac}|${range}` ? h.data : null;
     const entityOn = data ? Boolean(data.entity) : Boolean(c.ping.entity);
     const busy = this._pingBusy === `${c.entry_id}|${c.mac}`;
     const toggle = `<div class="opt ping-entity">
@@ -2616,9 +2619,10 @@ class UnifiDynamicPanel extends HTMLElement {
           <button type="button" class="sw-btn${entityOn ? " on" : ""}" role="switch" aria-checked="${entityOn}" data-dlg="ping-entity" ${busy ? "disabled" : ""} aria-label="${esc(t("pingEntity"))}"><span></span></button></div>
         <div class="opt-short">${esc(t("pingEntityShort"))}</div>
       </div>`;
-    const head = `<h3 class="avail-h3"><span>${esc(t("pingTitle"))}</span><span class="ping-range">${esc(t("pingRange"))}</span></h3>`;
+    const head = `<h3 class="avail-h3"><span>${esc(t("pingTitle"))}</span><span class="ping-range">${esc(t("pingRange")[range])}</span></h3>`;
     let body;
-    if (!data) body = `<p class="dlg-note">${esc(h && h.error ? h.error : t("pingLoading"))}</p>`;
+    if (!data && h && h.error) body = `<p class="dlg-note">${esc(h.error)}</p>`;
+    else if (!data) body = this._availLoaderHtml(`ping|${h ? h.key : ""}`, h && h.startedAt);
     else if (!data.summary) body = `<p class="dlg-note">${esc(t("pingNoData"))}</p>`;
     else if (data.summary.status === "no_reply") body = `<p class="dlg-note">${esc(t("pingNoReply"))}</p>`;
     else {
@@ -2641,8 +2645,9 @@ class UnifiDynamicPanel extends HTMLElement {
     const esc = (v) => this._escape(v);
     const size = data.bucket || 300;
     const end = data.now || Date.now() / 1000;
-    const start = end - 86400;
-    const n = Math.round(86400 / size);
+    const span = data.span || 86400;
+    const start = end - span;
+    const n = Math.round(span / size);
     const buckets = (data.buckets || []).filter((b) => b[0] >= start - size);
     const medians = buckets.map((b) => b[1]).filter((v) => v != null).sort((a, b) => a - b);
     if (!buckets.length) return "";
@@ -2655,7 +2660,11 @@ class UnifiDynamicPanel extends HTMLElement {
         const idx = Math.max(0, Math.min(n - 1, Math.floor((b[0] - start) / size)));
         const left = (idx / n) * 100;
         const lossPct = b[3] ? Math.round((1 - b[4] / b[3]) * 100) : 0;
-        const time = new Date(b[0] * 1000).toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+        const d = new Date(b[0] * 1000);
+        const time =
+          span > 86400
+            ? d.toLocaleString(lang, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })
+            : d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
         const tip = t("pingBarTip")(time, b[1] == null ? t("pingNoReplyShort") : this._fmtMs(b[1]), t("pingLossShort")(lossPct));
         if (b[1] == null) {
           return `<i class="pb none" style="left:${left.toFixed(2)}%" title="${esc(tip)}"></i>`;
@@ -2665,7 +2674,7 @@ class UnifiDynamicPanel extends HTMLElement {
       })
       .join("");
     return `<div class="ping-chart" style="--n:${n}"><span class="ping-scale">${esc(t("pingScale")(scale))}</span>${bars}</div>
-      <div class="ping-axis"><span>${esc(t("pingAgo"))}</span><span>${esc(t("availNow"))}</span></div>
+      <div class="ping-axis"><span>${esc(t("pingAgo")[span > 7 * 86400 ? "30d" : span > 86400 ? "7d" : "24h"])}</span><span>${esc(t("availNow"))}</span></div>
       <div class="ping-legend">${[5, 4, 3, 2, 1]
         .map((tier, i) => {
           const range =
@@ -2682,7 +2691,8 @@ class UnifiDynamicPanel extends HTMLElement {
     try {
       await this._hass.callWS({ type: "unifi_dynamic/ping_entity", entry_id: c.entry_id, mac: c.mac, enabled });
       this._toast(this._t(enabled ? "pingEntityOn" : "pingEntityOff"));
-      if (this._pingHist && this._pingHist.key === key && this._pingHist.data) {
+      // Verlauf-Schlüssel enthält zusätzlich den Zeitraum.
+      if (this._pingHist && this._pingHist.key.startsWith(`${key}|`) && this._pingHist.data) {
         this._pingHist = { ...this._pingHist, data: { ...this._pingHist.data, entity: enabled } };
       }
       if (c.ping) c.ping = { ...c.ping, entity: enabled };
@@ -2819,7 +2829,7 @@ class UnifiDynamicPanel extends HTMLElement {
     // Startzeit für den Loader: damit läuft er nach einem Neuaufbau des
     // Dialogs an derselben Stelle weiter (siehe _syncLoaders).
     this._loaderStarted = { key, at: end };
-    this._tickLoader(end);
+    this._tickLoader();
     let states = null;
     let error = null;
     try {
@@ -3100,19 +3110,25 @@ class UnifiDynamicPanel extends HTMLElement {
   // Animation nicht wechselt.
   _loaderKind(key) {
     if (this._loader !== "random") return LOADERS.includes(this._loader) ? this._loader : "elephant";
-    if (!this._loaderPick || this._loaderPick.key !== key) {
-      const prev = this._loaderPick && this._loaderPick.kind;
-      const pool = LOADERS.filter((k) => k !== prev);
-      this._loaderPick = { key, kind: pool[Math.floor(Math.random() * pool.length)] };
+    // Pro Ladevorgang merken (Verfügbarkeit und Ping können gleichzeitig
+    // laden); ein neuer Vorgang nimmt eine andere als die zuletzt gewählte.
+    const picks = (this._loaderPick = this._loaderPick || { last: null, keys: new Map() });
+    if (!picks.keys.has(key)) {
+      const pool = LOADERS.filter((k) => k !== picks.last);
+      const kind = pool[Math.floor(Math.random() * pool.length)];
+      picks.keys.set(key, kind);
+      picks.last = kind;
+      if (picks.keys.size > 20) picks.keys.delete(picks.keys.keys().next().value);
     }
-    return this._loaderPick.kind;
+    return picks.keys.get(key);
   }
 
-  _availLoaderHtml(key) {
+  _availLoaderHtml(key, startedAt) {
     const esc = (v) => this._escape(v);
     const kind = this._loaderKind(key || "");
     const words = kind === "elephant" ? this._t("availLoadingWords") : this._t("loaderWords")[kind];
-    const started = this._loaderStarted && this._loaderStarted.key === key ? this._loaderStarted.at : Date.now();
+    const started =
+      startedAt || (this._loaderStarted && this._loaderStarted.key === key ? this._loaderStarted.at : Date.now());
     return `<div class="avail avail-loading ld-${kind}" data-ld-started="${started}" role="status" aria-label="${esc(this._t("availLoading"))}">
         <div class="ele-words">${words.map((w) => `<span class="shimmer">${esc(w)}</span>`).join("")}</div>
         <div class="ele-sec"><span class="avail-sec">0</span> s</div>
@@ -3247,15 +3263,21 @@ class UnifiDynamicPanel extends HTMLElement {
   }
 
   // Sekundenzähler direkt im DOM hochzählen, ohne den Dialog neu aufzubauen.
-  _tickLoader(startedAt) {
+  // Zählt bei allen sichtbaren Loadern (Verfügbarkeit, Ping) mit, jeder ab
+  // seiner eigenen Startzeit; hört auf, sobald keiner mehr da ist.
+  _tickLoader() {
     window.clearInterval(this._loaderTimer);
     this._loaderTimer = window.setInterval(() => {
-      const el = this.shadowRoot && this.shadowRoot.querySelector(".avail-sec");
-      if (!this._history || !this._history.loading) {
+      const loaders = this.shadowRoot ? [...this.shadowRoot.querySelectorAll(".avail-loading[data-ld-started]")] : [];
+      const busy = (this._history && this._history.loading) || (this._pingHist && this._pingHist.loading);
+      if (!loaders.length && !busy) {
         window.clearInterval(this._loaderTimer);
         return;
       }
-      if (el) el.textContent = String(Math.floor((Date.now() - startedAt) / 1000));
+      for (const el of loaders) {
+        const sec = el.querySelector(".avail-sec");
+        if (sec) sec.textContent = String(Math.floor((Date.now() - Number(el.dataset.ldStarted)) / 1000));
+      }
     }, 1000);
   }
 

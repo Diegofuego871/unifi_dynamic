@@ -40,6 +40,8 @@ from .const import (
     CONF_VERIFY_SSL,
     CONF_PING_ENTITIES,
     DEFAULT_VERIFY_SSL,
+    PING_HOUR_SECONDS,
+    PING_RANGES,
     ATTR_DEVICE_ID,
     ATTR_DRY_RUN,
     ATTR_ENTRY_ID,
@@ -944,6 +946,7 @@ def _ws_set_options(
         vol.Required("type"): WS_TYPE_PING_HISTORY,
         vol.Required("entry_id"): str,
         vol.Required("mac"): str,
+        vol.Optional("range", default="24h"): vol.In(list(PING_RANGES)),
     }
 )
 @websocket_api.require_admin
@@ -951,7 +954,10 @@ def _ws_set_options(
 def _ws_ping_history(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Ping-Verlauf eines Clients (24 Stunden in 5-Minuten-Blöcken)."""
+    """
+    Ping-Verlauf eines Clients: 24 Stunden in 5-Minuten-Blöcken, 7 und 30
+    Tage in Stunden-Blöcken. Kennzahlen über denselben Zeitraum.
+    """
     coordinator: UnifiDynamicCoordinator | None = hass.data.get(DOMAIN, {}).get(
         msg["entry_id"]
     )
@@ -962,14 +968,17 @@ def _ws_ping_history(
     mac = msg["mac"].lower()
     status = monitor.status if monitor is not None else ping_mod.STATUS_DISABLED
     ok = status == ping_mod.STATUS_OK
+    span = msg["range"]
     connection.send_result(
         msg["id"],
         {
             "status": status,
             "interval": ping_mod.ping_interval(coordinator.entry),
-            "bucket": ping_mod.PING_BUCKET_SECONDS,
-            "buckets": monitor.history(mac) if ok else [],
-            "summary": monitor.summary(mac) if ok else None,
+            "range": span,
+            "span": PING_RANGES[span],
+            "bucket": ping_mod.PING_BUCKET_SECONDS if span == "24h" else PING_HOUR_SECONDS,
+            "buckets": monitor.history(mac, span) if ok else [],
+            "summary": monitor.summary(mac, span) if ok else None,
             "last": monitor.last(mac) if ok else None,
             "entity": mac in ping_mod.ping_entity_macs(coordinator.entry),
             "now": time.time(),
