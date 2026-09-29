@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   the row now shows "Syncing with HACS …" with a spinner and a disabled
   button; the hint only appears if HACS still doesn't know the version
   afterwards.
+- The WiFi signal icon no longer looks cut off: the outer arc and the dot
+  now fit completely inside the icon.
 
 ## [2.15.2] - 2026-09-29
 

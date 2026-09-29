@@ -870,15 +870,19 @@ function pingTier(ms) {
 
 // WLAN-Fächer wie bei Apple: Punkt + 3 Bögen = 4 Stufen, gleiche Grenzen
 // wie signalBars. Farben aus der Ping-Palette (grün, orange, violett, rot).
+// Bögen um den Punkt (9/12.2); der äussere Bogen samt halber Strichbreite
+// (1.1) endet oben bei 0.5, der Punkt unten bei 13.8: nichts wird vom
+// Rand der Fläche (18 x 14) abgeschnitten.
 function wifiFanHtml(tier, stale) {
+  const cy = 12.2;
   const arc = (r) => {
     const a = Math.PI / 4;
     const x1 = 9 - r * Math.sin(a);
-    const y = 13.5 - r * Math.cos(a);
+    const y = cy - r * Math.cos(a);
     const x2 = 9 + r * Math.sin(a);
     return `M${x1.toFixed(2)} ${y.toFixed(2)} A${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y.toFixed(2)}`;
   };
-  return `<svg class="wfan w${tier}${stale ? " stale" : ""}" viewBox="0 0 18 14" aria-hidden="true"><circle class="d" cx="9" cy="12.6" r="1.7"/>${[5, 9, 13]
+  return `<svg class="wfan w${tier}${stale ? " stale" : ""}" viewBox="0 0 18 14" aria-hidden="true"><circle class="d" cx="9" cy="${cy}" r="1.6"/>${[4, 7.3, 10.6]
     .map((r, i) => `<path class="s a${i + 1}" d="${arc(r)}"/>`)
     .join("")}</svg>`;
 }
@@ -8351,7 +8355,7 @@ class UnifiDynamicPanel extends HTMLElement {
         .wfan .s {
           fill: none;
           stroke: color-mix(in srgb, var(--udc-text) 16%, transparent);
-          stroke-width: 2.3;
+          stroke-width: 2.2;
           stroke-linecap: round;
         }
         .wfan .d {
