@@ -5,6 +5,18 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.15.1] - 2026-09-29
+
+### Changed
+
+- While ping is switched on, every client now gets the "Ping" and "Packet
+  loss" sensors automatically, like any other measurement in Home
+  Assistant. The "Create entities" switch in the device view is gone.
+  Switching ping off removes the sensors again. The per-client selection
+  from 2.14.0–2.15.0 is no longer needed and is removed from the options.
+  With many clients this adds noticeably to the recorder; the README shows
+  how to exclude the sensors if needed.
+
 ## [2.15.0] - 2026-09-29
 
 ### Added
@@ -1383,6 +1395,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.15.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.1
 [2.15.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.0
 [2.14.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.2
 [2.14.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.1

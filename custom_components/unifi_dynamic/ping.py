@@ -5,7 +5,7 @@ Pingt in einem festen Intervall alle Clients, die laut UniFi gerade online
 sind und eine IP haben - die IP kommt aus UniFi, damit klappt es auch mit
 DHCP ohne Pflege. Pro Client und Runde gehen mehrere Pings raus; die Werte
 landen in 5-Minuten-Blöcken (24 Stunden, eigene Datei) für das Panel und in
-der letzten Runde für die optionalen Entitäten.
+der letzten Runde für die Entitäten (Ping, Paketverlust) jedes Clients.
 
 Kennzahlen:
 - Median statt Mittelwert: ein einzelner Ausreisser (Handy wacht gerade auf)
@@ -37,7 +37,6 @@ from homeassistant.helpers.storage import Store
 
 from .const import (
     CONF_PING_ENABLED,
-    CONF_PING_ENTITIES,
     CONF_PING_INTERVAL,
     DEFAULT_PING_ENABLED,
     DEFAULT_PING_INTERVAL,
@@ -76,11 +75,6 @@ STATUS_UNAVAILABLE = "unavailable"
 PING_ENTITY_KINDS = ("ping", "packet_loss")
 
 
-def ping_entities_signal(entry_id: str) -> str:
-    """Signal: Auswahl der Ping-Entitäten eines Hubs hat sich geändert."""
-    return f"{DOMAIN}_ping_entities_{entry_id}"
-
-
 # Zustand eines Clients
 CLIENT_OK = "ok"
 CLIENT_NO_REPLY = "no_reply"
@@ -97,14 +91,6 @@ def ping_interval(entry: ConfigEntry) -> int:
         value = DEFAULT_PING_INTERVAL
     low, high = PING_INTERVAL_RANGE
     return min(high, max(low, value))
-
-
-def ping_entity_macs(entry: ConfigEntry) -> list[str]:
-    return [
-        str(mac).strip().lower()
-        for mac in (entry.options.get(CONF_PING_ENTITIES) or [])
-        if str(mac).strip()
-    ]
 
 
 # -- Kennzahlen (rein, ohne Home Assistant; auch für Tests) --------------------
@@ -473,6 +459,3 @@ class PingMonitor:
 
     def last(self, mac: str) -> dict[str, Any] | None:
         return self._last.get(mac.lower())
-
-    def entity_enabled(self, mac: str) -> bool:
-        return mac.lower() in ping_entity_macs(self.entry)

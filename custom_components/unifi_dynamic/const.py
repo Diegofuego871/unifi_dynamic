@@ -198,7 +198,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "44"
+PANEL_VERSION = "45"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
@@ -219,7 +219,6 @@ WS_TYPE_SET_OPTIONS = f"{DOMAIN}/set_options"
 WS_TYPE_VERSION = f"{DOMAIN}/version"
 WS_TYPE_SET_CONNECTION = f"{DOMAIN}/set_connection"
 WS_TYPE_PING_HISTORY = f"{DOMAIN}/ping_history"
-WS_TYPE_PING_ENTITY = f"{DOMAIN}/ping_entity"
 WS_TYPE_SIGNAL_HISTORY = f"{DOMAIN}/signal_history"
 
 # --- Ping (Antwortzeit) ----------------------------------------------------
@@ -230,8 +229,8 @@ CONF_PING_ENABLED = "ping_enabled"
 DEFAULT_PING_ENABLED = False
 CONF_PING_INTERVAL = "ping_interval"
 DEFAULT_PING_INTERVAL = 60
-# MACs, für die Entitäten (Antwortzeit, Paketverlust) angelegt werden. Nur
-# auf Wunsch pro Client, damit der Recorder nicht für jeden Client wächst.
+# Veraltet (2.14.0-2.15.0): Auswahl der Clients mit Ping-Entitäten. Seit
+# 2.15.1 gibt es sie für jeden Client; die Option wird beim Start entfernt.
 CONF_PING_ENTITIES = "ping_entities"
 # Pings pro Client und Runde, Abstand und Wartezeit in Sekunden.
 PING_COUNT = 3

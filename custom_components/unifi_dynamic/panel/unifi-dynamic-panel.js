@@ -178,7 +178,7 @@ const STRINGS = {
     optPingEnabled: "Antwortzeit messen",
     optPingEnabledShort: "Pingt alle Online-Clients über ihre aktuelle IP aus UniFi.",
     optPingEnabledInfo:
-      "Schickt pro Runde drei Pings an jeden Client, der laut UniFi online ist, und hält Median, Schwankung und Paketverlust 24 Stunden lang fest. Die Werte stehen in der Geräteansicht und in der Spalte „Ping“; Entitäten legst du pro Client in der Geräteansicht an. Viele Geräte antworten grundsätzlich nicht auf Ping (Windows-Firewall, Handys im Standby, IoT-Geräte, Firewall zwischen VLANs) – sie erscheinen als „antwortet nicht auf Ping“, das ist kein Fehler. Ein- und Ausschalten lädt die Integration kurz neu.",
+      "Schickt pro Runde drei Pings an jeden Client, der laut UniFi online ist, und hält Median, Schwankung und Paketverlust 24 Stunden lang fest. Die Werte stehen in der Geräteansicht und in der Spalte „Ping“; Dazu legt die Integration für jeden Client die Sensoren „Ping“ und „Packet loss“ an. Viele Geräte antworten grundsätzlich nicht auf Ping (Windows-Firewall, Handys im Standby, IoT-Geräte, Firewall zwischen VLANs) – sie erscheinen als „antwortet nicht auf Ping“, das ist kein Fehler. Ein- und Ausschalten lädt die Integration kurz neu.",
     optPingInterval: "Intervall",
     optPingIntervalShort: "Abstand zwischen zwei Runden. 60 s sind ein guter Kompromiss.",
     pingPermission:
@@ -199,10 +199,7 @@ const STRINGS = {
     pingAgo: { "24h": "vor 24 Std.", "7d": "vor 7 Tagen", "30d": "vor 30 Tagen" },
     pingScale: (ms) => `bis ${ms} ms`,
     pingBarTip: (time, ms, loss) => `${time} · ${ms} · ${loss}`,
-    pingEntity: "Als Entitäten anlegen",
-    pingEntityShort: "„Ping“ (ms) und „Packet loss“ (%) am Gerät, für Automationen und den Verlauf in Home Assistant.",
-    pingEntityOn: "Ping-Entitäten angelegt",
-    pingEntityOff: "Ping-Entitäten entfernt",
+    pingEntityNote: "Auch als Sensoren „Ping“ (ms) und „Packet loss“ (%) am Gerät, für Automationen und den Verlauf in Home Assistant.",
     secUpdates: "Updates",
     sumUpdatesOn: "Tägliche Prüfung auf neue Versionen",
     sumUpdatesOff: "Keine automatische Prüfung",
@@ -557,7 +554,7 @@ const STRINGS = {
     optPingEnabled: "Measure response time",
     optPingEnabledShort: "Pings all online clients at their current IP from UniFi.",
     optPingEnabledInfo:
-      "Sends three pings per round to every client that UniFi reports online and keeps median, jitter and packet loss for 24 hours. The values appear in the device view and in the \"Ping\" column; entities are created per client in the device view. Many devices never answer ping (Windows firewall, phones in standby, IoT devices, firewalls between VLANs) – they show up as \"does not answer ping\", which is not an error. Switching it on or off briefly reloads the integration.",
+      "Sends three pings per round to every client that UniFi reports online and keeps median, jitter and packet loss for 24 hours. The values appear in the device view and in the \"Ping\" column; \"Ping\" and \"Packet loss\" sensors are created for every client. Many devices never answer ping (Windows firewall, phones in standby, IoT devices, firewalls between VLANs) – they show up as \"does not answer ping\", which is not an error. Switching it on or off briefly reloads the integration.",
     optPingInterval: "Interval",
     optPingIntervalShort: "Time between two rounds. 60 s is a good compromise.",
     pingPermission:
@@ -578,10 +575,7 @@ const STRINGS = {
     pingAgo: { "24h": "24 h ago", "7d": "7 days ago", "30d": "30 days ago" },
     pingScale: (ms) => `up to ${ms} ms`,
     pingBarTip: (time, ms, loss) => `${time} · ${ms} · ${loss}`,
-    pingEntity: "Create entities",
-    pingEntityShort: "\"Ping\" (ms) and \"Packet loss\" (%) on the device, for automations and history in Home Assistant.",
-    pingEntityOn: "Ping entities created",
-    pingEntityOff: "Ping entities removed",
+    pingEntityNote: "Also available as \"Ping\" (ms) and \"Packet loss\" (%) sensors on the device, for automations and history in Home Assistant.",
     secUpdates: "Updates",
     sumUpdatesOn: "Daily check for new versions",
     sumUpdatesOff: "No automatic check",
@@ -2926,13 +2920,8 @@ class UnifiDynamicPanel extends HTMLElement {
     const h = this._pingHist;
     const range = this._availRange || "24h";
     const data = h && h.key === `${c.entry_id}|${c.mac}|${range}` ? h.data : null;
-    const entityOn = data ? Boolean(data.entity) : Boolean(c.ping.entity);
-    const busy = this._pingBusy === `${c.entry_id}|${c.mac}`;
-    const toggle = `<div class="opt ping-entity">
-        <div class="opt-line"><span class="opt-label">${esc(t("pingEntity"))}</span>
-          <button type="button" class="sw-btn${entityOn ? " on" : ""}" role="switch" aria-checked="${entityOn}" data-dlg="ping-entity" ${busy ? "disabled" : ""} aria-label="${esc(t("pingEntity"))}"><span></span></button></div>
-        <div class="opt-short">${esc(t("pingEntityShort"))}</div>
-      </div>`;
+    // Die Werte gibt es immer auch als Sensoren am Gerät (für jeden Client).
+    const toggle = `<p class="opt-short ping-entity-note">${esc(t("pingEntityNote"))}</p>`;
     const head = inStat
       ? this._rangeSwitchHtml()
       : `<h3 class="avail-h3"><span>${esc(t("pingTitle"))}</span><span class="ping-range">${esc(t("pingRange")[range])}</span></h3>`;
@@ -3207,9 +3196,6 @@ class UnifiDynamicPanel extends HTMLElement {
           this._savePrefs();
           this._renderStat();
         }
-      } else if (btn.dataset.dlg === "ping-entity") {
-        const c = this._clientByKey(this._dialogKey);
-        if (c) this._setPingEntity(c, btn.getAttribute("aria-checked") !== "true");
       }
     });
     dialog.addEventListener("pointerover", (ev) => {
@@ -3274,26 +3260,6 @@ class UnifiDynamicPanel extends HTMLElement {
           return `<span><i class="t${tier}"></i>${esc(range)} ms</span>`;
         })
         .join("")}<span><i class="lossmark"></i>${esc(t("pingLoss"))}</span></div>`;
-  }
-
-  async _setPingEntity(c, enabled) {
-    const key = `${c.entry_id}|${c.mac}`;
-    this._pingBusy = key;
-    this._renderDialog();
-    try {
-      await this._hass.callWS({ type: "unifi_dynamic/ping_entity", entry_id: c.entry_id, mac: c.mac, enabled });
-      this._toast(this._t(enabled ? "pingEntityOn" : "pingEntityOff"));
-      // Verlauf-Schlüssel enthält zusätzlich den Zeitraum.
-      if (this._pingHist && this._pingHist.key.startsWith(`${key}|`) && this._pingHist.data) {
-        this._pingHist = { ...this._pingHist, data: { ...this._pingHist.data, entity: enabled } };
-      }
-      if (c.ping) c.ping = { ...c.ping, entity: enabled };
-      this._renderStat();
-    } catch (err) {
-      this._dialogError = (err && err.message) || String(err);
-    }
-    this._pingBusy = null;
-    this._renderDialog();
   }
 
   _closeDialog() {
@@ -4461,11 +4427,6 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     if (action === "stat") {
       this._openStat(btn.dataset.kind);
-      return;
-    }
-    if (action === "ping-entity") {
-      const cl = this._clientByKey(this._dialogKey);
-      if (cl) this._setPingEntity(cl, btn.getAttribute("aria-checked") !== "true");
       return;
     }
     if (action === "avail-range") {
@@ -8557,6 +8518,9 @@ class UnifiDynamicPanel extends HTMLElement {
           margin-top: 3px;
           color: var(--udc-text3);
           font-size: 11px;
+        }
+        .ping-entity-note {
+          margin: 12px 0 0;
         }
         .ping-entity {
           margin-top: 8px;

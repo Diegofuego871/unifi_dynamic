@@ -50,7 +50,7 @@ the client has not been reported by the UniFi controller for a while.
 - Optional: response time via ping. Online clients are pinged at their
   current IP from UniFi (works with DHCP, nothing to maintain). Median,
   jitter and packet loss of the last 24 hours in the panel; "Ping" and
-  "Packet loss" entities per client on request.
+  "Packet loss" sensors for every client.
 - A panel pinned in the sidebar shows a searchable, filterable table of every
   client across all configured UniFi hosts (alias, linked HA device, IP, MAC, SSID, access
   point, connection type, last seen, online status), with a per-row menu to
@@ -174,11 +174,16 @@ Notes:
   ping must be allowed (`net.ipv4.ping_group_range`) or Home Assistant must
   run as root. Without permission measuring stays off and the panel shows a
   notice.
-- **Entities:** per client in the panel's device view with "Create
-  entities": `sensor.unifi_dynamic_<client>_ping` (median of the last round
-  in ms) and `sensor.unifi_dynamic_<client>_packet_loss` (%), with the
-  24-hour values as attributes. Deliberately not for every client, so the
-  recorder doesn't grow needlessly. Switching it off removes the entities.
+- **Entities:** while measuring is on, every client gets
+  `sensor.unifi_dynamic_<client>_ping` (median of the last round in ms) and
+  `sensor.unifi_dynamic_<client>_packet_loss` (%), with the 24-hour values
+  as attributes – for automations, dashboards and history like any other
+  measurement in Home Assistant. Switching it off removes them.
+- **Recorder:** with many clients and a short interval this adds up (about
+  70 clients at 60 seconds: roughly 100,000 entries per day, mostly from the
+  ping value; packet loss is usually a constant 0). If you don't need it,
+  raise the interval or exclude the sensors from the recorder, e.g.
+  `recorder: exclude: entity_globs: - sensor.unifi_dynamic_*_ping`.
 
 ## Action `unifi_dynamic.purge_now`
 

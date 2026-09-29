@@ -28,7 +28,6 @@ from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.util import dt as dt_util
 
@@ -79,7 +78,6 @@ from .const import (
     WS_TYPE_GET_OPTIONS,
     WS_TYPE_LIST_HUBS,
     WS_TYPE_SET_CONNECTION,
-    WS_TYPE_PING_ENTITY,
     WS_TYPE_PING_HISTORY,
     WS_TYPE_SIGNAL_HISTORY,
     WS_TYPE_SET_OPTIONS,
@@ -155,6 +153,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Ebenfalls vor dem Plattform-Setup, sonst würde die Entity erst angelegt
     # und gleich wieder entfernt.
     _cleanup_wireless_only_entities(hass, entry, coordinator)
+    _cleanup_ping_entities(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -253,6 +252,27 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, SERVICE_REMOVE_CLIENT)
 
     return unload_ok
+
+
+@callback
+def _cleanup_ping_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """
+    Ping-Entitäten gibt es für jeden Client, solange Ping eingeschaltet ist.
+    Ist es aus, verschwinden sie aus der Registry, statt als "nicht
+    verfügbar" liegen zu bleiben. Dazu die Auswahl aus 2.14.x/2.15.0
+    (einzelne Clients) aus den Options entfernen: sie gilt nicht mehr.
+    """
+    if CONF_PING_ENTITIES in entry.options:
+        options = dict(entry.options)
+        options.pop(CONF_PING_ENTITIES)
+        hass.config_entries.async_update_entry(entry, options=options)
+    if ping_mod.ping_enabled(entry):
+        return
+    ent_reg = er.async_get(hass)
+    prefixes = tuple(f"{DOMAIN}.{entry.entry_id}.{kind}." for kind in ping_mod.PING_ENTITY_KINDS)
+    for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+        if reg_entry.domain == "sensor" and str(reg_entry.unique_id).startswith(prefixes):
+            ent_reg.async_remove(reg_entry.entity_id)
 
 
 def _reload_signature(entry: ConfigEntry) -> tuple[int, str, bool, int]:
@@ -853,7 +873,6 @@ def _ping_row(coordinator: UnifiDynamicCoordinator, mac: str) -> dict[str, Any] 
         "median": summary["median"] if summary else None,
         "loss": summary["loss"] if summary else None,
         "status": summary["status"] if summary else None,
-        "entity": monitor.entity_enabled(mac),
     }
 
 
@@ -994,7 +1013,6 @@ def _ws_ping_history(
             "buckets": monitor.history(mac, span) if ok else [],
             "summary": monitor.summary(mac, span) if ok else None,
             "last": monitor.last(mac) if ok else None,
-            "entity": mac in ping_mod.ping_entity_macs(coordinator.entry),
             "now": time.time(),
         },
     )
@@ -1041,54 +1059,6 @@ def _ws_signal_history(
             "now": time.time(),
         },
     )
-
-
-@websocket_api.websocket_command(
-    {
-        vol.Required("type"): WS_TYPE_PING_ENTITY,
-        vol.Required("entry_id"): str,
-        vol.Required("mac"): str,
-        vol.Required("enabled"): bool,
-    }
-)
-@websocket_api.require_admin
-@callback
-def _ws_ping_entity(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
-) -> None:
-    """
-    Ping-Entitäten eines Clients anlegen oder entfernen.
-
-    Ohne Reload: die Sensor-Plattform legt neue per Signal an, entfernte
-    verschwinden hier aus der Entity-Registry (samt Verlauf im Recorder, wie
-    bei jeder gelöschten Entität).
-    """
-    entry = hass.config_entries.async_get_entry(msg["entry_id"])
-    if entry is None or entry.domain != DOMAIN:
-        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
-        return
-    mac = msg["mac"].strip().lower()
-    macs = ping_mod.ping_entity_macs(entry)
-    if msg["enabled"] and mac not in macs:
-        macs.append(mac)
-    elif not msg["enabled"] and mac in macs:
-        macs.remove(mac)
-    else:
-        connection.send_result(msg["id"], {"changed": False})
-        return
-    hass.config_entries.async_update_entry(
-        entry, options={**entry.options, CONF_PING_ENTITIES: macs}
-    )
-    if not msg["enabled"]:
-        ent_reg = er.async_get(hass)
-        for kind in ping_mod.PING_ENTITY_KINDS:
-            entity_id = ent_reg.async_get_entity_id(
-                "sensor", DOMAIN, f"{DOMAIN}.{entry.entry_id}.{kind}.{mac}"
-            )
-            if entity_id:
-                ent_reg.async_remove(entity_id)
-    async_dispatcher_send(hass, ping_mod.ping_entities_signal(entry.entry_id))
-    connection.send_result(msg["id"], {"changed": True})
 
 
 @websocket_api.websocket_command(
@@ -1290,7 +1260,6 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_set_options)
     websocket_api.async_register_command(hass, _ws_set_connection)
     websocket_api.async_register_command(hass, _ws_ping_history)
-    websocket_api.async_register_command(hass, _ws_ping_entity)
     websocket_api.async_register_command(hass, _ws_signal_history)
     websocket_api.async_register_command(hass, _ws_version)
 

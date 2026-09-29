@@ -14,7 +14,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.const import PERCENTAGE, UnitOfTime
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
@@ -78,17 +77,16 @@ async def async_setup_entry(
     _add_new_entities()
     entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
 
-    # Ping-Entitäten: nur für Clients, die der Nutzer in der Geräteansicht
-    # ausgewählt hat. Abgewählte entfernt der WebSocket-Befehl aus der
-    # Registry; hier werden sie nur vergessen, damit ein erneutes Anwählen
-    # sie wieder anlegt.
+    # Ping-Entitäten (Antwortzeit, Paketverlust) für jeden Client, solange
+    # Ping eingeschaltet ist - wie jede andere Messgrösse in Home Assistant.
+    # Ein- und Ausschalten lädt die Integration neu; beim Ausschalten räumt
+    # __init__._cleanup_ping_entities die Registry auf.
     ping_known: set[str] = set()
 
     @callback
     def _sync_ping_entities() -> None:
-        wanted = set(ping_mod.ping_entity_macs(entry))
-        ping_known.intersection_update(wanted)
         cache = coordinator.data or {}
+        wanted = set(cache) if ping_mod.ping_enabled(entry) else set()
         new: list[SensorEntity] = []
         for mac in sorted(wanted - ping_known):
             if mac not in cache:
@@ -104,11 +102,6 @@ async def async_setup_entry(
 
     entry.async_on_unload(coordinator.async_add_removal_callback(ping_known.discard))
     _sync_ping_entities()
-    entry.async_on_unload(
-        async_dispatcher_connect(
-            hass, ping_mod.ping_entities_signal(entry.entry_id), _sync_ping_entities
-        )
-    )
     entry.async_on_unload(coordinator.async_add_listener(_sync_ping_entities))
 
 

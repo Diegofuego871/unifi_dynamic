@@ -58,7 +58,7 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 - Optional: Antwortzeit per Ping. Gepingt werden die Online-Clients über ihre
   aktuelle IP aus UniFi (funktioniert mit DHCP ohne Pflege). Median,
   Schwankung und Paketverlust der letzten 24 Stunden im Panel; Entitäten
-  „Ping" und „Packet loss" pro Client auf Wunsch.
+  „Ping" und „Packet loss" für jeden Client.
 
 ## Installation
 
@@ -179,12 +179,17 @@ Hinweise:
   unprivilegierter Ping erlaubt sein (`net.ipv4.ping_group_range`) oder Home
   Assistant mit Root-Rechten laufen. Fehlt die Berechtigung, bleibt die
   Messung aus und das Panel zeigt einen Hinweis.
-- **Entitäten:** Pro Client in der Geräteansicht des Panels mit „Als
-  Entitäten anlegen": `sensor.unifi_dynamic_<client>_ping` (Median der
-  letzten Runde in ms) und `sensor.unifi_dynamic_<client>_packet_loss` (%),
-  mit den 24-Stunden-Werten als Attribute. Bewusst nicht für alle Clients,
-  damit der Recorder nicht unnötig wächst. Abschalten entfernt die
-  Entitäten wieder.
+- **Entitäten:** Solange die Messung an ist, bekommt jeder Client
+  `sensor.unifi_dynamic_<client>_ping` (Median der letzten Runde in ms) und
+  `sensor.unifi_dynamic_<client>_packet_loss` (%), mit den 24-Stunden-Werten
+  als Attribute – für Automationen, Dashboards und den Verlauf wie jede
+  andere Messgrösse in Home Assistant. Ausschalten entfernt sie wieder.
+- **Recorder:** Bei vielen Clients und kurzem Intervall kommen viele
+  Einträge zusammen (etwa 70 Clients bei 60 Sekunden: rund 100 000 pro Tag,
+  vor allem vom Ping-Wert; der Paketverlust ist meist konstant 0). Wer das
+  nicht braucht, erhöht das Intervall oder schliesst die Sensoren im
+  Recorder aus, z. B. `recorder: exclude: entity_globs:
+  - sensor.unifi_dynamic_*_ping`.
 
 ## Aktion `unifi_dynamic.purge_now`
 
