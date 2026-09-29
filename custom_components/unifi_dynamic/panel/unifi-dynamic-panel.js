@@ -280,7 +280,10 @@ const STRINGS = {
     availRangeGroup: "Zeitraum",
     availLoading: "Verlauf wird geladen…",
     loaderTitle: "Loader",
-    loaderShort: "Lade-Animation, während der Verlauf geladen wird. Gilt nur für dich, auf allen Geräten.",
+    loaderShort: "Lade-Animation, während der Verlauf geladen wird. Gilt nur für dich, auf allen Geräten, und wird sofort übernommen – ohne „Speichern“.",
+    loaderPicked: (name) => `Loader „${name}“ übernommen`,
+    loaderNow: "sofort wirksam",
+    settingsSaveHint: "„Speichern“ gilt für Abfrage, Automatisches Entfernen, Benachrichtigungen und Updates. Loader und Verbindung werden direkt übernommen.",
     loaderNames: {
       elephant: ["Elefant", "Balance auf dem Ball"],
       cat: ["Katze", "Anschleichen und Anspringen"],
@@ -590,7 +593,10 @@ const STRINGS = {
     availRangeGroup: "Time range",
     availLoading: "Loading history…",
     loaderTitle: "Loader",
-    loaderShort: "Animation shown while the history loads. Applies only to you, on all your devices.",
+    loaderShort: "Animation shown while the history loads. Applies only to you, on all your devices, and takes effect right away – no \"Save\" needed.",
+    loaderPicked: (name) => `Loader "${name}" applied`,
+    loaderNow: "applies instantly",
+    settingsSaveHint: "\"Save\" applies to polling, automatic removal, notifications and updates. Loader and connection take effect directly.",
     loaderNames: {
       elephant: ["Elephant", "Balancing on a ball"],
       cat: ["Cat", "Sneak and pounce"],
@@ -1427,7 +1433,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const actions = `<div class="dlg-actions">
         <span class="set-count">${changes.length ? esc(t("settingsChanges")(changes.length)) : ""}</span>
         <button class="dlg-btn" data-set="close">${esc(t("settingsCancel"))}</button>
-        <button class="dlg-btn primary" data-set="save" ${canSave ? "" : "disabled"}>${esc(
+        <button class="dlg-btn primary" data-set="save" title="${esc(t("settingsSaveHint"))}" ${canSave ? "" : "disabled"}>${esc(
           st.saving ? t("settingsSaving") : t("settingsSave")
         )}</button>
       </div>`;
@@ -1625,7 +1631,7 @@ class UnifiDynamicPanel extends HTMLElement {
       : "";
     return `<section class="set-sec${open ? " open" : ""}">
         <button type="button" class="set-sec-head" data-set="section" data-id="loader" aria-expanded="${open}">
-          <span><span class="set-sec-title">${esc(t("loaderTitle"))}</span><span class="set-sec-sum">${esc(names[current].join(" · "))}</span></span>
+          <span><span class="set-sec-title">${esc(t("loaderTitle"))}<span class="ld-now">${esc(t("loaderNow"))}</span></span><span class="set-sec-sum">${esc(names[current].join(" · "))}</span></span>
           ${icon("chevron")}
         </button>
         ${body}
@@ -2159,6 +2165,7 @@ class UnifiDynamicPanel extends HTMLElement {
           this._loaderPick = null;
           this._savePrefs();
           this._renderSettings();
+          this._toast(this._t("loaderPicked")(this._t("loaderNames")[this._loader][0]));
         }
       } else if (action === "conn-edit") this._openConn(false);
       else if (action === "conn-renew") this._openConn(true);
@@ -6108,6 +6115,16 @@ class UnifiDynamicPanel extends HTMLElement {
         @keyframes ld-rr-orbit { from { transform: rotate(0) translateX(12px) rotate(0); } to { transform: rotate(360deg) translateX(12px) rotate(-360deg); } }
         @keyframes ld-rr-dust { 0%, 42% { opacity: 0; transform: none; } 43% { opacity: .9; } 50% { opacity: 0; transform: translate(var(--dx), -14px) scale(1.8); } 100% { opacity: 0; } }
         /* Auswahl in den Einstellungen mit Mini-Vorschau */
+        .ld-now {
+          margin-left: 8px;
+          padding: 1px 7px;
+          border-radius: 999px;
+          background: var(--udc-primary-soft);
+          color: var(--udc-primary);
+          font-size: 11px;
+          font-weight: 500;
+          vertical-align: 1px;
+        }
         .ld-intro {
           margin: 0 0 10px;
         }

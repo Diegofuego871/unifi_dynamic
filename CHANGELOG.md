@@ -5,6 +5,17 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.13.1] - 2026-09-29
+
+### Changed
+
+- Settings in the panel: it is now clear that "Save" only applies to the
+  hub options (polling, automatic removal, notifications, updates). The
+  loader section is marked "applies instantly", its description says no
+  "Save" is needed, and picking a loader confirms it with a short
+  message. Previously the greyed-out "Save" button after picking a loader
+  looked like the change had not been registered.
+
 ## [2.13.0] - 2026-09-29
 
 ### Added
@@ -1263,6 +1274,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.13.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.1
 [2.13.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.13.0
 [2.12.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.1
 [2.12.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.12.0
