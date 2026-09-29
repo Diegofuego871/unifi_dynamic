@@ -321,6 +321,12 @@ const STRINGS = {
     verPreHint:
       "HACS installiert Vorabversionen nur, wenn bei dieser Integration „Pre-release“ eingeschaltet ist: im HACS-Gerät die Entität „Pre-release“ aktivieren und einschalten.",
     verPreHintLink: "HACS-Gerät öffnen",
+    verPreHintEnable:
+      "HACS installiert Vorabversionen nur, wenn bei dieser Integration „Pre-release“ eingeschaltet ist. Das Panel kann das für dich erledigen: Es aktiviert die Entität in HACS und schaltet sie ein. HACS lädt dabei kurz neu (etwa 30 Sekunden). Schaltest du „Vorabversionen anzeigen“ später aus, wird sie wieder ausgeschaltet.",
+    verPreEnable: "In HACS freischalten",
+    verPreEnabling: "Wird freigeschaltet … (bis 30 s)",
+    verPreEnableError: "Freischalten fehlgeschlagen:",
+    verPreEnableTimeout: "HACS hat die Entität nicht rechtzeitig bereitgestellt. Bitte im HACS-Gerät prüfen.",
     verInstalledVia: (v, hacs) => `Installiert: ${v}${hacs ? " · über HACS" : ""}`,
     verNoHacs: "Installation über HACS oder manuell (siehe Release Notes).",
     verReleaseNotes: "Release Notes",
@@ -694,6 +700,12 @@ const STRINGS = {
     verPreHint:
       "HACS only installs pre-releases when \"Pre-release\" is switched on for this integration: enable and switch on the \"Pre-release\" entity on the HACS device.",
     verPreHintLink: "Open HACS device",
+    verPreHintEnable:
+      "HACS only installs pre-releases when \"Pre-release\" is switched on for this integration. The panel can do this for you: it enables the entity in HACS and switches it on. HACS briefly reloads (about 30 seconds). If you later switch \"Show pre-releases\" off, it is switched off again.",
+    verPreEnable: "Enable in HACS",
+    verPreEnabling: "Enabling … (up to 30 s)",
+    verPreEnableError: "Enabling failed:",
+    verPreEnableTimeout: "HACS did not provide the entity in time. Please check the HACS device.",
     verInstalledVia: (v, hacs) => `Installed: ${v}${hacs ? " · via HACS" : ""}`,
     verNoHacs: "Install via HACS or manually (see release notes).",
     verReleaseNotes: "Release notes",
@@ -950,6 +962,9 @@ const DEFAULT_PREFS = {
   loader: "elephant",
   // Vorabversionen (Beta) im Versionsbereich der Einstellungen anbieten.
   prerelease: false,
+  // HACS-Schalter "Pre-release", den das Panel selbst eingeschaltet hat
+  // (Entity-ID). Nur diesen schaltet es beim Ausschalten wieder aus.
+  prereleaseHacs: null,
 };
 
 // Lade-Animationen zur Auswahl in den Einstellungen. "random" wählt bei
@@ -1008,6 +1023,7 @@ function sanitizePrefs(raw) {
     hub: typeof p.hub === "string" && p.hub ? p.hub : "all",
     loader: LOADER_CHOICES.includes(p.loader) ? p.loader : "elephant",
     prerelease: p.prerelease === true,
+    prereleaseHacs: typeof p.prereleaseHacs === "string" && p.prereleaseHacs ? p.prereleaseHacs : null,
     // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
     // Kopie oder der Stand von HA neuer ist.
     updated: typeof p.updated === "number" ? p.updated : 0,
@@ -1117,6 +1133,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._hub = prefs.hub || "all";
     this._loader = prefs.loader || "elephant";
     this._prerelease = prefs.prerelease === true;
+    this._prereleaseHacs = prefs.prereleaseHacs || null;
   }
 
   _currentPrefs() {
@@ -1134,6 +1151,7 @@ class UnifiDynamicPanel extends HTMLElement {
       hub: this._hub,
       loader: this._loader,
       prerelease: this._prerelease,
+      prereleaseHacs: this._prereleaseHacs || null,
     };
   }
 
@@ -2090,8 +2108,89 @@ class UnifiDynamicPanel extends HTMLElement {
         String(e.entity_id).startsWith("switch.") &&
         /pre.?release/i.test(`${e.entity_id} ${e.translation_key || ""}`)
     );
-    const state = sw ? hass.states[sw.entity_id] : null;
-    return { deviceId, entityId: sw ? sw.entity_id : null, on: Boolean(state && state.state === "on") };
+    // Deaktivierte Entitäten stehen nicht in hass.entities: dann gilt, was
+    // die Entity-Registry geliefert hat (siehe _loadHacsSwitch).
+    const regSw = !sw && this._hacsSwitchReg && this._hacsSwitchReg.deviceId === deviceId ? this._hacsSwitchReg : null;
+    const entityId = sw ? sw.entity_id : regSw ? regSw.entityId : null;
+    const state = entityId ? hass.states[entityId] : null;
+    return {
+      deviceId,
+      entityId,
+      on: Boolean(state && state.state === "on"),
+      disabled: Boolean(!sw && regSw && regSw.disabled),
+    };
+  }
+
+  // Schalter "Pre-release" in der Entity-Registry suchen, auch wenn er
+  // deaktiviert ist (HACS legt ihn deaktiviert an).
+  async _loadHacsSwitch() {
+    const upd = this._hacsUpdateEntity();
+    const reg = upd && this._hass.entities && this._hass.entities[upd.entity_id];
+    if (!reg || !reg.device_id) return;
+    try {
+      const list = await this._hass.callWS({ type: "config/entity_registry/list" });
+      const e = (Array.isArray(list) ? list : []).find(
+        (x) =>
+          x &&
+          x.platform === "hacs" &&
+          x.device_id === reg.device_id &&
+          String(x.entity_id).startsWith("switch.") &&
+          /pre.?release/i.test(`${x.entity_id} ${x.translation_key || ""} ${x.original_name || ""}`)
+      );
+      this._hacsSwitchReg = e ? { deviceId: reg.device_id, entityId: e.entity_id, disabled: Boolean(e.disabled_by) } : null;
+    } catch (err) {
+      this._hacsSwitchReg = null;
+    }
+  }
+
+  // "In HACS freischalten": Entität aktivieren (falls nötig), warten, bis
+  // Home Assistant sie nach dem Neuladen von HACS freigibt (etwa 30 s),
+  // einschalten und HACS die Versionen neu laden lassen. Nur auf Knopfdruck.
+  async _enableHacsPrerelease() {
+    const v = (this._version = this._version || {});
+    let sw = this._hacsPreReleaseSwitch();
+    if (!sw || !sw.entityId) return;
+    v.hacsEnabling = true;
+    v.hacsError = null;
+    this._renderSettingsVersion();
+    try {
+      if (sw.disabled || !this._hass.states[sw.entityId]) {
+        await this._hass.callWS({ type: "config/entity_registry/update", entity_id: sw.entityId, disabled_by: null });
+        const until = Date.now() + 90000;
+        while (!this._hass.states[sw.entityId] && Date.now() < until) {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        if (!this._hass.states[sw.entityId]) throw new Error(this._t("verPreEnableTimeout"));
+        this._hacsSwitchReg = { ...(this._hacsSwitchReg || {}), deviceId: sw.deviceId, entityId: sw.entityId, disabled: false };
+      }
+      await this._callService("switch", "turn_on", { entity_id: sw.entityId });
+      this._prereleaseHacs = sw.entityId;
+      this._savePrefs();
+      await this._refreshHacs();
+    } catch (err) {
+      v.hacsError = (err && err.message) || String(err);
+    }
+    v.hacsEnabling = false;
+    this._renderSettingsVersion();
+    await this._loadVersion(false);
+  }
+
+  // Beim Ausschalten von "Vorabversionen anzeigen": den HACS-Schalter nur
+  // zurücksetzen, wenn das Panel ihn selbst eingeschaltet hat.
+  async _disableHacsPrerelease() {
+    const id = this._prereleaseHacs;
+    if (!id) return;
+    this._prereleaseHacs = null;
+    this._savePrefs();
+    const st = this._hass.states[id];
+    if (st && st.state === "on") {
+      try {
+        await this._callService("switch", "turn_off", { entity_id: id });
+        await this._refreshHacs();
+      } catch (err) {
+        // Nicht kritisch: der Schalter bleibt dann in HACS an.
+      }
+    }
   }
 
   async _loadVersion(force = false) {
@@ -2123,6 +2222,7 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     v.checking = false;
     if (v.data && v.data.error && !v.data.latest) v.error = v.data.error;
+    if (this._versionState().betaBlocked) await this._loadHacsSwitch();
     this._renderSettingsVersion();
   }
 
@@ -2265,14 +2365,23 @@ class UnifiDynamicPanel extends HTMLElement {
         : betaBlocked
         ? `<button type="button" class="ver-btn primary" disabled>${icon("verDownload")}${esc(t("verUpdate"))}</button>`
         : "";
+      const canEnable = Boolean(preSwitch && preSwitch.entityId);
       const hint = betaBlocked
-        ? `<div class="ver-hint">${esc(t("verPreHint"))} ${
+        ? `<div class="ver-hint">${esc(t(canEnable ? "verPreHintEnable" : "verPreHint"))}${
+            v.hacsError ? `<div class="ver-hint-err">${esc(t("verPreEnableError"))} ${esc(v.hacsError)}</div>` : ""
+          }<div class="ver-hint-acts">${
+            canEnable
+              ? `<button type="button" class="ver-btn" data-ver="hacs-enable" ${v.hacsEnabling ? 'disabled aria-busy="true"' : ""}>${
+                  v.hacsEnabling ? `<span class="ver-spin"></span>${esc(t("verPreEnabling"))}` : `${icon("flask")}${esc(t("verPreEnable"))}`
+                }</button>`
+              : ""
+          }${
             preSwitch && preSwitch.deviceId
               ? `<button type="button" class="ver-hint-link" data-ver="hacs-device" data-device-id="${esc(preSwitch.deviceId)}">${esc(
                   t("verPreHintLink")
                 )}</button>`
               : ""
-          }</div>`
+          }</div></div>`
         : "";
       const html = row(beta ? "upd beta" : "upd", beta ? "flask" : "verUp", t("verAvailable")(latest), sub, `${notes}${checkBtn}${installBtn}`);
       // Etikett "Beta" in den Titel, Hinweis in den Kasten.
@@ -2313,7 +2422,10 @@ class UnifiDynamicPanel extends HTMLElement {
       this._prerelease = !this._prerelease;
       this._savePrefs();
       this._renderSettingsVersion();
+      if (!this._prerelease) await this._disableHacsPrerelease();
       await this._loadVersion(false);
+    } else if (action === "hacs-enable") {
+      await this._enableHacsPrerelease();
     } else if (action === "hacs-device") {
       const sw = this._hacsPreReleaseSwitch();
       if (sw && sw.deviceId) {
@@ -7916,6 +8028,20 @@ class UnifiDynamicPanel extends HTMLElement {
           color: color-mix(in srgb, var(--udc-warning) 80%, var(--udc-text));
           font-size: 12.5px;
           line-height: 1.4;
+        }
+        .ver-hint-acts {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 8px 14px;
+          margin-top: 8px;
+        }
+        .ver-hint-acts .ver-btn {
+          color: var(--udc-text);
+        }
+        .ver-hint-err {
+          margin-top: 6px;
+          color: var(--udc-error);
         }
         .ver-hint-link {
           padding: 0;

@@ -347,8 +347,12 @@ Mit dem Schalter **„Vorabversionen anzeigen"** unter der Versionszeile
 sie neuer sind als das letzte stabile Release. Die Zeile ist dann violett
 mit dem Etikett „Beta". HACS installiert Vorabversionen nur, wenn bei
 dieser Integration im HACS-Gerät die Entität „Pre-release" aktiviert und
-eingeschaltet ist; ist sie aus, bleibt „Aktualisieren" gesperrt und ein
-Hinweis mit Link zum HACS-Gerät erklärt, was zu tun ist. Die tägliche
+eingeschaltet ist. HACS legt sie deaktiviert an; der Knopf **„In HACS
+freischalten"** im Hinweis aktiviert sie, wartet, bis HACS neu geladen hat
+(etwa 30 Sekunden), und schaltet sie ein. Schaltest du „Vorabversionen
+anzeigen" wieder aus, schaltet das Panel sie wieder aus, aber nur, wenn es
+sie selbst eingeschaltet hat. Bis dahin bleibt „Aktualisieren" gesperrt; der
+Hinweis verlinkt auch direkt zum HACS-Gerät. Die tägliche
 Prüfung unter „Reparaturen" meldet nie Vorabversionen.
 
 Darunter steht die **Controller-Verfügbarkeit** als Kachel mit dem Wert der

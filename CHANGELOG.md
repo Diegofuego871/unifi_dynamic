@@ -25,9 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **Pre-releases.** A "Show pre-releases" switch below the version row
   (saved per user) also offers beta versions. The row turns violet with a
   "Beta" label. HACS only installs pre-releases when its "Pre-release"
-  entity for this integration is switched on; otherwise "Update" stays
-  disabled and a note links to the HACS device. The daily check under
-  "Repairs" never reports pre-releases.
+  entity for this integration is switched on. HACS creates that entity
+  disabled; an "Enable in HACS" button in the note enables it, waits for
+  HACS to reload (about 30 seconds) and switches it on. Switching "Show
+  pre-releases" off again switches it off, but only if the panel switched
+  it on. Without the entity "Update" stays disabled and the note links to
+  the HACS device. The daily check under "Repairs" never reports
+  pre-releases.
 
 ### Changed
 
