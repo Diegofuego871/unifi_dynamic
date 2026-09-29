@@ -5423,15 +5423,13 @@ class UnifiDynamicPanel extends HTMLElement {
           /* min-height: 0 ist nötig, damit sich das Flex-Kind auf den
              Restplatz begrenzen lässt statt auf die volle Tabellenhöhe
              anzuwachsen - erst dann greift overflow: auto. overscroll-
-             behavior: none verhindert, dass iOS am Rand das ganze iframe
-             mitzieht, und auch das Nachfedern der Tabelle selbst (sonst
-             lässt sie sich über den Rand hinaus zur Seite und nach unten
-             ziehen). .content ist der einzige Scroll-Container (beide
+             behavior verhindert, dass iOS am Rand das ganze iframe
+             mitzieht. .content ist der einzige Scroll-Container (beide
              Richtungen); die Kopfzeilen kleben per sticky an ihm. */
           flex: 1 1 auto;
           min-height: 0;
           overflow: auto;
-          overscroll-behavior: none;
+          overscroll-behavior: contain;
           padding: 0 20px 12px;
         }
         @media (max-width: 600px) {

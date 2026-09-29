@@ -17,8 +17,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   afterwards.
 - The WiFi signal icon no longer looks cut off: the outer arc and the dot
   now fit completely inside the icon.
-- On phones the device table can no longer be dragged past its edges
-  (iOS rubber-band effect), which pulled the whole table sideways or down.
 
 ### Changed
 
