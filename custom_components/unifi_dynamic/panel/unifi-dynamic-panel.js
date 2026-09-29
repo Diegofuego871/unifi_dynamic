@@ -331,6 +331,7 @@ const STRINGS = {
     verInstalling: (v) => `Wird aktualisiert auf ${v}…`,
     verInstallingSub: "HACS lädt die neue Version herunter",
     verInstallError: "Aktualisieren fehlgeschlagen:",
+    verHacsSyncing: "Wird mit HACS abgeglichen …",
     verHacsPending:
       "HACS kennt diese Version noch nicht. \"Nach Updates suchen\" lässt HACS die Versionen neu laden; sonst später erneut versuchen.",
     verRestartNeeded: (v) => `${v} installiert – Neustart nötig`,
@@ -707,6 +708,7 @@ const STRINGS = {
     verInstalling: (v) => `Updating to ${v}…`,
     verInstallingSub: "HACS is downloading the new version",
     verInstallError: "Update failed:",
+    verHacsSyncing: "Syncing with HACS …",
     verHacsPending:
       "HACS doesn't know this version yet. \"Check for updates\" makes HACS reload its versions; otherwise try again later.",
     verRestartNeeded: (v) => `${v} installed – restart required`,
@@ -2212,7 +2214,20 @@ class UnifiDynamicPanel extends HTMLElement {
     const { hacs, a, latest } = this._versionState();
     if (!force && hacs && !v.hacsRefreshed && latest && (!a.latest_version || this._cmpVersion(latest, a.latest_version) > 0)) {
       v.hacsRefreshed = true;
+      // Während HACS nachlädt, nicht zum Klick auf "Nach Updates suchen"
+      // auffordern: das Panel erledigt genau das gerade selbst.
+      v.hacsSyncing = true;
+      this._renderSettingsVersion();
       await this._refreshHacs();
+      // Der neue Stand der Update-Entität kommt als Zustandsänderung etwas
+      // nach dem Dienstaufruf: kurz darauf warten, höchstens 4 Sekunden.
+      const until = Date.now() + 4000;
+      while (Date.now() < until) {
+        const now = this._versionState().a;
+        if (now.latest_version && this._cmpVersion(now.latest_version, latest) >= 0) break;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+      v.hacsSyncing = false;
     }
     v.checking = false;
     if (v.data && v.data.error && !v.data.latest) v.error = v.data.error;
@@ -2344,11 +2359,13 @@ class UnifiDynamicPanel extends HTMLElement {
         ? `${t("verInstalledVia")(installed, false)} · ${t("verNoHacs")}`
         : canInstall
         ? t("verInstalledVia")(installed, true)
+        : v.hacsSyncing
+        ? `${t("verInstalledVia")(installed, true)} · ${t("verHacsSyncing")}`
         : `${t("verInstalledVia")(installed, true)} · ${t("verHacsPending")}`;
       // Erneut prüfen geht immer: neben "Aktualisieren" als kompakter
       // Symbolknopf, sonst mit Beschriftung.
-      const busy = v.checking ? `disabled aria-busy="true"` : "";
-      const spinOrIcon = v.checking ? `<span class="ver-spin"></span>` : icon("verCheck");
+      const busy = v.checking || v.hacsSyncing ? `disabled aria-busy="true"` : "";
+      const spinOrIcon = v.checking || v.hacsSyncing ? `<span class="ver-spin"></span>` : icon("verCheck");
       const checkBtn = canInstall || betaBlocked
         ? `<button type="button" class="ver-btn icon" data-ver="check" ${busy} title="${esc(t("verCheck"))}" aria-label="${esc(
             t("verCheck")

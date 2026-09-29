@@ -5,6 +5,17 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.15.3] - 2026-09-29
+
+### Fixed
+
+- When GitHub already knows a newer version but HACS does not yet, the
+  update row briefly asked to press "Check for updates" although the panel
+  was already reloading HACS in the background. During this automatic sync
+  the row now shows "Syncing with HACS …" with a spinner and a disabled
+  button; the hint only appears if HACS still doesn't know the version
+  afterwards.
+
 ## [2.15.2] - 2026-09-29
 
 ### Changed
@@ -1414,6 +1425,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.15.3]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.3
 [2.15.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.2
 [2.15.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.1
 [2.15.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.0
