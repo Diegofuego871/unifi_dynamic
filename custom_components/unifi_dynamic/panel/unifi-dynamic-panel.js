@@ -283,6 +283,26 @@ const STRINGS = {
     optPersistentController: "Controller-Ausfall",
     optPersistentControllerShort: "Solange der Controller nicht antwortet.",
     optPersistentControllerInfo: "Verschwindet automatisch, sobald er wieder erreichbar ist.",
+    statTitle: "Statistik · 24 Std.",
+    statCtlTitle: "Controller · 24 Std.",
+    statBack: "Zurück",
+    statNoData: "Noch keine Daten",
+    statNoOutages: "Keine Unterbrüche",
+    statOutages: (n, longest) => `${n} ${n === 1 ? "Unterbruch" : "Unterbrüche"} · längster ${longest}`,
+    tileAvail: "Verfügbarkeit",
+    tileWifi: "WLAN-Empfang",
+    tileWifiShort: "WLAN",
+    tilePing: "Antwortzeit",
+    tilePingSilent: "Kein Fehler",
+    wifiTierNames: ["", "schlecht", "schwach", "ok", "sehr gut"],
+    wifiMedian: "Median",
+    wifiBest: "Bester",
+    wifiWorst: "Schlechtester",
+    wifiAps: "Access Points",
+    wifiGaps: "Ohne WLAN-Daten",
+    wifiGapsNone: "keine Lücken",
+    wifiNoData: "Noch keine WLAN-Daten. Der Verlauf wird seit dem Update auf 2.15.0 bei jeder Abfrage aufgezeichnet.",
+    wifiLegend: ["", "unter −75 dBm", "−75 … −68", "−67 … −61", "ab −60 dBm"],
     secAvail: "Verfügbarkeit",
     secCtlAvail: "Controller-Verfügbarkeit",
     verName: (v) => `UniFi Dynamic Clients ${v}`,
@@ -293,6 +313,14 @@ const STRINGS = {
     verCheckingSub: "Suche nach Updates…",
     verCheckError: "Prüfung fehlgeschlagen:",
     verAvailable: (v) => `Version ${v} verfügbar`,
+    verBeta: "Beta",
+    verInstalled: (v) => `Installiert: ${v}`,
+    verPreShort: "Vorabversion",
+    verPreToggle: "Vorabversionen anzeigen",
+    verPreToggleShort: "Auch Beta-Versionen zum Testen anbieten. Gilt nur für dich.",
+    verPreHint:
+      "HACS installiert Vorabversionen nur, wenn bei dieser Integration „Pre-release“ eingeschaltet ist: im HACS-Gerät die Entität „Pre-release“ aktivieren und einschalten.",
+    verPreHintLink: "HACS-Gerät öffnen",
     verInstalledVia: (v, hacs) => `Installiert: ${v}${hacs ? " · über HACS" : ""}`,
     verNoHacs: "Installation über HACS oder manuell (siehe Release Notes).",
     verReleaseNotes: "Release Notes",
@@ -628,6 +656,26 @@ const STRINGS = {
     optPersistentController: "Controller outage",
     optPersistentControllerShort: "While the controller doesn't respond.",
     optPersistentControllerInfo: "Disappears automatically once it is reachable again.",
+    statTitle: "Statistics · 24 h",
+    statCtlTitle: "Controller · 24 h",
+    statBack: "Back",
+    statNoData: "No data yet",
+    statNoOutages: "No outages",
+    statOutages: (n, longest) => `${n} ${n === 1 ? "outage" : "outages"} · longest ${longest}`,
+    tileAvail: "Availability",
+    tileWifi: "WiFi signal",
+    tileWifiShort: "WiFi",
+    tilePing: "Response time",
+    tilePingSilent: "Not an error",
+    wifiTierNames: ["", "poor", "weak", "fair", "very good"],
+    wifiMedian: "Median",
+    wifiBest: "Best",
+    wifiWorst: "Worst",
+    wifiAps: "Access points",
+    wifiGaps: "Without WiFi data",
+    wifiGapsNone: "no gaps",
+    wifiNoData: "No WiFi data yet. The history is recorded on every poll since updating to 2.15.0.",
+    wifiLegend: ["", "below −75 dBm", "−75 … −68", "−67 … −61", "from −60 dBm"],
     secAvail: "Availability",
     secCtlAvail: "Controller availability",
     verName: (v) => `UniFi Dynamic Clients ${v}`,
@@ -638,6 +686,14 @@ const STRINGS = {
     verCheckingSub: "Looking for updates…",
     verCheckError: "Check failed:",
     verAvailable: (v) => `Version ${v} available`,
+    verBeta: "Beta",
+    verInstalled: (v) => `Installed: ${v}`,
+    verPreShort: "pre-release",
+    verPreToggle: "Show pre-releases",
+    verPreToggleShort: "Also offer beta versions for testing. Applies only to you.",
+    verPreHint:
+      "HACS only installs pre-releases when \"Pre-release\" is switched on for this integration: enable and switch on the \"Pre-release\" entity on the HACS device.",
+    verPreHintLink: "Open HACS device",
     verInstalledVia: (v, hacs) => `Installed: ${v}${hacs ? " · via HACS" : ""}`,
     verNoHacs: "Install via HACS or manually (see release notes).",
     verReleaseNotes: "Release notes",
@@ -804,12 +860,30 @@ function pingTier(ms) {
   return i === -1 ? 1 : 5 - i;
 }
 
+// WLAN-Fächer wie bei Apple: Punkt + 3 Bögen = 4 Stufen, gleiche Grenzen
+// wie signalBars. Farben aus der Ping-Palette (grün, orange, violett, rot).
+function wifiFanHtml(tier, stale) {
+  const arc = (r) => {
+    const a = Math.PI / 4;
+    const x1 = 9 - r * Math.sin(a);
+    const y = 13.5 - r * Math.cos(a);
+    const x2 = 9 + r * Math.sin(a);
+    return `M${x1.toFixed(2)} ${y.toFixed(2)} A${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y.toFixed(2)}`;
+  };
+  return `<svg class="wfan w${tier}${stale ? " stale" : ""}" viewBox="0 0 18 14" aria-hidden="true"><circle class="d" cx="9" cy="12.6" r="1.7"/>${[5, 9, 13]
+    .map((r, i) => `<path class="s a${i + 1}" d="${arc(r)}"/>`)
+    .join("")}</svg>`;
+}
+
 function pingBarsHtml(tier) {
   return `<span class="pbars t${tier}" aria-hidden="true"><u></u><u></u><u></u><u></u><u></u></span>`;
 }
 
 // Material Design Icons als Pfade; das iframe kennt HAs ha-icon nicht.
 const ICONS = {
+  chevronRight: "M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z",
+  chevronLeft: "M15.41,16.58L10.83,12L15.41,7.41L14,6L8,12L14,18L15.41,16.58Z",
+  flask: "M5,19A1,1 0 0,0 6,20H18A1,1 0 0,0 19,19C19,18.79 18.93,18.59 18.82,18.43L13,8.35V4H11V8.35L5.18,18.43C5.07,18.59 5,18.79 5,19M6,22A3,3 0 0,1 3,19C3,18.4 3.18,17.84 3.5,17.37L9,7.81V6A1,1 0 0,1 8,5V4A2,2 0 0,1 10,2H14A2,2 0 0,1 16,4V5A1,1 0 0,1 15,6V7.81L20.5,17.37C20.82,17.84 21,18.4 21,19A3,3 0 0,1 18,22H6M13,16L14.34,14.66L16.27,18H7.73L10.39,13.39L13,16M12.5,12A0.5,0.5 0 0,1 13,12.5A0.5,0.5 0 0,1 12.5,13A0.5,0.5 0 0,1 12,12.5A0.5,0.5 0 0,1 12.5,12Z",
   dice: "M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M7,5A2,2 0 0,0 5,7A2,2 0 0,0 7,9A2,2 0 0,0 9,7A2,2 0 0,0 7,5M17,15A2,2 0 0,0 15,17A2,2 0 0,0 17,19A2,2 0 0,0 19,17A2,2 0 0,0 17,15M17,5A2,2 0 0,0 15,7A2,2 0 0,0 17,9A2,2 0 0,0 19,7A2,2 0 0,0 17,5M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M7,15A2,2 0 0,0 5,17A2,2 0 0,0 7,19A2,2 0 0,0 9,17A2,2 0 0,0 7,15Z",
   alert: "M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z",
   key: "M7,14A2,2 0 0,1 5,12A2,2 0 0,1 7,10A2,2 0 0,1 9,12A2,2 0 0,1 7,14M12.65,10C11.83,7.67 9.61,6 7,6A6,6 0 0,0 1,12A6,6 0 0,0 7,18C9.61,18 11.83,16.33 12.65,14H17V18H21V14H23V10H12.65Z",
@@ -874,6 +948,8 @@ const DEFAULT_PREFS = {
   hub: "all",
   // Lade-Animation beim Verlauf (siehe LOADERS) oder "random".
   loader: "elephant",
+  // Vorabversionen (Beta) im Versionsbereich der Einstellungen anbieten.
+  prerelease: false,
 };
 
 // Lade-Animationen zur Auswahl in den Einstellungen. "random" wählt bei
@@ -931,6 +1007,7 @@ function sanitizePrefs(raw) {
     availRange: Object.prototype.hasOwnProperty.call(AVAIL_RANGES, p.availRange) ? p.availRange : "24h",
     hub: typeof p.hub === "string" && p.hub ? p.hub : "all",
     loader: LOADER_CHOICES.includes(p.loader) ? p.loader : "elephant",
+    prerelease: p.prerelease === true,
     // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
     // Kopie oder der Stand von HA neuer ist.
     updated: typeof p.updated === "number" ? p.updated : 0,
@@ -973,6 +1050,8 @@ class UnifiDynamicPanel extends HTMLElement {
     this._settings = null;
     // Verbindungsdialog: siehe _openConn.
     this._conn = null;
+    // Statistik-Unter-Fenster: siehe _openStat.
+    this._stat = null;
     this._hostCount = 0;
     this._loading = true;
     this._error = null;
@@ -1037,6 +1116,7 @@ class UnifiDynamicPanel extends HTMLElement {
     this._availRange = prefs.availRange || "24h";
     this._hub = prefs.hub || "all";
     this._loader = prefs.loader || "elephant";
+    this._prerelease = prefs.prerelease === true;
   }
 
   _currentPrefs() {
@@ -1053,6 +1133,7 @@ class UnifiDynamicPanel extends HTMLElement {
       availRange: this._availRange,
       hub: this._hub,
       loader: this._loader,
+      prerelease: this._prerelease,
     };
   }
 
@@ -1405,6 +1486,7 @@ class UnifiDynamicPanel extends HTMLElement {
   }
 
   _closeSettings() {
+    this._closeStat();
     const dialog = this.shadowRoot.querySelector("dialog.settings");
     this._settings = null;
     if (dialog && dialog.open) {
@@ -1967,16 +2049,49 @@ class UnifiDynamicPanel extends HTMLElement {
     return null;
   }
 
-  // Einfacher Versionsvergleich (1.2.10 > 1.2.9, führendes v egal).
+  // Versionsvergleich wie im Backend (update_check.compare_versions):
+  // 1.2.10 > 1.2.9, und eine Vorabversion (2.16.0b1) liegt unter der
+  // fertigen (2.16.0), aber über der vorherigen (2.15.3).
+  _versionKey(v) {
+    const m = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?[-.]?(?:(alpha|beta|pre|rc|a|b)\.?(\d*))?/i.exec(String(v || "").trim());
+    if (!m) return [0, 0, 0, 3, 0];
+    const rank = { a: 0, alpha: 0, b: 1, beta: 1, pre: 1, rc: 2 };
+    return [+m[1], +(m[2] || 0), +(m[3] || 0), m[4] ? rank[m[4].toLowerCase()] : 3, +(m[5] || 0)];
+  }
+
   _cmpVersion(a, b) {
-    const parts = (v) => String(v || "").replace(/^v/i, "").split(/[.+-]/).map((x) => parseInt(x, 10) || 0);
-    const x = parts(a);
-    const y = parts(b);
-    for (let i = 0; i < Math.max(x.length, y.length); i++) {
-      const d = (x[i] || 0) - (y[i] || 0);
-      if (d) return d > 0 ? 1 : -1;
+    const x = this._versionKey(a);
+    const y = this._versionKey(b);
+    for (let i = 0; i < 5; i++) {
+      if (x[i] !== y[i]) return x[i] > y[i] ? 1 : -1;
     }
     return 0;
+  }
+
+  _isPrerelease(v) {
+    return Boolean(v) && this._versionKey(v)[3] < 3;
+  }
+
+  // Schalter "Pre-release" von HACS für dieses Repository: eine Entität am
+  // selben HACS-Gerät wie die Update-Entität. Standardmässig deaktiviert;
+  // deaktiviert heisst hier: nicht in hass.states.
+  _hacsPreReleaseSwitch() {
+    const hass = this._hass;
+    const upd = this._hacsUpdateEntity();
+    if (!hass || !hass.entities || !upd) return null;
+    const reg = hass.entities[upd.entity_id];
+    const deviceId = reg && reg.device_id;
+    if (!deviceId) return null;
+    const sw = Object.values(hass.entities).find(
+      (e) =>
+        e &&
+        e.platform === "hacs" &&
+        e.device_id === deviceId &&
+        String(e.entity_id).startsWith("switch.") &&
+        /pre.?release/i.test(`${e.entity_id} ${e.translation_key || ""}`)
+    );
+    const state = sw ? hass.states[sw.entity_id] : null;
+    return { deviceId, entityId: sw ? sw.entity_id : null, on: Boolean(state && state.state === "on") };
   }
 
   async _loadVersion(force = false) {
@@ -1990,7 +2105,7 @@ class UnifiDynamicPanel extends HTMLElement {
     v.error = null;
     this._renderSettingsVersion();
     const jobs = [
-      this._hass.callWS({ type: "unifi_dynamic/version", force }).then(
+      this._hass.callWS({ type: "unifi_dynamic/version", force, prerelease: Boolean(this._prerelease) }).then(
         (r) => (v.data = r),
         (err) => (v.error = (err && err.message) || String(err))
       ),
@@ -2047,24 +2162,60 @@ class UnifiDynamicPanel extends HTMLElement {
     const installed = d.installed || a.installed_version || null;
     let latest = d.latest || null;
     let url = d.release_url || null;
-    if (a.latest_version && (!latest || this._cmpVersion(a.latest_version, latest) >= 0)) {
+    // Vorabversion nur auf Wunsch und nur, wenn sie neuer ist.
+    if (this._prerelease && d.prerelease && (!latest || this._cmpVersion(d.prerelease, latest) > 0)) {
+      latest = d.prerelease;
+      url = d.prerelease_url || url;
+    }
+    // HACS kennt eine Vorabversion nur mit eingeschaltetem "Pre-release";
+    // ohne unseren Schalter keine Vorabversion von HACS übernehmen.
+    if (
+      a.latest_version &&
+      (!latest || this._cmpVersion(a.latest_version, latest) >= 0) &&
+      (this._prerelease || !this._isPrerelease(a.latest_version))
+    ) {
       latest = a.latest_version;
       url = a.release_url || url;
     }
+    const beta = this._isPrerelease(latest);
+    const preSwitch = beta && hacs ? this._hacsPreReleaseSwitch() : null;
     const inProgress = Boolean(hacs && (a.in_progress === true || typeof a.in_progress === "number"));
     // HACS hat eine neuere Version auf die Platte gelegt, als gerade läuft.
     const restart = Boolean(hacs && a.installed_version && installed && this._cmpVersion(a.installed_version, installed) > 0);
     // Installierbar nur, was HACS selbst als neueste Version kennt: eine
     // Version, die HACS noch nicht geladen hat, lehnt es ab.
-    const canInstall = Boolean(hacs && a.latest_version && installed && this._cmpVersion(a.latest_version, installed) > 0);
-    return { v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall };
+    let canInstall = Boolean(hacs && a.latest_version && installed && this._cmpVersion(a.latest_version, installed) > 0);
+    // Beta ohne "Pre-release" in HACS: HACS würde die stabile Version
+    // installieren (oder gar nichts) - deshalb sperren und erklären.
+    const betaBlocked = Boolean(beta && hacs && (!preSwitch || !preSwitch.on));
+    if (betaBlocked) canInstall = false;
+    return { v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall, beta, betaBlocked, preSwitch };
   }
 
   _versionHtml() {
     const t = (k) => this._t(k);
     const esc = (x) => this._escape(x);
-    const { v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall } = this._versionState();
+    const { v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall, beta, betaBlocked, preSwitch } = this._versionState();
     if (!installed && !v.data && !v.error) return "";
+    return this._versionRowHtml({ v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall, beta, betaBlocked, preSwitch }) + this._prereleaseOptHtml();
+  }
+
+  // Schalter "Vorabversionen anzeigen" unter dem Versionskasten (pro Benutzer).
+  _prereleaseOptHtml() {
+    const t = (k) => this._t(k);
+    const esc = (x) => this._escape(x);
+    const on = Boolean(this._prerelease);
+    return `<div class="ver-opt">
+        <div><div class="ver-opt-l">${esc(t("verPreToggle"))}</div><div class="ver-opt-d">${esc(t("verPreToggleShort"))}</div></div>
+        <button type="button" class="sw-btn beta${on ? " on" : ""}" role="switch" aria-checked="${on}" data-ver="prerelease" aria-label="${esc(
+          t("verPreToggle")
+        )}"><span></span></button>
+      </div>`;
+  }
+
+  _versionRowHtml({ v, d, hacs, a, installed, latest, url, inProgress, restart, canInstall, beta, betaBlocked, preSwitch }) {
+    const t = (k) => this._t(k);
+    const esc = (x) => this._escape(x);
     const row = (cls, iconName, title, sub, right) => `<div class="ver ${cls}">
         <span class="ver-ic">${icon(iconName)}</span>
         <div class="ver-t"><b>${esc(title)}</b><small>${esc(sub)}</small></div>
@@ -2093,6 +2244,8 @@ class UnifiDynamicPanel extends HTMLElement {
     if (latest && installed && this._cmpVersion(latest, installed) > 0) {
       const sub = v.installError
         ? `${t("verInstallError")} ${v.installError}`
+        : beta && betaBlocked
+        ? `${t("verInstalled")(installed)} · ${t("verPreShort")}`
         : !hacs
         ? `${t("verInstalledVia")(installed, false)} · ${t("verNoHacs")}`
         : canInstall
@@ -2102,22 +2255,30 @@ class UnifiDynamicPanel extends HTMLElement {
       // Symbolknopf, sonst mit Beschriftung.
       const busy = v.checking ? `disabled aria-busy="true"` : "";
       const spinOrIcon = v.checking ? `<span class="ver-spin"></span>` : icon("verCheck");
-      const checkBtn = canInstall
+      const checkBtn = canInstall || betaBlocked
         ? `<button type="button" class="ver-btn icon" data-ver="check" ${busy} title="${esc(t("verCheck"))}" aria-label="${esc(
             t("verCheck")
           )}">${spinOrIcon}</button>`
         : `<button type="button" class="ver-btn" data-ver="check" ${busy}>${spinOrIcon}${esc(t("verCheck"))}</button>`;
-      return row(
-        "upd",
-        "verUp",
-        t("verAvailable")(latest),
-        sub,
-        `${notes}${checkBtn}${
-          canInstall
-            ? `<button type="button" class="ver-btn primary" data-ver="install">${icon("verDownload")}${esc(t("verUpdate"))}</button>`
-            : ""
-        }`
-      );
+      const installBtn = canInstall
+        ? `<button type="button" class="ver-btn primary" data-ver="install">${icon("verDownload")}${esc(t("verUpdate"))}</button>`
+        : betaBlocked
+        ? `<button type="button" class="ver-btn primary" disabled>${icon("verDownload")}${esc(t("verUpdate"))}</button>`
+        : "";
+      const hint = betaBlocked
+        ? `<div class="ver-hint">${esc(t("verPreHint"))} ${
+            preSwitch && preSwitch.deviceId
+              ? `<button type="button" class="ver-hint-link" data-ver="hacs-device" data-device-id="${esc(preSwitch.deviceId)}">${esc(
+                  t("verPreHintLink")
+                )}</button>`
+              : ""
+          }</div>`
+        : "";
+      const html = row(beta ? "upd beta" : "upd", beta ? "flask" : "verUp", t("verAvailable")(latest), sub, `${notes}${checkBtn}${installBtn}`);
+      // Etikett "Beta" in den Titel, Hinweis in den Kasten.
+      return beta
+        ? html.replace("</b>", ` <span class="ver-tag">${esc(t("verBeta"))}</span></b>`).replace(/<\/div>\s*$/, `${hint}</div>`)
+        : html;
     }
     const checked = d.checked_at ? t("verChecked")(this._formatRelative(d.checked_at)) : "";
     const sub = v.checking
@@ -2148,7 +2309,18 @@ class UnifiDynamicPanel extends HTMLElement {
 
   async _versionAction(action) {
     const v = (this._version = this._version || {});
-    if (action === "check") {
+    if (action === "prerelease") {
+      this._prerelease = !this._prerelease;
+      this._savePrefs();
+      this._renderSettingsVersion();
+      await this._loadVersion(false);
+    } else if (action === "hacs-device") {
+      const sw = this._hacsPreReleaseSwitch();
+      if (sw && sw.deviceId) {
+        this._closeSettings();
+        this._navigate(`/config/devices/device/${sw.deviceId}`, false);
+      }
+    } else if (action === "check") {
       await this._loadVersion(true);
     } else if (action === "install") {
       const { hacs, a, canInstall } = this._versionState();
@@ -2189,14 +2361,28 @@ class UnifiDynamicPanel extends HTMLElement {
     };
   }
 
+  // Controller-Verfügbarkeit als Kachel (Wert der letzten 24 Stunden),
+  // Details im Unter-Fenster. Daneben der Verbindungsstatus.
   _settingsAvailHtml() {
-    const src = this._settingsAvailSrc();
-    return src ? this._availSectionHtml(null, src) : "";
+    const st = this._settings;
+    if (!st || !st.data) return "";
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const tiles = [this._availTile(st.data.controller_avail, "ctl", "data-set", t("tileAvail"))];
+    const c = st.data.connection;
+    if (c) {
+      const status = { ok: "connOk", auth_failed: "connAuthFailed", offline: "connOffline" }[c.status] || "connOk";
+      tiles.push(`<div class="st-tile static"><span class="st-k">${esc(t("connStatus"))}</span>
+          <span class="st-v"><span class="conn-status ${esc(c.status)}">${esc(t(status))}</span></span>
+          <span class="st-sub">${esc(c.host)}</span></div>`);
+    }
+    return `<h3>${esc(t("statCtlTitle"))}</h3><div class="st-tiles n${tiles.length}">${tiles.join("")}</div>`;
   }
 
   // Nur den Zeitstrahl ersetzen (Verlauf nachgeladen, Zeitraum gewechselt):
   // Eingaben und Aufklappzustand im Rest des Dialogs bleiben unberührt.
   _renderSettingsAvail() {
+    this._renderStat();
     const slot = this.shadowRoot && this.shadowRoot.querySelector("dialog.settings .avail-slot");
     if (!slot) return;
     const html = this._settingsAvailHtml();
@@ -2267,6 +2453,7 @@ class UnifiDynamicPanel extends HTMLElement {
         st.draft.purge_exclude = st.draft.purge_exclude.filter((m) => m !== btn.dataset.mac);
         this._renderSettings();
       } else if (action === "save") this._saveSettings();
+      else if (action === "stat") this._openStat(btn.dataset.kind);
       else if (action === "loader-pick") {
         if (LOADER_CHOICES.includes(btn.dataset.kind) && btn.dataset.kind !== this._loader) {
           this._loader = btn.dataset.kind;
@@ -2603,7 +2790,22 @@ class UnifiDynamicPanel extends HTMLElement {
       });
   }
 
-  _pingSectionHtml(c) {
+  // Zeitraum-Schalter der Unter-Fenster (gemeinsam, pro Benutzer gemerkt).
+  _rangeSwitchHtml() {
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const range = this._availRange || "24h";
+    return `<div class="stat-range"><span class="avail-range" role="group" aria-label="${esc(t("availRangeGroup"))}">${Object.keys(AVAIL_RANGES)
+      .map(
+        (r) =>
+          `<button type="button" data-dlg="avail-range" data-range="${r}" aria-pressed="${r === range}" class="${
+            r === range ? "active" : ""
+          }">${esc(t("availRanges")[r])}</button>`
+      )
+      .join("")}</span></div>`;
+  }
+
+  _pingSectionHtml(c, inStat = false) {
     // Nur wenn der Hub misst (list_clients liefert dann "ping").
     if (!c.ping) return "";
     this._ensurePing(c);
@@ -2619,7 +2821,9 @@ class UnifiDynamicPanel extends HTMLElement {
           <button type="button" class="sw-btn${entityOn ? " on" : ""}" role="switch" aria-checked="${entityOn}" data-dlg="ping-entity" ${busy ? "disabled" : ""} aria-label="${esc(t("pingEntity"))}"><span></span></button></div>
         <div class="opt-short">${esc(t("pingEntityShort"))}</div>
       </div>`;
-    const head = `<h3 class="avail-h3"><span>${esc(t("pingTitle"))}</span><span class="ping-range">${esc(t("pingRange")[range])}</span></h3>`;
+    const head = inStat
+      ? this._rangeSwitchHtml()
+      : `<h3 class="avail-h3"><span>${esc(t("pingTitle"))}</span><span class="ping-range">${esc(t("pingRange")[range])}</span></h3>`;
     let body;
     if (!data && h && h.error) body = `<p class="dlg-note">${esc(h.error)}</p>`;
     else if (!data) body = this._availLoaderHtml(`ping|${h ? h.key : ""}`, h && h.startedAt);
@@ -2636,6 +2840,282 @@ class UnifiDynamicPanel extends HTMLElement {
       )}</div>${this._pingChartHtml(data)}`;
     }
     return `<section class="ping">${head}${body}${toggle}</section>`;
+  }
+
+  // ---------------------------------------------------------------------
+  // Statistik: Kacheln mit dem Wert der letzten 24 Stunden (kommt mit der
+  // Clientliste), ein Tipp öffnet das Unter-Fenster mit Zeitraum-Schalter
+  // und Diagramm. Geladen wird erst dort.
+  // ---------------------------------------------------------------------
+
+  _statTileHtml(kind, label, valueHtml, sub, attr) {
+    const esc = (v) => this._escape(v);
+    return `<button type="button" class="st-tile" ${attr}="stat" data-kind="${kind}" aria-label="${esc(label)}">
+        <span class="st-k">${esc(label)}</span>${icon("chevronRight")}
+        <span class="st-v">${valueHtml}</span>
+        <span class="st-sub">${esc(sub)}</span>
+      </button>`;
+  }
+
+  _availTile(summary, kind, attr, label) {
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    if (!summary) return this._statTileHtml(kind, label, `<span class="muted">–</span>`, t("statNoData"), attr);
+    const pct = summary.outages && summary.pct > 99.9 ? 99.9 : summary.pct;
+    const value = `${esc(this._fmtPct(pct))}<small>%</small>`;
+    const sub = summary.outages
+      ? t("statOutages")(summary.outages, this._formatDuration(summary.longest * 1000))
+      : t("statNoOutages");
+    return this._statTileHtml(kind, label, value, sub, attr);
+  }
+
+  _fmtPct(v) {
+    const lang = pickLang(this._hass) === "de" ? "de-CH" : "en-US";
+    return Number(v).toLocaleString(lang, { minimumFractionDigits: v >= 100 ? 0 : 1, maximumFractionDigits: 1 });
+  }
+
+  _statTilesHtml(c) {
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const stats = c.stats || {};
+    const tiles = [this._availTile(stats.avail, "avail", "data-dlg", t("tileAvail"))];
+    if (!c.is_wired && (typeof c.signal === "number" || (stats.signal && stats.signal.median != null))) {
+      const dbm = stats.signal && stats.signal.median != null ? stats.signal.median : c.signal;
+      const tier = signalBars(dbm);
+      tiles.push(
+        this._statTileHtml(
+          "wifi",
+          t("tileWifiShort"),
+          `${wifiFanHtml(tier, false)}${esc(Math.round(dbm))}`,
+          `dBm · ${t("wifiTierNames")[tier]}`,
+          "data-dlg"
+        )
+      );
+    }
+    if (c.ping) {
+      const p = c.ping;
+      const value =
+        p.status === "no_reply"
+          ? `<span class="muted st-small">${esc(t("pingNoReplyShort"))}</span>`
+          : p.median == null
+          ? `<span class="muted">–</span>`
+          : `${pingBarsHtml(pingTier(p.median))}${esc(this._fmtNum(p.median))}<small>ms</small>`;
+      const sub = p.status === "no_reply" || p.loss == null ? t("statNoData") : t("pingLossShort")(this._fmtNum(p.loss));
+      tiles.push(this._statTileHtml("ping", t("tilePing"), value, p.status === "no_reply" ? t("tilePingSilent") : sub, "data-dlg"));
+    }
+    return `<h3>${esc(t("statTitle"))}</h3><div class="st-tiles n${tiles.length}">${tiles.join("")}</div>`;
+  }
+
+  // Verlauf der WLAN-Signalstärke (unifi_dynamic/signal_history).
+  _ensureSignal(c) {
+    const range = this._availRange || "24h";
+    const key = `${c.entry_id}|${c.mac}|${range}`;
+    const h = this._signalHist;
+    if (h && h.key === key && (h.loading || Date.now() - h.at < 60000)) return;
+    const prev = h && h.key === key ? h.data : null;
+    const startedAt = Date.now();
+    this._signalHist = { key, loading: true, data: prev, at: startedAt, startedAt };
+    this._tickLoader();
+    this._hass
+      .callWS({ type: "unifi_dynamic/signal_history", entry_id: c.entry_id, mac: c.mac, range })
+      .then((data) => {
+        if (!this._signalHist || this._signalHist.key !== key) return;
+        this._signalHist = { key, loading: false, data, at: Date.now() };
+        this._renderStat();
+      })
+      .catch((err) => {
+        if (!this._signalHist || this._signalHist.key !== key) return;
+        this._signalHist = { key, loading: false, data: prev, error: (err && err.message) || String(err), at: Date.now() };
+        this._renderStat();
+      });
+  }
+
+  _signalSectionHtml(c) {
+    this._ensureSignal(c);
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const h = this._signalHist;
+    const range = this._availRange || "24h";
+    const data = h && h.key === `${c.entry_id}|${c.mac}|${range}` ? h.data : null;
+    let body;
+    if (!data && h && h.error) body = `<p class="dlg-note">${esc(h.error)}</p>`;
+    else if (!data) body = this._availLoaderHtml(`signal|${h ? h.key : ""}`, h && h.startedAt);
+    else if (!data.summary) body = `<p class="dlg-note">${esc(t("wifiNoData"))}</p>`;
+    else {
+      const s = data.summary;
+      const stat = (label, value) => `<div class="ping-stat"><span>${esc(label)}</span><b>${value}</b></div>`;
+      const dbm = (v) => `${esc(Math.round(v))} dBm`;
+      body = `<div class="ping-stats">${stat(t("wifiMedian"), `${wifiFanHtml(signalBars(s.median), false)}${dbm(s.median)}`)}${stat(
+        t("wifiBest"),
+        dbm(s.best)
+      )}${stat(t("wifiWorst"), dbm(s.worst))}</div>${this._signalChartHtml(data)}`;
+      const aps = (s.aps || []).map((a) => `${a.name} ${a.share} %`).join(" · ");
+      // Zeit ohne WLAN-Daten seit dem ersten Block (Kabel, ausser Haus).
+      const size = data.bucket || 300;
+      const first = (data.buckets || [])[0];
+      const slots = first ? Math.max(1, Math.round(((data.now || Date.now() / 1000) - first[0]) / size)) : 0;
+      const gap = first ? Math.max(0, slots - data.buckets.length) * size : 0;
+      body += `<div class="stat-list">${aps ? `<div><span>${esc(t("wifiAps"))}</span><span>${esc(aps)}</span></div>` : ""}<div><span>${esc(
+        t("wifiGaps")
+      )}</span><span>${esc(gap >= size * 2 ? this._formatDuration(gap * 1000) : t("wifiGapsNone"))}</span></div></div>`;
+    }
+    return `<section class="ping">${this._rangeSwitchHtml()}${body}</section>`;
+  }
+
+  // Säulen je Block, Höhe von -90 dBm (leer) bis -30 dBm (voll), Farbe nach
+  // Stufe des Medians. Lücken, wo der Client nicht im WLAN war.
+  _signalChartHtml(data) {
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    const size = data.bucket || 300;
+    const end = data.now || Date.now() / 1000;
+    const span = data.span || 86400;
+    const start = end - span;
+    const n = Math.round(span / size);
+    const lang = pickLang(this._hass) === "de" ? "de-CH" : "en-US";
+    const names = new Map(((data.summary && data.summary.aps) || []).map((a) => [a.ap_mac, a.name]));
+    const bars = (data.buckets || [])
+      .filter((b) => b[0] >= start - size)
+      .map((b) => {
+        const idx = Math.max(0, Math.min(n - 1, Math.floor((b[0] - start) / size)));
+        const left = (idx / n) * 100;
+        const hgt = Math.max(6, Math.min(100, ((b[1] + 90) / 60) * 100));
+        const d = new Date(b[0] * 1000);
+        const time =
+          span > 86400
+            ? d.toLocaleString(lang, { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })
+            : d.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+        const tip = `${time} · ${Math.round(b[1])} dBm (${Math.round(b[2])} … ${Math.round(b[3])})${b[5] ? ` · ${names.get(b[5]) || b[5]}` : ""}`;
+        return `<i class="pb w${signalBars(b[1])}" style="left:${left.toFixed(2)}%;height:${hgt.toFixed(1)}%" title="${esc(tip)}"></i>`;
+      })
+      .join("");
+    const ago = t("pingAgo")[span > 7 * 86400 ? "30d" : span > 86400 ? "7d" : "24h"];
+    const legend = [4, 3, 2, 1]
+      .map((w) => `<span><i class="w${w}"></i>${esc(t("wifiLegend")[w])}</span>`)
+      .join("");
+    return `<div class="ping-chart sig-chart" style="--n:${n}">${bars}</div>
+      <div class="ping-axis"><span>${esc(ago)}</span><span>${esc(t("availNow"))}</span></div>
+      <div class="ping-legend sig-legend">${legend}</div>`;
+  }
+
+  // Unter-Fenster über der Geräteansicht bzw. den Einstellungen.
+  _openStat(kind) {
+    const dialog = this.shadowRoot.querySelector("dialog.stat-dlg");
+    if (!dialog) return;
+    this._stat = { kind };
+    this._statHtml = "";
+    this._renderStat();
+    if (!dialog.open) {
+      if (typeof dialog.showModal === "function") dialog.showModal();
+      else dialog.setAttribute("open", "");
+    }
+  }
+
+  _closeStat() {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.stat-dlg");
+    this._stat = null;
+    this._statHtml = "";
+    if (dialog && dialog.open) {
+      if (typeof dialog.close === "function") dialog.close();
+      else dialog.removeAttribute("open");
+    }
+  }
+
+  _renderStat() {
+    const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.stat-dlg");
+    const st = this._stat;
+    if (!dialog || !st) return;
+    const t = (k) => this._t(k);
+    const esc = (v) => this._escape(v);
+    let title;
+    let sub;
+    let body;
+    if (st.kind === "ctl") {
+      const src = this._settingsAvailSrc();
+      if (!src) return this._closeStat();
+      const hub = (this._settings && this._settings.data && this._settings.data.hub) || {};
+      title = t("secCtlAvail");
+      sub = [hub.title, hub.host].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · ");
+      body = this._availSectionHtml(null, src, true);
+    } else {
+      const c = this._dialogKey ? this._clientByKey(this._dialogKey) : null;
+      if (!c) return this._closeStat();
+      sub = c.name;
+      if (st.kind === "wifi") {
+        title = t("tileWifi");
+        sub = [c.name, c.ap_name].filter(Boolean).join(" · ");
+        body = this._signalSectionHtml(c);
+      } else if (st.kind === "ping") {
+        title = t("tilePing");
+        body = this._pingSectionHtml(c, true);
+      } else {
+        title = t("tileAvail");
+        body = this._availSectionHtml(c, null, true);
+      }
+    }
+    const html = `<div class="dlg-head stat-head">
+        <button type="button" class="dlg-close stat-back" data-stat="close" title="${esc(t("statBack"))}" aria-label="${esc(
+          t("statBack")
+        )}">${icon("chevronLeft")}</button>
+        <div class="dlg-title"><h2>${esc(title)}</h2><div class="dlg-sub">${esc(sub || "")}</div></div>
+      </div>
+      <div class="dlg-body">${body}</div>`;
+    if (html === this._statHtml) return;
+    const scroll = dialog.scrollTop;
+    this._statHtml = html;
+    dialog.innerHTML = html;
+    this._syncLoaders(dialog);
+    dialog.scrollTop = scroll;
+  }
+
+  _bindStat(dialog) {
+    dialog.addEventListener("click", (ev) => {
+      if (ev.target === dialog) {
+        const r = dialog.getBoundingClientRect();
+        if (ev.clientY < r.top || ev.clientY > r.bottom || ev.clientX < r.left || ev.clientX > r.right) this._closeStat();
+        return;
+      }
+      const seg = ev.target.closest(".avail-bar .seg");
+      if (seg) {
+        if (ev.pointerType !== "mouse") {
+          this._showAvailTip(seg.classList.contains("off") && !seg.classList.contains("hover") ? seg : null);
+        }
+        return;
+      }
+      if (!ev.target.closest(".avail-tip")) this._showAvailTip(null);
+      if (ev.target.closest('[data-stat="close"]')) {
+        this._closeStat();
+        return;
+      }
+      const btn = ev.target.closest("[data-dlg]");
+      if (!btn || btn.disabled) return;
+      if (btn.dataset.dlg === "avail-range") {
+        if (btn.dataset.range !== this._availRange) {
+          this._availRange = btn.dataset.range;
+          this._savePrefs();
+          this._renderStat();
+        }
+      } else if (btn.dataset.dlg === "ping-entity") {
+        const c = this._clientByKey(this._dialogKey);
+        if (c) this._setPingEntity(c, btn.getAttribute("aria-checked") !== "true");
+      }
+    });
+    dialog.addEventListener("pointerover", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      const seg = ev.target.closest && ev.target.closest(".avail-bar .seg");
+      if (seg) this._showAvailTip(seg.classList.contains("off") ? seg : null);
+    });
+    dialog.addEventListener("pointerout", (ev) => {
+      if (ev.pointerType !== "mouse") return;
+      const bar = ev.target.closest && ev.target.closest(".avail-bar");
+      if (bar && !(ev.relatedTarget && bar.contains(ev.relatedTarget))) this._showAvailTip(null);
+    });
+    dialog.addEventListener("close", () => {
+      if (!dialog.open) {
+        this._stat = null;
+        this._statHtml = "";
+      }
+    });
   }
 
   // Säulen pro 5-Minuten-Block über 24 Stunden. Höhe = Median, Farbe warnt
@@ -2696,6 +3176,7 @@ class UnifiDynamicPanel extends HTMLElement {
         this._pingHist = { ...this._pingHist, data: { ...this._pingHist.data, entity: enabled } };
       }
       if (c.ping) c.ping = { ...c.ping, entity: enabled };
+      this._renderStat();
     } catch (err) {
       this._dialogError = (err && err.message) || String(err);
     }
@@ -2704,6 +3185,7 @@ class UnifiDynamicPanel extends HTMLElement {
   }
 
   _closeDialog() {
+    this._closeStat();
     const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.device");
     this._dialogKey = null;
     this._dialogError = null;
@@ -2980,7 +3462,7 @@ class UnifiDynamicPanel extends HTMLElement {
 
   // Zeitstrahl eines Clients (Geräteansicht) bzw. des Controllers
   // (Einstellungen, src.controller). Gleicher Zeitraum für beide.
-  _availSectionHtml(c, src = null) {
+  _availSectionHtml(c, src = null, inStat = false) {
     const t = (k) => this._t(k);
     const esc = (v) => this._escape(v);
     const range = this._availRange;
@@ -2994,7 +3476,9 @@ class UnifiDynamicPanel extends HTMLElement {
           }" class="${r === range ? "active" : ""}">${esc(t("availRanges")[r])}</button>`
       )
       .join("")}</span>`;
-    const head = `<h3 class="avail-h3"><span>${esc(t(src && src.controller ? "secCtlAvail" : "secAvail"))}</span>${switchHtml}</h3>`;
+    const head = inStat
+      ? `<div class="stat-range">${switchHtml}</div>`
+      : `<h3 class="avail-h3"><span>${esc(t(src && src.controller ? "secCtlAvail" : "secAvail"))}</span>${switchHtml}</h3>`;
     const note = (text, extra = "") => `${head}<div class="avail"><p class="dlg-note">${esc(text)}${extra}</p></div>`;
 
     if (!src) {
@@ -3628,6 +4112,8 @@ class UnifiDynamicPanel extends HTMLElement {
 
   _renderDialog() {
     const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.device");
+    // Offenes Unter-Fenster (Statistik) mit denselben Daten nachführen.
+    this._renderStat();
     if (!dialog || !this._dialogKey) return;
     const t = (k) => this._t(k);
     const esc = (v) => this._escape(v);
@@ -3692,9 +4178,7 @@ class UnifiDynamicPanel extends HTMLElement {
             t("fieldSignal"),
             signal
               ? `${esc(signal)}${
-                  bars
-                    ? ` <span class="bars s${bars}${c.online ? "" : " stale"}"><i></i><i></i><i></i><i></i></span>`
-                    : ""
+                  bars ? ` ${wifiFanHtml(bars, !c.online)}` : ""
                 }`
               : `<span class="muted">–</span>`
           )
@@ -3754,8 +4238,7 @@ class UnifiDynamicPanel extends HTMLElement {
         </div>
         <div class="dlg-body">
           ${errorHtml}
-          ${this._availSectionHtml(c)}
-          ${this._pingSectionHtml(c)}
+          ${this._statTilesHtml(c)}
           <h3>${esc(t("secNetwork"))}</h3>
           <div class="tiles">${tiles.join("")}</div>
           <h3>${esc(t("secLinked"))}</h3>
@@ -3862,6 +4345,10 @@ class UnifiDynamicPanel extends HTMLElement {
       this._hideLinked = btn.checked;
       this._savePrefs();
       this._renderDialog();
+      return;
+    }
+    if (action === "stat") {
+      this._openStat(btn.dataset.kind);
       return;
     }
     if (action === "ping-entity") {
@@ -7395,6 +7882,69 @@ class UnifiDynamicPanel extends HTMLElement {
           background: color-mix(in srgb, var(--udc-primary) 18%, transparent);
           color: var(--udc-primary);
         }
+        .ver.beta {
+          background: color-mix(in srgb, var(--udc-ping2) 10%, var(--udc-subtle));
+          box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--udc-ping2) 40%, transparent);
+        }
+        .ver.beta .ver-ic {
+          background: color-mix(in srgb, var(--udc-ping2) 20%, transparent);
+          color: var(--udc-ping2);
+        }
+        .ver.beta .ver-btn.primary {
+          border-color: var(--udc-ping2);
+          background: var(--udc-ping2);
+        }
+        .ver.beta .ver-btn.primary:disabled {
+          opacity: 0.45;
+        }
+        .ver-tag {
+          display: inline-block;
+          margin-left: 4px;
+          padding: 0 7px;
+          border-radius: 999px;
+          background: color-mix(in srgb, var(--udc-ping2) 20%, transparent);
+          color: var(--udc-ping2);
+          font-size: 11px;
+          font-weight: 500;
+          vertical-align: 1px;
+        }
+        .ver-hint {
+          flex: 1 1 100%;
+          padding: 9px 11px;
+          border-radius: 10px;
+          background: color-mix(in srgb, var(--udc-warning) 14%, transparent);
+          color: color-mix(in srgb, var(--udc-warning) 80%, var(--udc-text));
+          font-size: 12.5px;
+          line-height: 1.4;
+        }
+        .ver-hint-link {
+          padding: 0;
+          border: none;
+          background: none;
+          color: inherit;
+          font: inherit;
+          font-weight: 500;
+          text-decoration: underline;
+          cursor: pointer;
+        }
+        .ver-opt {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 8px;
+          padding: 2px 4px 0 14px;
+        }
+        .ver-opt-l {
+          font-size: 14px;
+        }
+        .ver-opt-d {
+          color: var(--udc-text2);
+          font-size: 12px;
+        }
+        .sw-btn.beta.on {
+          background: var(--udc-ping2);
+        }
         .ver.rst {
           background: color-mix(in srgb, var(--udc-warning) 12%, var(--udc-subtle));
           box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--udc-warning) 35%, transparent);
@@ -7552,6 +8102,186 @@ class UnifiDynamicPanel extends HTMLElement {
           border-color: var(--udc-error);
           background: var(--udc-error);
         }
+        /* Statistik-Kacheln und Unter-Fenster */
+        .st-tiles {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .st-tiles.n2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .st-tiles.n1 {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .st-tile {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 3px;
+          min-width: 0;
+          padding: 10px 11px;
+          border: 1px solid var(--udc-divider);
+          border-radius: 14px;
+          background: var(--udc-subtle);
+          color: var(--udc-text);
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
+        }
+        .st-tile:hover {
+          border-color: color-mix(in srgb, var(--udc-primary) 50%, transparent);
+        }
+        .st-tile.static {
+          cursor: default;
+        }
+        .st-tile.static:hover {
+          border-color: var(--udc-divider);
+        }
+        /* Pfeil unten rechts: der Titel hat so die volle Breite. */
+        .st-tile > svg {
+          position: absolute;
+          right: 6px;
+          bottom: 7px;
+          width: 16px;
+          height: 16px;
+          fill: var(--udc-text3);
+        }
+        /* Titel und Zusatzzeile dürfen auf schmalen Kacheln umbrechen
+           (Handy, drei Kacheln nebeneinander), statt abgeschnitten zu werden. */
+        .st-k {
+          max-width: 100%;
+          overflow: hidden;
+          color: var(--udc-text2);
+          font-size: 12px;
+          line-height: 1.3;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .st-v {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 18px;
+          font-weight: 500;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+        }
+        .st-v small {
+          color: var(--udc-text2);
+          font-size: 12px;
+          font-weight: 400;
+        }
+        .st-v .st-small {
+          font-size: 14px;
+          font-weight: 400;
+        }
+        .st-sub {
+          max-width: calc(100% - 12px);
+          color: var(--udc-text3);
+          font-size: 11.5px;
+          line-height: 1.3;
+        }
+        dialog.stat-dlg {
+          width: min(560px, calc(100vw - 32px));
+          max-height: calc(100% - 48px);
+          padding: 0;
+          border: none;
+          border-radius: 22px;
+          background: var(--udc-card);
+          color: var(--udc-text);
+          box-shadow: var(--udc-shadow);
+          overflow: auto;
+          overscroll-behavior: contain;
+        }
+        dialog.stat-dlg::backdrop {
+          background: rgba(0,0,0,0.35);
+        }
+        @media (max-width: 600px) {
+          dialog.stat-dlg {
+            width: 100%;
+            max-width: 100%;
+            height: 86%;
+            max-height: 86%;
+            margin: auto 0 0;
+            border-radius: 22px 22px 0 0;
+          }
+        }
+        .stat-head {
+          align-items: center;
+        }
+        .stat-back {
+          order: -1;
+          margin: 0;
+        }
+        .stat-range {
+          display: flex;
+          margin: 0 0 12px;
+        }
+        dialog.stat-dlg section.ping {
+          margin-top: 0;
+        }
+        .stat-list {
+          margin-top: 12px;
+          padding-top: 6px;
+          border-top: 1px solid var(--udc-divider);
+          font-size: 13px;
+        }
+        .stat-list div {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 4px 0;
+        }
+        .stat-list div span:last-child {
+          text-align: right;
+        }
+        /* WLAN-Fächer (4 Stufen) */
+        .wfan {
+          width: 18px;
+          height: 14px;
+          flex: 0 0 auto;
+          vertical-align: -2px;
+        }
+        .wfan .s {
+          fill: none;
+          stroke: color-mix(in srgb, var(--udc-text) 16%, transparent);
+          stroke-width: 2.3;
+          stroke-linecap: round;
+        }
+        .wfan .d {
+          fill: color-mix(in srgb, var(--udc-text) 16%, transparent);
+        }
+        .wfan.w4 .s { stroke: var(--udc-ping5); }
+        .wfan.w4 .d { fill: var(--udc-ping5); }
+        .wfan.w3 .s.a1,
+        .wfan.w3 .s.a2 { stroke: var(--udc-ping3); }
+        .wfan.w3 .d { fill: var(--udc-ping3); }
+        .wfan.w2 .s.a1 { stroke: var(--udc-ping2); }
+        .wfan.w2 .d { fill: var(--udc-ping2); }
+        .wfan.w1 .d { fill: var(--udc-ping1); }
+        .wfan.stale {
+          opacity: 0.5;
+        }
+        .wfan.stale .s {
+          stroke: color-mix(in srgb, var(--udc-text3) 60%, transparent) !important;
+        }
+        .wfan.stale .d {
+          fill: var(--udc-text3) !important;
+        }
+        .wfan-wrap {
+          display: inline-flex;
+          margin-left: 4px;
+        }
+        .sig-chart .pb.w4 { background: var(--udc-ping5); }
+        .sig-chart .pb.w3 { background: var(--udc-ping3); }
+        .sig-chart .pb.w2 { background: var(--udc-ping2); }
+        .sig-chart .pb.w1 { background: var(--udc-ping1); }
+        .sig-legend i.w4 { background: var(--udc-ping5); }
+        .sig-legend i.w3 { background: var(--udc-ping3); }
+        .sig-legend i.w2 { background: var(--udc-ping2); }
+        .sig-legend i.w1 { background: var(--udc-ping1); }
         /* Ping: Tabellenzelle, Geräteansicht, Schalter */
         .ping-val {
           display: inline-flex;
@@ -7863,6 +8593,7 @@ class UnifiDynamicPanel extends HTMLElement {
       <dialog class="filters"></dialog>
       <dialog class="settings"></dialog>
       <dialog class="conn-edit"></dialog>
+      <dialog class="stat-dlg"></dialog>
     `;
 
     const root = this.shadowRoot;
@@ -7990,6 +8721,7 @@ class UnifiDynamicPanel extends HTMLElement {
     });
     this._bindSettings(root.querySelector("dialog.settings"));
     this._bindConn(root.querySelector("dialog.conn-edit"));
+    this._bindStat(root.querySelector("dialog.stat-dlg"));
 
     // Filter-Blatt (Handy).
     const sheet = root.querySelector("dialog.filters");
@@ -8370,9 +9102,7 @@ class UnifiDynamicPanel extends HTMLElement {
           c.is_wired == null ? t("connUnknown") : c.is_wired ? t("connWired") : t("connWireless");
         const bars = kind === "wifi" ? signalBars(c.signal) : 0;
         const barsHtml = bars
-          ? `<span class="bars s${bars}${c.online ? "" : " stale"}" title="${esc(
-              this._formatSignal(c) || ""
-            )}"><i></i><i></i><i></i><i></i></span>`
+          ? `<span class="wfan-wrap" title="${esc(this._formatSignal(c) || "")}">${wifiFanHtml(bars, !c.online)}</span>`
           : "";
         const status = c.online
           ? `<span class="pill online"><span class="dot online"></span>${esc(t("statusOnline"))}</span>`

@@ -20,6 +20,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 
+from .signal_log import SignalLog
 from .const import (
     AP_NAMES_RETRY,
     AP_NAMES_TTL,
@@ -274,6 +275,8 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._removal_callbacks: list[Callable[[str], None]] = []
         # Ping-Messung (ping.PingMonitor), gesetzt in __init__.py.
         self.ping: Any = None
+        # Verlauf der WLAN-Signalstärke (eigene Datei).
+        self.signal = SignalLog(hass, entry.entry_id)
         self._new_client_callback: (
             Callable[[list[tuple[str, dict[str, Any]]]], Awaitable[None]] | None
         ) = None
@@ -338,6 +341,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             await self._avail_store.async_save(self._avail_to_save())
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Verfügbarkeitsprotokoll konnte nicht gespeichert werden: %s", err)
+        try:
+            await self.signal.async_save()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("WLAN-Verlauf konnte nicht gespeichert werden: %s", err)
 
     # -- Verfügbarkeitsprotokoll ----------------------------------------------
 
@@ -489,6 +496,42 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 changed = True
         return changed
 
+    def availability_summary(self, mac: str, seconds: float) -> dict[str, Any] | None:
+        """
+        Kurzfassung für die Kacheln im Panel: Anteil erreichbar, Zahl der
+        Unterbrüche und längster, aus dem eigenen Protokoll. Zeiten ohne
+        Daten zählen nicht mit (wie im Zeitstrahl).
+        """
+        now = time.time()
+        start = now - seconds
+        events = self._avail.get(mac.lower(), [])
+        if not events:
+            return None
+        before = [ev for ev in events if ev[0] <= start]
+        seq = ([[start, before[-1][1]]] if before else []) + [ev for ev in events if ev[0] > start]
+        on = off = 0.0
+        outages = 0
+        longest = 0.0
+        for i, (at, state) in enumerate(seq):
+            end = seq[i + 1][0] if i + 1 < len(seq) else now
+            span = max(0.0, end - at)
+            if state == 1:
+                on += span
+            elif state == 0:
+                off += span
+                longest = max(longest, span)
+                if at > start or i == 0:
+                    outages += 1
+        covered = on + off
+        if covered <= 0:
+            return None
+        return {
+            "pct": round(on / covered * 100, 1),
+            "outages": outages,
+            "longest": round(longest),
+            "covered": round(covered),
+        }
+
     def availability(self, mac: str, start: float) -> dict[str, Any]:
         """Wechsel ab start (mit dem Zustand davor) für das Panel."""
         events = self._avail.get(mac.lower(), [])
@@ -509,6 +552,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         Clients ihre letzten bekannten Werte und ihr _seen_at behalten.
         """
         await self._async_load_availability()
+        try:
+            await self.signal.async_load()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("WLAN-Verlauf konnte nicht geladen werden: %s", err)
         try:
             stored = await self._store.async_load()
         except Exception as err:  # noqa: BLE001
@@ -791,6 +838,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
     @callback
     def _notify_removed(self, mac: str) -> None:
+        self.signal.forget(mac)
         for target in list(self._removal_callbacks):
             try:
                 target(mac)
@@ -998,6 +1046,17 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
 
         for mac, data in fresh.items():
             self._merge_client(mac, data, now)
+
+        # WLAN-Verlauf: nur Clients, die gerade im WLAN gesehen wurden.
+        recorded = False
+        for mac, data in fresh.items():
+            dbm = (data or {}).get("signal")
+            if not (data or {}).get("is_wired") and isinstance(dbm, (int, float)) and not isinstance(dbm, bool):
+                self.signal.record(mac, dbm, (data or {}).get("ap_mac"), now)
+                recorded = True
+        if recorded:
+            self.signal.prune(now)
+            self.signal.schedule_save()
 
         # Eigener Erstkontakt als Ersatz für ein fehlendes "first_seen" des
         # Controllers. Nicht bei der Erstbefüllung: dort wäre es nur der

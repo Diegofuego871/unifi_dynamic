@@ -224,9 +224,10 @@ Ein Panel namens „UniFi Dynamic Clients" ist in der Seitenleiste angeheftet
 über alle konfigurierten UniFi-Hosts hinweg — Alias, verknüpftes HA-Gerät,
 IP, MAC, SSID, Access Point, Verbindungsart, zuletzt gesehen und Status —,
 die sich alle 10 Sekunden aktualisiert, solange das Panel offen ist.
-WLAN-Clients zeigen ihr Signal als Balken neben der Verbindungsart (aus dem
-dBm-Wert des Controllers: 4 Balken ab -60 dBm, 3 ab -67, 2 ab -75, sonst 1;
-grau, solange offline), „zuletzt gesehen" steht relativ („vor 5 Min.") mit
+WLAN-Clients zeigen ihr Signal als WLAN-Fächer neben der Verbindungsart (aus
+dem dBm-Wert des Controllers: voll und grün ab -60 dBm, zwei Bögen orange ab
+-67, ein Bogen violett ab -75, nur der Punkt rot darunter; grau, solange
+offline), „zuletzt gesehen" steht relativ („vor 5 Min.") mit
 der genauen Zeit darunter, und geschützte Clients tragen ein kleines Schild
 neben dem Namen.
 
@@ -341,7 +342,18 @@ nötig" mit dem Knopf „Jetzt neu starten", der vorher nachfragt; erst nach
 dem Neustart von Home Assistant ist die neue Version aktiv. Ohne HACS gibt
 es nur den Hinweis mit Link, installiert wird dann manuell.
 
-Darunter steht die **Controller-Verfügbarkeit**:
+Mit dem Schalter **„Vorabversionen anzeigen"** unter der Versionszeile
+(pro Benutzer gespeichert) bietet das Panel auch Beta-Versionen an, sofern
+sie neuer sind als das letzte stabile Release. Die Zeile ist dann violett
+mit dem Etikett „Beta". HACS installiert Vorabversionen nur, wenn bei
+dieser Integration im HACS-Gerät die Entität „Pre-release" aktiviert und
+eingeschaltet ist; ist sie aus, bleibt „Aktualisieren" gesperrt und ein
+Hinweis mit Link zum HACS-Gerät erklärt, was zu tun ist. Die tägliche
+Prüfung unter „Reparaturen" meldet nie Vorabversionen.
+
+Darunter steht die **Controller-Verfügbarkeit** als Kachel mit dem Wert der
+letzten 24 Stunden, daneben der Verbindungsstatus. Ein Tipp auf die Kachel
+öffnet ein Unter-Fenster mit dem Zeitstrahl:
 derselbe Zeitstrahl wie in der Geräteansicht, aber für den UniFi-Controller
 des Hubs — wann er erreichbar war und wann nicht, mit Prozent,
 Unterbrüchen und Liste. Der Zeitraum (24 Std. / 7 Tage / 30 Tage) ist mit der
@@ -388,7 +400,23 @@ das von unten hereinfährt). Der Kopf zeigt Name, Status und Schutz als
 Pillen sowie den Hostnamen; direkt darunter stehen die Schnellaktionen
 „HA-Geräteseite öffnen" und „Schützen" bzw. „Schutz aufheben".
 
-Der Abschnitt „Verfügbarkeit" zeigt als Zeitstrahl, wann der Client
+Darunter stehen die **Statistik-Kacheln** mit dem Wert der letzten 24
+Stunden: Verfügbarkeit (Prozent und Unterbrüche), WLAN (Median der
+Signalstärke mit WLAN-Fächer, nur bei WLAN-Clients) und Antwortzeit (nur
+wenn Ping aktiv ist). Die Werte kommen mit der Clientliste; ein Tipp auf
+eine Kachel öffnet ein Unter-Fenster mit Zeitraum-Schalter (24 Std. / 7
+Tage / 30 Tage, gemeinsam für alle Unter-Fenster und pro Benutzer
+gespeichert) und Diagramm. Geladen wird erst dort; „‹" führt zurück.
+
+Das Unter-Fenster **„WLAN-Empfang"** zeigt Median, besten und
+schlechtesten Wert der Signalstärke, ein Diagramm in den Farben des
+WLAN-Fächers, die genutzten Access Points mit ihrem Anteil und wie lange der
+Client ohne WLAN-Daten war (am Kabel oder ausser Haus). Die Integration
+zeichnet die Signalstärke seit 2.15.0 bei jeder Abfrage auf, in einer eigenen
+Datei und nicht im Recorder: 24 Stunden in 5-Minuten-Blöcken, 31 Tage in
+Stunden-Blöcken.
+
+Das Unter-Fenster „Verfügbarkeit" zeigt als Zeitstrahl, wann der Client
 erreichbar war (grün) und wann nicht (orange) — wahlweise für die letzten
 24 Stunden, 7 Tage oder 30 Tage (die Wahl wird pro Benutzer gespeichert).
 Darüber stehen die Verfügbarkeit in Prozent, die Anzahl Unterbrüche, ihre

@@ -81,6 +81,7 @@ from .const import (
     WS_TYPE_SET_CONNECTION,
     WS_TYPE_PING_ENTITY,
     WS_TYPE_PING_HISTORY,
+    WS_TYPE_SIGNAL_HISTORY,
     WS_TYPE_SET_OPTIONS,
     WS_TYPE_VERSION,
     WS_TYPE_LIST_CLIENTS,
@@ -721,6 +722,8 @@ def _ws_list_clients(
                     "device_id": device.id if device is not None else None,
                     "linked_device": linked,
                     "ping": _ping_row(coordinator, row["mac"]),
+                    # Kachelwerte der Geräteansicht (letzte 24 Stunden).
+                    "stats": _stats_row(coordinator, row["mac"]),
                 }
             )
 
@@ -831,6 +834,15 @@ def _hub_summary(coordinator: UnifiDynamicCoordinator) -> dict[str, Any]:
     }
 
 
+def _stats_row(coordinator: UnifiDynamicCoordinator, mac: str) -> dict[str, Any]:
+    """Verfügbarkeit und WLAN-Median der letzten 24 Stunden, ohne Verlauf."""
+    signal = coordinator.signal.summary(mac, "24h")
+    return {
+        "avail": coordinator.availability_summary(mac, 86400),
+        "signal": {"median": signal["median"]} if signal else None,
+    }
+
+
 def _ping_row(coordinator: UnifiDynamicCoordinator, mac: str) -> dict[str, Any] | None:
     """Kurzfassung für die Tabelle; None, solange Ping aus ist."""
     monitor = coordinator.ping
@@ -908,6 +920,8 @@ def _ws_get_options(
                 "ping_interval": ping_mod.PING_INTERVAL_RANGE,
             },
             "ping_status": coordinator.ping.status if coordinator.ping is not None else "disabled",
+            # Kachel "Controller-Verfügbarkeit" (letzte 24 Stunden).
+            "controller_avail": coordinator.availability_summary(AVAIL_CONTROLLER, 86400),
         },
     )
 
@@ -981,6 +995,49 @@ def _ws_ping_history(
             "summary": monitor.summary(mac, span) if ok else None,
             "last": monitor.last(mac) if ok else None,
             "entity": mac in ping_mod.ping_entity_macs(coordinator.entry),
+            "now": time.time(),
+        },
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_SIGNAL_HISTORY,
+        vol.Required("entry_id"): str,
+        vol.Required("mac"): str,
+        vol.Optional("range", default="24h"): vol.In(list(PING_RANGES)),
+    }
+)
+@websocket_api.require_admin
+@callback
+def _ws_signal_history(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """
+    WLAN-Signalstärke eines Clients: 24 Stunden in 5-Minuten-Blöcken, 7 und 30
+    Tage in Stunden-Blöcken, dazu Median, bester/schlechtester Wert und die
+    Access Points mit ihrem Anteil.
+    """
+    coordinator: UnifiDynamicCoordinator | None = hass.data.get(DOMAIN, {}).get(
+        msg["entry_id"]
+    )
+    if coordinator is None:
+        connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
+        return
+    span = msg["range"]
+    mac = msg["mac"].lower()
+    summary = coordinator.signal.summary(mac, span)
+    if summary:
+        for ap in summary["aps"]:
+            ap["name"] = coordinator.access_point_name(ap["ap_mac"]) or ap["ap_mac"]
+    connection.send_result(
+        msg["id"],
+        {
+            "range": span,
+            "span": PING_RANGES[span],
+            "bucket": 300 if span == "24h" else 3600,
+            "buckets": coordinator.signal.history(mac, span),
+            "summary": summary,
             "now": time.time(),
         },
     )
@@ -1063,19 +1120,40 @@ async def _ws_set_connection(
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): WS_TYPE_VERSION, vol.Optional("force", default=False): bool}
+    {
+        vol.Required("type"): WS_TYPE_VERSION,
+        vol.Optional("force", default=False): bool,
+        vol.Optional("prerelease", default=False): bool,
+    }
 )
 @websocket_api.require_admin
 @websocket_api.async_response
 async def _ws_version(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Installierte und neueste veröffentlichte Version (GitHub)."""
+    """
+    Installierte und neueste veröffentlichte Version (GitHub). Mit
+    prerelease auch die neueste Vorabversion, sofern sie neuer ist als das
+    stabile Release und die installierte Version.
+    """
     installed = await update_check.async_installed_version(hass)
     release = await update_check.async_latest_release(hass, force=msg["force"])
     # Meldung unter "Reparaturen" gleich mitziehen (z.B. nach dem Update weg).
     await update_check.async_refresh_issue(hass, release)
-    connection.send_result(msg["id"], {"installed": installed, **release})
+    result: dict[str, Any] = {"installed": installed, **release, "prerelease": None, "prerelease_url": None}
+    if msg["prerelease"]:
+        pre = await update_check.async_latest_prerelease(hass, force=msg["force"])
+        candidate = pre.get("prerelease")
+        if (
+            candidate
+            and update_check.compare_versions(candidate, release.get("latest")) > 0
+            and update_check.compare_versions(candidate, installed) > 0
+        ):
+            result["prerelease"] = candidate
+            result["prerelease_url"] = pre.get("prerelease_url")
+        if pre.get("error") and not result.get("error"):
+            result["error"] = pre["error"]
+    connection.send_result(msg["id"], result)
 
 
 def _is_own_device(device: dr.DeviceEntry) -> bool:
@@ -1213,6 +1291,7 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_set_connection)
     websocket_api.async_register_command(hass, _ws_ping_history)
     websocket_api.async_register_command(hass, _ws_ping_entity)
+    websocket_api.async_register_command(hass, _ws_signal_history)
     websocket_api.async_register_command(hass, _ws_version)
 
 

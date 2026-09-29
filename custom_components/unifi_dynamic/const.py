@@ -198,7 +198,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "43"
+PANEL_VERSION = "44"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"
@@ -220,6 +220,7 @@ WS_TYPE_VERSION = f"{DOMAIN}/version"
 WS_TYPE_SET_CONNECTION = f"{DOMAIN}/set_connection"
 WS_TYPE_PING_HISTORY = f"{DOMAIN}/ping_history"
 WS_TYPE_PING_ENTITY = f"{DOMAIN}/ping_entity"
+WS_TYPE_SIGNAL_HISTORY = f"{DOMAIN}/signal_history"
 
 # --- Ping (Antwortzeit) ----------------------------------------------------
 

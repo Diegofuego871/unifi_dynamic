@@ -219,8 +219,9 @@ administrators only). It shows one table with every client across all
 configured UniFi hosts — alias, linked HA device, IP, MAC, SSID, access
 point, connection type, last seen and status — refreshed by polling every
 10 seconds while the panel is open. Wireless clients show their signal as
-bars next to the connection type (from the controller's dBm value: 4 bars
-from -60 dBm, 3 from -67, 2 from -75, otherwise 1; grey while offline),
+a WiFi fan next to the connection type (from the controller's dBm value:
+full and green from -60 dBm, two arcs orange from -67, one arc violet from
+-75, only the dot red below that; grey while offline),
 "last seen" reads relative ("5 min. ago") with the exact time below, and
 protected clients carry a small shield next to their name.
 
@@ -324,7 +325,17 @@ required" with a "Restart now" button that asks first; the new version
 only becomes active after Home Assistant restarts. Without HACS there is
 just the note with the link, and you update manually.
 
-Below it is the **controller availability**: the same
+With the **"Show pre-releases"** switch below the version row (saved per
+user) the panel also offers beta versions if they are newer than the latest
+stable release. The row then turns violet with a "Beta" label. HACS only
+installs pre-releases if the "Pre-release" entity on this integration's HACS
+device is enabled and switched on; if it is off, "Update" stays disabled
+and a note with a link to the HACS device explains what to do. The daily
+check under "Repairs" never reports pre-releases.
+
+Below it is the **controller availability** as a tile with the value of
+the last 24 hours, next to the connection status. Tapping the tile opens a
+sub-window with the timeline: the same
 timeline as in the device view, but for the hub's UniFi controller — when it
 was reachable and when not, with percentage, outages and list. The time
 range (24 h / 7 days / 30 days) is shared with the device view. An outage
@@ -370,7 +381,22 @@ from the bottom). Its header shows the name, status and protection as pills
 and the hostname; right below sit the quick actions "Open HA device page"
 and "Protect" / "Stop protecting".
 
-The "Availability" section shows as a timeline when the client was
+Below that are the **statistics tiles** with the value of the last 24
+hours: availability (percentage and outages), WiFi (median signal strength
+with the WiFi fan, wireless clients only) and response time (only while
+ping is active). The values come with the client list; tapping a tile opens
+a sub-window with a range switch (24 h / 7 days / 30 days, shared by all
+sub-windows and saved per user) and a chart. Loading only happens there;
+"‹" goes back.
+
+The **"WiFi signal"** sub-window shows median, best and worst signal
+strength, a chart in the WiFi fan colors, the access points used with their
+share, and how long the client had no WiFi data (wired or away). The
+integration records the signal strength on every poll since 2.15.0, in a
+separate file and not in the recorder: 24 hours in 5-minute blocks, 31 days
+in hourly blocks.
+
+The "Availability" sub-window shows as a timeline when the client was
 reachable (green) and when it wasn't (orange) — for the last 24 hours,
 7 days or 30 days (the choice is saved per user). Above it are the
 availability in percent, the number of outages, their total and the

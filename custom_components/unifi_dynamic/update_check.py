@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 import time
 from datetime import timedelta
 from typing import Any
@@ -27,6 +28,8 @@ from homeassistant.loader import async_get_integration
 from .const import CONF_UPDATE_CHECK, DEFAULT_UPDATE_CHECK, DOMAIN, GITHUB_REPO
 
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+# Für Vorabversionen: die letzten Releases inkl. Pre-Releases.
+RELEASES_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases?per_page=20"
 # GitHub erlaubt ohne Anmeldung 60 Abfragen pro Stunde und IP: ohne
 # ausdrücklichen Wunsch höchstens alle 6 Stunden, auf Knopfdruck höchstens
 # einmal pro Minute.
@@ -35,6 +38,7 @@ FORCE_MIN_SECONDS = 60
 TIMEOUT = ClientTimeout(total=10)
 
 _CACHE_KEY = f"{DOMAIN}_latest_release"
+_PRE_CACHE_KEY = f"{DOMAIN}_latest_prerelease"
 _TIMER_KEY = f"{DOMAIN}_update_timer"
 ISSUE_ID = "update_available"
 DAILY = timedelta(days=1)
@@ -85,24 +89,79 @@ async def async_latest_release(hass: HomeAssistant, force: bool = False) -> dict
     return result
 
 
+_VERSION_RE = re.compile(
+    r"^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?[-.]?(?:(alpha|beta|pre|rc|a|b)\.?(\d*))?", re.IGNORECASE
+)
+# Reihenfolge der Vorabstufen; eine fertige Version steht über allen.
+_PRE_RANK = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "pre": 1, "rc": 2}
+
+
+def _version_key(value: str | None) -> tuple[int, ...]:
+    """
+    Sortierschlüssel: (Major, Minor, Patch, Stufe, Nummer).
+
+    Stufe 3 = fertige Version, darunter rc (2), beta (1), alpha (0). So ist
+    2.16.0b1 älter als 2.16.0, aber neuer als 2.15.3.
+    """
+    match = _VERSION_RE.match(str(value or "").strip())
+    if not match:
+        return (0, 0, 0, 3, 0)
+    major, minor, patch, tag, num = match.groups()
+    rank = _PRE_RANK[tag.lower()] if tag else 3
+    return (int(major), int(minor or 0), int(patch or 0), rank, int(num or 0))
+
+
+def is_prerelease(value: str | None) -> bool:
+    return _version_key(value)[3] < 3
+
+
 def compare_versions(a: str | None, b: str | None) -> int:
     """1, wenn a neuer ist als b; -1, wenn älter; 0 bei Gleichstand."""
+    x, y = _version_key(a), _version_key(b)
+    return (x > y) - (x < y)
 
-    def parts(value: str | None) -> list[int]:
-        text = str(value or "").strip().lstrip("vV")
-        out: list[int] = []
-        for piece in text.replace("-", ".").replace("+", ".").split("."):
-            digits = "".join(ch for ch in piece if ch.isdigit())
-            out.append(int(digits) if digits else 0)
-        return out
 
-    x, y = parts(a), parts(b)
-    for i in range(max(len(x), len(y))):
-        left = x[i] if i < len(x) else 0
-        right = y[i] if i < len(y) else 0
-        if left != right:
-            return 1 if left > right else -1
-    return 0
+async def async_latest_prerelease(hass: HomeAssistant, force: bool = False) -> dict[str, Any]:
+    """
+    Neueste Vorabversion (GitHub-Pre-Release), zwischengespeichert wie das
+    stabile Release. Nur für das Panel; die tägliche Prüfung unter
+    "Reparaturen" meldet nie Vorabversionen.
+    """
+    cached: dict[str, Any] | None = hass.data.get(_PRE_CACHE_KEY)
+    now = time.time()
+    if cached:
+        age = now - cached["checked_at"]
+        limit = FORCE_MIN_SECONDS if force else (300 if cached.get("error") else CACHE_SECONDS)
+        if age < limit:
+            return cached
+    result: dict[str, Any] = {"checked_at": now, "prerelease": None, "prerelease_url": None, "error": None}
+    try:
+        session = async_get_clientsession(hass)
+        async with session.get(
+            RELEASES_URL,
+            headers={"Accept": "application/vnd.github+json"},
+            timeout=TIMEOUT,
+        ) as resp:
+            if resp.status >= 400:
+                result["error"] = f"HTTP {resp.status}"
+            else:
+                data = await resp.json(content_type=None)
+                best: tuple[str, str | None] | None = None
+                for rel in data if isinstance(data, list) else []:
+                    if not isinstance(rel, dict) or rel.get("draft") or not rel.get("prerelease"):
+                        continue
+                    tag = str(rel.get("tag_name") or "").strip()
+                    version = tag[1:] if tag[:1] in ("v", "V") else tag
+                    if version and (best is None or compare_versions(version, best[0]) > 0):
+                        best = (version, rel.get("html_url"))
+                if best:
+                    result["prerelease"], result["prerelease_url"] = best
+    except (asyncio.TimeoutError, ClientError, ValueError) as err:
+        result["error"] = str(err) or type(err).__name__
+    if result["error"] and cached and cached.get("prerelease"):
+        result = {**cached, "error": result["error"], "checked_at": now}
+    hass.data[_PRE_CACHE_KEY] = result
+    return result
 
 
 def _enabled(hass: HomeAssistant) -> bool:

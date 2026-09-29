@@ -5,6 +5,46 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.15.0] - 2026-09-29
+
+### Added
+
+- **Statistics tiles in the device view.** Availability, WiFi and response
+  time now appear as compact tiles with the value of the last 24 hours
+  (the WiFi tile only for wireless clients, response time only while ping
+  is active). Tapping a tile opens a sub-window with the 24 h / 7 days /
+  30 days switch and the chart. The chosen range is shared by all
+  sub-windows and saved per user. Charts only load when a sub-window
+  opens, so the device view opens faster.
+- **WiFi signal history.** The integration now records the signal strength
+  of wireless clients on every poll, in a separate file and not in the
+  recorder: 24 hours in 5-minute blocks, 31 days in hourly blocks. The
+  "WiFi signal" sub-window shows median, best and worst value, a chart,
+  the access points used with their share, and how long the client had no
+  WiFi data (wired or away). The history starts with this update.
+- **Pre-releases.** A "Show pre-releases" switch below the version row
+  (saved per user) also offers beta versions. The row turns violet with a
+  "Beta" label. HACS only installs pre-releases when its "Pre-release"
+  entity for this integration is switched on; otherwise "Update" stays
+  disabled and a note links to the HACS device. The daily check under
+  "Repairs" never reports pre-releases.
+
+### Changed
+
+- The WiFi signal is shown as a WiFi fan (dot and three arcs) instead of
+  bars, in the table and in the device view, so it is easy to tell apart
+  from the ping bars. Colors: green, orange, violet, red; same limits as
+  before (-60 / -67 / -75 dBm).
+- Settings: the controller availability is now a tile next to the
+  connection status; the timeline opens in a sub-window, as in the device
+  view.
+
+### Fixed
+
+- Version comparison treated a beta such as 2.16.0b1 as newer than the
+  final 2.16.0. Pre-release stages (alpha, beta, rc) now rank below the
+  final version.
+
 ## [2.14.2] - 2026-09-29
 
 ### Changed
@@ -1339,6 +1379,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.15.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.0
 [2.14.2]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.2
 [2.14.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.1
 [2.14.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.14.0
