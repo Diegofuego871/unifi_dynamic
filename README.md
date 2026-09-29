@@ -403,7 +403,7 @@ with the WiFi fan, wireless clients only) and response time (only while
 ping is active). The values come with the client list; tapping a tile opens
 a sub-window with a range switch (24 h / 7 days / 30 days, shared by all
 sub-windows and saved per user) and a chart. Loading only happens there;
-"‹" goes back.
+the X closes only the sub-window, the device view behind it stays open.
 
 The **"WiFi signal"** sub-window shows median, best and worst signal
 strength, a chart in the WiFi fan colors, the access points used with their

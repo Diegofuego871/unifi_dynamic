@@ -423,7 +423,8 @@ Signalstärke mit WLAN-Fächer, nur bei WLAN-Clients) und Antwortzeit (nur
 wenn Ping aktiv ist). Die Werte kommen mit der Clientliste; ein Tipp auf
 eine Kachel öffnet ein Unter-Fenster mit Zeitraum-Schalter (24 Std. / 7
 Tage / 30 Tage, gemeinsam für alle Unter-Fenster und pro Benutzer
-gespeichert) und Diagramm. Geladen wird erst dort; „‹" führt zurück.
+gespeichert) und Diagramm. Geladen wird erst dort; das X schliesst nur
+das Unter-Fenster, die Geräteansicht dahinter bleibt offen.
 
 Das Unter-Fenster **„WLAN-Empfang"** zeigt Median, besten und
 schlechtesten Wert der Signalstärke, ein Diagramm in den Farben des

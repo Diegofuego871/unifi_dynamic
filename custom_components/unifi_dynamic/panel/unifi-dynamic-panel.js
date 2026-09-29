@@ -282,7 +282,6 @@ const STRINGS = {
     optPersistentControllerInfo: "Verschwindet automatisch, sobald er wieder erreichbar ist.",
     statTitle: "Statistik · 24 Std.",
     statCtlTitle: "Controller · 24 Std.",
-    statBack: "Zurück",
     statNoData: "Noch keine Daten",
     statNoOutages: "Keine Unterbrüche",
     statOutages: (n, longest) => `${n} ${n === 1 ? "Unterbruch" : "Unterbrüche"} · längster ${longest}`,
@@ -659,7 +658,6 @@ const STRINGS = {
     optPersistentControllerInfo: "Disappears automatically once it is reachable again.",
     statTitle: "Statistics · 24 h",
     statCtlTitle: "Controller · 24 h",
-    statBack: "Back",
     statNoData: "No data yet",
     statNoOutages: "No outages",
     statOutages: (n, longest) => `${n} ${n === 1 ? "outage" : "outages"} · longest ${longest}`,
@@ -921,6 +919,10 @@ const ICONS = {
   verDownload: "M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z",
   chevron: "M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z",
   drag: "M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z",
+  // Kopf des Statistik-Fensters: Verfügbarkeit (mdi:pulse), Antwortzeit
+  // (mdi:timer-outline); WLAN nutzt "wifi", der Controller "hub".
+  pulse: "M3,13H5.79L10.1,4.79L11.28,13.75L14.5,9.66L17.83,13H21V15H17L14.67,12.67L9.92,18.73L8.94,11.31L7,15H3V13Z",
+  timer: "M12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20M19.03,7.39L20.45,5.97C20,5.46 19.55,5 19.04,4.56L17.62,6C16.07,4.74 14.12,4 12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22C17,22 21,17.97 21,13C21,10.88 20.26,8.93 19.03,7.39M11,14H13V8H11M15,1H9V3H15V1Z",
   close: "M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z",
   device: "M4,6H20V16H4M20,18A2,2 0 0,0 22,16V6C22,4.89 21.1,4 20,4H4C2.89,4 2,4.89 2,6V16A2,2 0 0,0 4,18H0V20H24V18H20Z",
   entity: "M12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,7A5,5 0 0,0 7,12A5,5 0 0,0 12,17A5,5 0 0,0 17,12A5,5 0 0,0 12,7Z",
@@ -3157,6 +3159,9 @@ class UnifiDynamicPanel extends HTMLElement {
     if (!dialog) return;
     this._stat = { kind };
     this._statHtml = "";
+    // Solange das Statistik-Fenster offen ist, das X des Dialogs dahinter
+    // ausblenden: es wirkt sonst, als gehöre es zum Statistik-Fenster.
+    this.setAttribute("stat-open", "");
     this._renderStat();
     if (!dialog.open) {
       if (typeof dialog.showModal === "function") dialog.showModal();
@@ -3168,6 +3173,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const dialog = this.shadowRoot && this.shadowRoot.querySelector("dialog.stat-dlg");
     this._stat = null;
     this._statHtml = "";
+    this.removeAttribute("stat-open");
     if (dialog && dialog.open) {
       if (typeof dialog.close === "function") dialog.close();
       else dialog.removeAttribute("open");
@@ -3183,6 +3189,7 @@ class UnifiDynamicPanel extends HTMLElement {
     let title;
     let sub;
     let body;
+    const avatar = { ctl: "hub", wifi: "wifi", ping: "timer" }[st.kind] || "pulse";
     if (st.kind === "ctl") {
       const src = this._settingsAvailSrc();
       if (!src) return this._closeStat();
@@ -3206,11 +3213,15 @@ class UnifiDynamicPanel extends HTMLElement {
         body = this._availSectionHtml(c, null, true);
       }
     }
+    // Kopf wie bei Gerätedialog und Einstellungen: Symbol der Kachel, Titel,
+    // X. Das X schliesst nur das Statistik-Fenster, dahinter bleibt die
+    // Geräteansicht bzw. die Einstellungen offen.
     const html = `<div class="dlg-head stat-head">
-        <button type="button" class="dlg-close stat-back" data-stat="close" title="${esc(t("statBack"))}" aria-label="${esc(
-          t("statBack")
-        )}">${icon("chevronLeft")}</button>
+        <span class="dlg-avatar stat-avatar">${icon(avatar)}</span>
         <div class="dlg-title"><h2>${esc(title)}</h2><div class="dlg-sub">${esc(sub || "")}</div></div>
+        <button type="button" class="dlg-close" data-stat="close" title="${esc(t("dialogClose"))}" aria-label="${esc(
+          t("dialogClose")
+        )}">${icon("close")}</button>
       </div>
       <div class="dlg-body">${body}</div>`;
     if (html === this._statHtml) return;
@@ -3264,6 +3275,8 @@ class UnifiDynamicPanel extends HTMLElement {
       if (!dialog.open) {
         this._stat = null;
         this._statHtml = "";
+        // Auch bei Escape: X des Dialogs dahinter wieder zeigen.
+        this.removeAttribute("stat-open");
       }
     });
   }
@@ -8331,8 +8344,16 @@ class UnifiDynamicPanel extends HTMLElement {
           overflow: auto;
           overscroll-behavior: contain;
         }
+        /* Dialog dahinter stark gedimmt und unscharf, sein X ausgeblendet:
+           so ist klar, welches Fenster gerade gilt. */
         dialog.stat-dlg::backdrop {
-          background: rgba(0,0,0,0.35);
+          background: rgba(0,0,0,0.7);
+          -webkit-backdrop-filter: blur(3px);
+          backdrop-filter: blur(3px);
+        }
+        :host([stat-open]) dialog.device .dlg-head .dlg-close,
+        :host([stat-open]) dialog.settings .dlg-head .dlg-close {
+          visibility: hidden;
         }
         @media (max-width: 600px) {
           dialog.stat-dlg {
@@ -8347,9 +8368,14 @@ class UnifiDynamicPanel extends HTMLElement {
         .stat-head {
           align-items: center;
         }
-        .stat-back {
-          order: -1;
-          margin: 0;
+        .stat-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 13px;
+        }
+        .stat-avatar svg {
+          width: 24px;
+          height: 24px;
         }
         .stat-range {
           display: flex;
