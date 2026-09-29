@@ -3805,9 +3805,11 @@ class UnifiDynamicPanel extends HTMLElement {
  <path class="crest" d="M27 3 C24 -2, 21 -3, 18 -2 M28 2.5 C26 -3, 24 -5, 21 -5 M29 2 C29 -3, 27 -6, 25 -7"/>
  <path class="warm" d="M33 6 L44 9 L33 10 Z"/>
  <circle class="eye" cx="30" cy="6" r="1.4" style="fill:var(--udc-text)"/></g></svg></div>
-          <div class="ld-wall"><svg aria-hidden="true" viewBox="0 0 34 60"><g class="shake"><path class="rock" d="M2 60 L0 22 L6 6 L18 0 L30 5 L34 24 L33 60 Z"/>
- <path class="tunnel" d="M8 60 L8 42 C8 32, 26 32, 26 42 L26 60 Z"/>
- <path class="crack" d="M5 14 l6 4 l-2 5 M24 12 l5 6 M28 30 l3 4"/></g></svg></div>
+          <div class="ld-wall"><svg aria-hidden="true" viewBox="0 0 74 72"><g class="shake"><path class="rock" d="M0 72 L2 30 L12 10 L30 2 L50 4 L66 14 L74 34 L73 72 Z"/>
+ <path class="tunnel" d="M13 72 L13 44 C13 20, 61 20, 61 44 L61 72 Z"/>
+ <path class="tunnel t2" d="M19 72 L19 47 C19 29, 55 29, 55 47 L55 72 Z"/>
+ <path class="tunnel t3" d="M26 72 L26 51 C26 38, 48 38, 48 51 L48 72 Z"/>
+ <path class="crack" d="M20 14 l6 4 l-2 5 M56 12 l5 6 M68 40 l3 4"/></g></svg></div>
           <div class="ld-rr-actor ld-coy"><svg aria-hidden="true" viewBox="0 0 70 46"><g class="fall"><g class="squash">
  <path class="tail" d="M10 20 C0 22, -4 30, -2 34 C4 32, 8 28, 12 25 Z"/>
  <rect class="sil leg l1" x="14" y="26" width="5" height="18" rx="2.5"/><rect class="sil leg l2" x="20" y="26" width="5" height="18" rx="2.5"/>
@@ -7029,21 +7031,24 @@ class UnifiDynamicPanel extends HTMLElement {
         .ld-desert .sil { fill: var(--udc-text2); }
         .ld-desert .warm { fill: #f0a030; }
         .ld-desert .light { fill: color-mix(in srgb, var(--udc-text) 75%, var(--udc-card)); }
-        /* Wand mit aufgemaltem Tunnel */
-        .ld-wall { position: absolute; left: 72%; bottom: 20px; width: 34px; height: 60px; z-index: 2; }
+        /* Felswand mit Tunnel-Portal von vorne. Das Portal ist so gross wie
+           der Vogel, die Stufen im Innern geben Tiefe. */
+        .ld-wall { position: absolute; left: 72%; bottom: 20px; width: 74px; height: 72px; z-index: 2; }
         .ld-wall .rock { fill: color-mix(in srgb, #b07040 55%, var(--udc-card)); stroke: color-mix(in srgb, #b07040 80%, var(--udc-card)); stroke-width: 1.2; }
         .ld-wall .crack { fill: none; stroke: color-mix(in srgb, #b07040 85%, var(--udc-card)); stroke-width: 1; }
-        .ld-wall .tunnel { fill: #151515; }
-        .ld-wall .shake { transform-origin: 17px 60px; animation: ld-rr-wallshake 9s linear infinite; }
-        /* Vogel: läuft hinter der Wand durch */
-        .ld-bird { width: 40px; height: 46px; z-index: 1; animation: ld-rr-birdride 9s linear infinite; }
+        .ld-wall .tunnel { fill: #181818; }
+        .ld-wall .t2 { fill: #0e0e0e; }
+        .ld-wall .t3 { fill: #050505; }
+        .ld-wall .shake { transform-origin: 2px 72px; animation: ld-rr-wallshake 9s linear infinite; }
+        /* Vogel: rennt vor der Wand ins Portal, wird kleiner und verschwindet
+           im Dunkeln (Fluchtpunkt in der Mitte des Portals). */
+        .ld-bird { width: 40px; height: 46px; z-index: 3; transform-origin: 20px 30px; animation: ld-rr-birdride 9s linear infinite; }
         .ld-bird .wheel { transform-origin: 18px 38px; animation: ele-roll .25s linear infinite; }
         .ld-bird .blur { fill: none; stroke: var(--udc-text2); stroke-width: 2.2; stroke-dasharray: 5 3; }
-        .ld-bird .stand { opacity: 0; animation: ld-rr-birdstand 9s linear infinite; }
-        .ld-bird .run { animation: ld-rr-birdrun 9s linear infinite; }
-        .ld-bird .body { transform-origin: 18px 30px; animation: ld-rr-birdlean 9s ease-in-out infinite; }
+        .ld-bird .stand { opacity: 0; }
+        .ld-bird .body { transform-origin: 18px 30px; transform: rotate(14deg); }
         .ld-bird .crest { fill: none; stroke: var(--udc-text2); stroke-width: 1.6; stroke-linecap: round; }
-        .ld-say { position: absolute; bottom: 70px; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; white-space: nowrap;
+        .ld-say { position: absolute; bottom: 82px; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; white-space: nowrap;
           background: var(--udc-text); color: var(--udc-card); opacity: 0; animation: ld-rr-say 9s ease-in-out infinite; z-index: 3; }
         /* Kojote: prallt an die Wand */
         .ld-coy { width: 70px; height: 46px; z-index: 3; animation: ld-rr-coyride 9s linear infinite; }
@@ -7057,12 +7062,17 @@ class UnifiDynamicPanel extends HTMLElement {
         .ld-stars span:nth-child(2) { animation-delay: -.33s; } .stars span:nth-child(3) { animation-delay: -.66s; }
         .ld-dust { position: absolute; bottom: 20px; width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, #e0a060 45%, var(--udc-card)); opacity: 0; left: calc(72% - 6px); animation: ld-rr-dust 9s ease-out infinite; z-index: 3; }
         .ld-dust.b { --dx: -14px; } .dust.a { --dx: -4px; }
-        @keyframes ld-rr-rrfill { 0% { width: 0; } 36% { width: calc(66% + 30px); } 44% { width: calc(72% + 34px); } 60% { width: calc(86% + 30px); } 80% { width: calc(86% + 30px); } 90%, 100% { width: calc(100% + 40px); } }
-        @keyframes ld-rr-birdride { 0% { left: -40px; } 36% { left: 66%; } 44% { left: calc(72% + 12px); } 60% { left: 86%; } 80% { left: 86%; } 90%, 100% { left: calc(100% + 20px); } }
-        @keyframes ld-rr-birdrun { 0%, 59% { opacity: 1; } 60%, 80% { opacity: 0; } 81%, 100% { opacity: 1; } }
-        @keyframes ld-rr-birdstand { 0%, 59% { opacity: 0; } 60%, 80% { opacity: 1; } 81%, 100% { opacity: 0; } }
-        @keyframes ld-rr-birdlean { 0%, 59% { transform: rotate(14deg); } 61%, 80% { transform: none; } 82%, 100% { transform: rotate(14deg); } }
-        @keyframes ld-rr-say { 0%, 62% { opacity: 0; left: calc(86% - 34px); transform: translateY(6px) scale(.8); } 65%, 78% { opacity: 1; left: calc(86% - 34px); transform: none; } 80%, 100% { opacity: 0; left: calc(86% - 34px); } }
+        @keyframes ld-rr-rrfill { 0% { width: 0; } 28% { width: calc(72% + 30px); } 36% { width: calc(72% + 37px); } 90%, 100% { width: 100%; } }
+        /* Bis 28 % vor dem Portal, dann in die Mitte (Vogelmitte = Portalmitte
+           bei 72% + 37px), dabei kleiner, etwas höher und dunkler. */
+        @keyframes ld-rr-birdride {
+          0% { left: -40px; transform: none; opacity: 1; filter: none; }
+          28% { left: calc(72% - 6px); transform: none; opacity: 1; filter: none; }
+          36% { left: calc(72% + 17px); transform: translateY(-10px) scale(.25); opacity: 0; filter: brightness(.3); }
+          100% { left: calc(72% + 17px); transform: translateY(-10px) scale(.25); opacity: 0; filter: brightness(.3); }
+        }
+        /* "Mip mip!" hallt aus dem Tunnel, während der Kojote heranrennt. */
+        @keyframes ld-rr-say { 0%, 36% { opacity: 0; left: calc(72% + 6px); transform: translateY(6px) scale(.8); } 39%, 52% { opacity: .9; left: calc(72% + 6px); transform: none; } 56%, 100% { opacity: 0; left: calc(72% + 6px); transform: translateY(-4px); } }
         @keyframes ld-rr-coyride { 0%, 6% { left: -80px; opacity: 1; } 42% { left: calc(72% - 70px); } 52% { left: calc(72% - 70px); } 60% { left: calc(72% - 78px); } 94% { left: calc(72% - 78px); opacity: 1; } 100% { left: calc(72% - 78px); opacity: 0; } }
         @keyframes ld-rr-coysquash { 0%, 41.5% { transform: none; } 42.5% { transform: scaleX(.55); } 50% { transform: scaleX(.6); } 53%, 100% { transform: none; } }
         @keyframes ld-rr-coyfall { 0%, 52% { transform: none; } 58%, 100% { transform: translateY(14px) rotate(-180deg); } }

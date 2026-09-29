@@ -5,6 +5,17 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.15.7] - 2026-09-29
+
+### Fixed
+
+- Runner bird loader: the bird now really runs into the tunnel instead of
+  passing behind a rock that was narrower than the bird. The rock is a cliff
+  face with a tunnel portal as tall as the bird; the bird runs in, shrinks
+  and disappears into the dark, and "Mip mip!" echoes from the tunnel while
+  the coyote smashes into the painted-on portal. The progress bar no longer
+  runs past the end of the track.
+
 ## [2.15.6] - 2026-09-29
 
 ### Changed
@@ -1466,6 +1477,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.15.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.7
 [2.15.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.6
 [2.15.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.5
 [2.15.4]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.4
