@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - **Penguin**: waddles along until a polar bear comes running, slides
     away on its belly and dives into an ice hole; the bear stops, looks
     around puzzled, and the penguin surfaces further ahead and waves.
+  - **Runner bird**: dashes along with a coyote in pursuit and runs
+    straight through a tunnel painted on a rock wall; the coyote tries the
+    same, smacks into the wall, flips over and sees stars. "Mip mip!"
   - **Random**: a different one on each load.
 - The choice is stored per user, like the column selection, applies right
   away without "Save" and follows you to all your devices.

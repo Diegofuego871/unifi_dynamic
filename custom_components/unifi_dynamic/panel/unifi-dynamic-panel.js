@@ -286,6 +286,7 @@ const STRINGS = {
       cat: ["Katze", "Anschleichen und Anspringen"],
       hamster: ["Hamster", "Im Laufrad"],
       penguin: ["Pinguin", "…und der Eisbär"],
+      runner: ["Laufvogel", "…und der Kojote"],
       random: ["Zufall", "Jedes Mal eine andere"],
     },
     loaderSelect: (name) => `Loader ${name} wählen`,
@@ -293,6 +294,7 @@ const STRINGS = {
       cat: ["Schleicht sich an die Daten an…", "Hintern wackelt. Gleich…", "Sprung! Knapp daneben.", "Tut so, als wäre nichts gewesen."],
       hamster: ["Rennt, so schnell er kann…", "Das Rad dreht, die Daten kommen.", "Keine Pause. Keine Ahnung wohin.", "Gleich drüben…"],
       penguin: ["Watschelt durch den Verlauf…", "Da kommt wer! Abtauchen!", "Der Bär wundert sich noch.", "Taucht mit den Daten wieder auf…"],
+      runner: ["Flitzt durch den Verlauf…", "Der Tunnel ist nur aufgemalt. Für manche.", "Aua.", "Mip mip! Daten sind unterwegs…"],
     },
     availLoadingWords: [
       "Balanciert durch den Verlauf…",
@@ -594,6 +596,7 @@ const STRINGS = {
       cat: ["Cat", "Sneak and pounce"],
       hamster: ["Hamster", "In the wheel"],
       penguin: ["Penguin", "…and the polar bear"],
+      runner: ["Runner bird", "…and the coyote"],
       random: ["Random", "A different one each time"],
     },
     loaderSelect: (name) => `Choose loader ${name}`,
@@ -601,6 +604,7 @@ const STRINGS = {
       cat: ["Sneaking up on the data…", "Wiggling. Any second…", "Pounce! Just missed.", "Acts like nothing happened."],
       hamster: ["Running as fast as he can…", "The wheel turns, the data comes.", "No break. No idea where to.", "Almost there…"],
       penguin: ["Waddling through the history…", "Someone's coming! Dive!", "The bear is still puzzled.", "Surfacing with the data…"],
+      runner: ["Dashing through the history…", "The tunnel is only painted on. For some.", "Ouch.", "Mip mip! Data on its way…"],
     },
     availLoadingWords: [
       "Balancing through the history…",
@@ -789,7 +793,7 @@ const DEFAULT_PREFS = {
 
 // Lade-Animationen zur Auswahl in den Einstellungen. "random" wählt bei
 // jedem Laden eine andere.
-const LOADERS = ["elephant", "cat", "hamster", "penguin"];
+const LOADERS = ["elephant", "cat", "hamster", "penguin", "runner"];
 const LOADER_CHOICES = [...LOADERS, "random"];
 
 // Zeitraum -> Dauer in Sekunden.
@@ -2883,6 +2887,35 @@ class UnifiDynamicPanel extends HTMLElement {
               <ellipse class="sil" cx="25" cy="37" rx="10" ry="6.5"/><circle class="sil" cx="34" cy="33" r="5.5"/><circle class="sil" cx="32.5" cy="27.5" r="2.2"/>
               <circle class="eye" cx="36" cy="32" r="1"/><circle class="nose" cx="39.3" cy="34" r="0.9"/></g>
           </svg></div></div>`;
+    }
+    if (kind === "runner") {
+      return `<div class="ele-track ld-desert"><div class="ele-done"></div>
+          <div class="ld-rr-actor ld-bird"><svg aria-hidden="true" viewBox="0 0 40 46"><g class="body">
+ <g class="run"><g class="wheel"><circle class="blur" cx="18" cy="38" r="7"/></g></g>
+ <g class="stand"><path d="M16 30 L14 44 M20 30 L22 44" style="stroke:#f0a030;stroke-width:1.8;fill:none"/></g>
+ <path class="sil" d="M4 20 L-8 16 L-6 20 L-10 22 L4 25 Z"/>
+ <ellipse class="sil" cx="16" cy="25" rx="11" ry="7"/>
+ <path class="sil" d="M22 22 C26 16, 26 10, 27 6 L31 7 C30 12, 29 18, 26 26 Z"/>
+ <circle class="sil" cx="29" cy="7" r="5"/>
+ <path class="crest" d="M27 3 C24 -2, 21 -3, 18 -2 M28 2.5 C26 -3, 24 -5, 21 -5 M29 2 C29 -3, 27 -6, 25 -7"/>
+ <path class="warm" d="M33 6 L44 9 L33 10 Z"/>
+ <circle class="eye" cx="30" cy="6" r="1.4" style="fill:var(--udc-text)"/></g></svg></div>
+          <div class="ld-wall"><svg aria-hidden="true" viewBox="0 0 34 60"><g class="shake"><path class="rock" d="M2 60 L0 22 L6 6 L18 0 L30 5 L34 24 L33 60 Z"/>
+ <path class="tunnel" d="M8 60 L8 42 C8 32, 26 32, 26 42 L26 60 Z"/>
+ <path class="crack" d="M5 14 l6 4 l-2 5 M24 12 l5 6 M28 30 l3 4"/></g></svg></div>
+          <div class="ld-rr-actor ld-coy"><svg aria-hidden="true" viewBox="0 0 70 46"><g class="fall"><g class="squash">
+ <path class="tail" d="M10 20 C0 22, -4 30, -2 34 C4 32, 8 28, 12 25 Z"/>
+ <rect class="sil leg l1" x="14" y="26" width="5" height="18" rx="2.5"/><rect class="sil leg l2" x="20" y="26" width="5" height="18" rx="2.5"/>
+ <rect class="sil leg l3" x="38" y="26" width="5" height="18" rx="2.5"/><rect class="sil leg l4" x="44" y="26" width="5" height="18" rx="2.5"/>
+ <ellipse class="sil" cx="31" cy="22" rx="21" ry="8"/><ellipse class="light" cx="33" cy="26" rx="12" ry="3"/>
+ <path class="sil" d="M46 18 C50 10, 56 9, 60 12 L69 17 C70 19, 68 20, 66 20 L56 21 C52 24, 48 24, 46 22 Z"/>
+ <path class="sil" d="M52 12 L50 0 L57 10 Z"/>
+ <circle class="eye" cx="57" cy="13" r="1.4" style="fill:var(--udc-text)"/><circle cx="69" cy="17.5" r="1.4" fill="#111"/>
+</g></g></svg></div>
+          <div class="ld-stars" aria-hidden="true"><span>★</span><span>★</span><span>★</span></div>
+          <div class="ld-dust a"></div><div class="ld-dust b"></div>
+          <div class="ld-say" aria-hidden="true">Mip mip!</div>
+        </div>`;
     }
     if (kind === "penguin") {
       return `<div class="ele-track ld-ice"><div class="ele-done ld-pen-done"></div><div class="ld-hole h1"></div><div class="ld-hole h2"></div>
@@ -6022,6 +6055,58 @@ class UnifiDynamicPanel extends HTMLElement {
         @keyframes ld-drop2 {
           0%, 83% { opacity: 0; transform: none; } 85% { opacity: 1; } 90% { opacity: 0; transform: translate(var(--dx), -16px); } 100% { opacity: 0; }
         }
+        /* Laufvogel und Kojote: der Vogel rennt durch den aufgemalten
+           Tunnel, der Kojote prallt an die Wand. */
+        .ele-track.ld-desert { margin-top: 80px; background: color-mix(in srgb, #e0a060 16%, var(--udc-card)); }
+        .ld-desert .ele-done { animation: ld-rr-rrfill 9s linear infinite; background: color-mix(in srgb, #e0a060 38%, var(--udc-card)); }
+        .ld-rr-actor { position: absolute; bottom: 20px; }
+        .ld-rr-actor svg { width: 100%; height: 100%; overflow: visible; display: block; }
+        .ld-desert .sil { fill: var(--udc-text2); }
+        .ld-desert .warm { fill: #f0a030; }
+        .ld-desert .light { fill: color-mix(in srgb, var(--udc-text) 75%, var(--udc-card)); }
+        /* Wand mit aufgemaltem Tunnel */
+        .ld-wall { position: absolute; left: 72%; bottom: 20px; width: 34px; height: 60px; z-index: 2; }
+        .ld-wall .rock { fill: color-mix(in srgb, #b07040 55%, var(--udc-card)); stroke: color-mix(in srgb, #b07040 80%, var(--udc-card)); stroke-width: 1.2; }
+        .ld-wall .crack { fill: none; stroke: color-mix(in srgb, #b07040 85%, var(--udc-card)); stroke-width: 1; }
+        .ld-wall .tunnel { fill: #151515; }
+        .ld-wall .shake { transform-origin: 17px 60px; animation: ld-rr-wallshake 9s linear infinite; }
+        /* Vogel: läuft hinter der Wand durch */
+        .ld-bird { width: 40px; height: 46px; z-index: 1; animation: ld-rr-birdride 9s linear infinite; }
+        .ld-bird .wheel { transform-origin: 18px 38px; animation: ele-roll .25s linear infinite; }
+        .ld-bird .blur { fill: none; stroke: var(--udc-text2); stroke-width: 2.2; stroke-dasharray: 5 3; }
+        .ld-bird .stand { opacity: 0; animation: ld-rr-birdstand 9s linear infinite; }
+        .ld-bird .run { animation: ld-rr-birdrun 9s linear infinite; }
+        .ld-bird .body { transform-origin: 18px 30px; animation: ld-rr-birdlean 9s ease-in-out infinite; }
+        .ld-bird .crest { fill: none; stroke: var(--udc-text2); stroke-width: 1.6; stroke-linecap: round; }
+        .ld-say { position: absolute; bottom: 70px; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700; white-space: nowrap;
+          background: var(--udc-text); color: var(--udc-card); opacity: 0; animation: ld-rr-say 9s ease-in-out infinite; z-index: 3; }
+        /* Kojote: prallt an die Wand */
+        .ld-coy { width: 70px; height: 46px; z-index: 3; animation: ld-rr-coyride 9s linear infinite; }
+        .ld-coy .squash { transform-origin: 70px 44px; animation: ld-rr-coysquash 9s ease-out infinite; }
+        .ld-coy .fall { transform-origin: 35px 22px; animation: ld-rr-coyfall 9s ease-in infinite; }
+        .ld-coy .leg { transform-box: fill-box; transform-origin: 50% 10%; animation: ld-rr-coylegs 9s linear infinite; }
+        .ld-coy .l2, .ld-coy .l3 { animation-name: ld-rr-coylegs2; }
+        .ld-coy .tail { fill: var(--udc-text2); }
+        .ld-stars { position: absolute; bottom: 30px; width: 34px; height: 14px; opacity: 0; z-index: 3; animation: ld-rr-stars 9s linear infinite; }
+        .ld-stars span { position: absolute; top: 0; font-size: 11px; color: #f0c030; animation: ld-rr-orbit 1s linear infinite; }
+        .ld-stars span:nth-child(2) { animation-delay: -.33s; } .stars span:nth-child(3) { animation-delay: -.66s; }
+        .ld-dust { position: absolute; bottom: 20px; width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, #e0a060 45%, var(--udc-card)); opacity: 0; left: calc(72% - 6px); animation: ld-rr-dust 9s ease-out infinite; z-index: 3; }
+        .ld-dust.b { --dx: -14px; } .dust.a { --dx: -4px; }
+        @keyframes ld-rr-rrfill { 0% { width: 0; } 36% { width: calc(66% + 30px); } 44% { width: calc(72% + 34px); } 60% { width: calc(86% + 30px); } 80% { width: calc(86% + 30px); } 90%, 100% { width: calc(100% + 40px); } }
+        @keyframes ld-rr-birdride { 0% { left: -40px; } 36% { left: 66%; } 44% { left: calc(72% + 12px); } 60% { left: 86%; } 80% { left: 86%; } 90%, 100% { left: calc(100% + 20px); } }
+        @keyframes ld-rr-birdrun { 0%, 59% { opacity: 1; } 60%, 80% { opacity: 0; } 81%, 100% { opacity: 1; } }
+        @keyframes ld-rr-birdstand { 0%, 59% { opacity: 0; } 60%, 80% { opacity: 1; } 81%, 100% { opacity: 0; } }
+        @keyframes ld-rr-birdlean { 0%, 59% { transform: rotate(14deg); } 61%, 80% { transform: none; } 82%, 100% { transform: rotate(14deg); } }
+        @keyframes ld-rr-say { 0%, 62% { opacity: 0; left: calc(86% - 34px); transform: translateY(6px) scale(.8); } 65%, 78% { opacity: 1; left: calc(86% - 34px); transform: none; } 80%, 100% { opacity: 0; left: calc(86% - 34px); } }
+        @keyframes ld-rr-coyride { 0%, 6% { left: -80px; opacity: 1; } 42% { left: calc(72% - 70px); } 52% { left: calc(72% - 70px); } 60% { left: calc(72% - 78px); } 94% { left: calc(72% - 78px); opacity: 1; } 100% { left: calc(72% - 78px); opacity: 0; } }
+        @keyframes ld-rr-coysquash { 0%, 41.5% { transform: none; } 42.5% { transform: scaleX(.55); } 50% { transform: scaleX(.6); } 53%, 100% { transform: none; } }
+        @keyframes ld-rr-coyfall { 0%, 52% { transform: none; } 58%, 100% { transform: translateY(14px) rotate(-180deg); } }
+        @keyframes ld-rr-coylegs { 0%, 6% { transform: rotate(0); } 7.4% { transform: rotate(30deg); } 8.8% { transform: rotate(-30deg); } 10.2% { transform: rotate(30deg); } 11.6% { transform: rotate(-30deg); } 13.0% { transform: rotate(30deg); } 14.4% { transform: rotate(-30deg); } 15.8% { transform: rotate(30deg); } 17.2% { transform: rotate(-30deg); } 18.6% { transform: rotate(30deg); } 20.0% { transform: rotate(-30deg); } 21.4% { transform: rotate(30deg); } 22.8% { transform: rotate(-30deg); } 24.2% { transform: rotate(30deg); } 25.6% { transform: rotate(-30deg); } 27.0% { transform: rotate(30deg); } 28.4% { transform: rotate(-30deg); } 29.8% { transform: rotate(30deg); } 31.2% { transform: rotate(-30deg); } 32.6% { transform: rotate(30deg); } 34.0% { transform: rotate(-30deg); } 35.4% { transform: rotate(30deg); } 36.8% { transform: rotate(-30deg); } 38.2% { transform: rotate(30deg); } 39.6% { transform: rotate(-30deg); } 41.0% { transform: rotate(30deg); } 43%, 100% { transform: rotate(0); } }
+        @keyframes ld-rr-coylegs2 { 0%, 6.7% { transform: rotate(0); } 8.1% { transform: rotate(-30deg); } 9.5% { transform: rotate(30deg); } 10.9% { transform: rotate(-30deg); } 12.3% { transform: rotate(30deg); } 13.7% { transform: rotate(-30deg); } 15.1% { transform: rotate(30deg); } 16.5% { transform: rotate(-30deg); } 17.9% { transform: rotate(30deg); } 19.3% { transform: rotate(-30deg); } 20.7% { transform: rotate(30deg); } 22.1% { transform: rotate(-30deg); } 23.5% { transform: rotate(30deg); } 24.9% { transform: rotate(-30deg); } 26.3% { transform: rotate(30deg); } 27.7% { transform: rotate(-30deg); } 29.1% { transform: rotate(30deg); } 30.5% { transform: rotate(-30deg); } 31.9% { transform: rotate(30deg); } 33.3% { transform: rotate(-30deg); } 34.7% { transform: rotate(30deg); } 36.1% { transform: rotate(-30deg); } 37.5% { transform: rotate(30deg); } 38.9% { transform: rotate(-30deg); } 40.3% { transform: rotate(30deg); } 41.7% { transform: rotate(-30deg); } 43%, 100% { transform: rotate(0); } }
+        @keyframes ld-rr-wallshake { 0%, 42% { transform: none; } 43% { transform: rotate(3deg); } 44% { transform: rotate(-2deg); } 45%, 100% { transform: none; } }
+        @keyframes ld-rr-stars { 0%, 57% { opacity: 0; left: calc(72% - 74px); } 60%, 92% { opacity: 1; left: calc(72% - 74px); } 96%, 100% { opacity: 0; left: calc(72% - 74px); } }
+        @keyframes ld-rr-orbit { from { transform: rotate(0) translateX(12px) rotate(0); } to { transform: rotate(360deg) translateX(12px) rotate(-360deg); } }
+        @keyframes ld-rr-dust { 0%, 42% { opacity: 0; transform: none; } 43% { opacity: .9; } 50% { opacity: 0; transform: translate(var(--dx), -14px) scale(1.8); } 100% { opacity: 0; } }
         /* Auswahl in den Einstellungen mit Mini-Vorschau */
         .ld-intro {
           margin: 0 0 10px;
@@ -6100,8 +6185,27 @@ class UnifiDynamicPanel extends HTMLElement {
           .ld-actor *,
           .ld-q,
           .ld-bang,
-          .ld-drop {
+          .ld-drop,
+          .ld-rr-actor,
+          .ld-rr-actor *,
+          .ld-desert .ele-done,
+          .ld-wall *,
+          .ld-stars,
+          .ld-stars *,
+          .ld-dust,
+          .ld-say {
             animation: none !important;
+          }
+          .ld-bird {
+            left: 40%;
+          }
+          .ld-coy {
+            left: 10%;
+          }
+          .ld-stars,
+          .ld-dust,
+          .ld-say {
+            opacity: 0;
           }
           .ld-rider,
           .ld-peng {
