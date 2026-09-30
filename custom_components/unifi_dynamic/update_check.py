@@ -23,9 +23,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
+from homeassistant.helpers.storage import Store
 from homeassistant.loader import async_get_integration
 
-from .const import CONF_UPDATE_CHECK, DEFAULT_UPDATE_CHECK, DOMAIN, GITHUB_REPO
+from .const import CONF_UPDATE_CHECK, DEFAULT_UPDATE_CHECK, DOMAIN, GITHUB_REPO, STORAGE_VERSION
 
 LATEST_RELEASE_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 # Für Vorabversionen: die letzten Releases inkl. Pre-Releases.
@@ -40,6 +41,12 @@ TIMEOUT = ClientTimeout(total=10)
 _CACHE_KEY = f"{DOMAIN}_latest_release"
 _PRE_CACHE_KEY = f"{DOMAIN}_latest_prerelease"
 _TIMER_KEY = f"{DOMAIN}_update_timer"
+# Gemeinsame Panel-Einstellungen der Instanz (nicht pro Hub, nicht pro
+# Benutzer): Vorabversionen anbieten, und welchen HACS-Schalter "Pre-release"
+# das Panel selbst eingeschaltet hat (nur den schaltet es wieder aus).
+_PANEL_KEY = f"{DOMAIN}_panel_settings"
+_PANEL_STORE_KEY = f"{DOMAIN}_panel"
+PANEL_DEFAULTS: dict[str, Any] = {"prerelease": False, "prerelease_hacs": None}
 ISSUE_ID = "update_available"
 DAILY = timedelta(days=1)
 # Erste Prüfung nach dem Start zufällig verteilt, damit nicht alle
@@ -230,3 +237,36 @@ def async_stop_daily(hass: HomeAssistant) -> None:
     for unsub in hass.data.pop(_TIMER_KEY, []):
         unsub()
     ir.async_delete_issue(hass, DOMAIN, ISSUE_ID)
+
+
+# -- Gemeinsame Panel-Einstellungen --------------------------------------------
+
+
+def _panel_store(hass: HomeAssistant) -> Store[dict[str, Any]]:
+    return Store(hass, STORAGE_VERSION, _PANEL_STORE_KEY)
+
+
+async def async_load_panel_settings(hass: HomeAssistant) -> dict[str, Any]:
+    """Einmal laden und in hass.data halten; danach synchron lesbar."""
+    if _PANEL_KEY not in hass.data:
+        stored = await _panel_store(hass).async_load() or {}
+        hass.data[_PANEL_KEY] = {
+            "prerelease": bool(stored.get("prerelease", False)),
+            "prerelease_hacs": str(stored["prerelease_hacs"]) if stored.get("prerelease_hacs") else None,
+        }
+    return hass.data[_PANEL_KEY]
+
+
+@callback
+def panel_settings(hass: HomeAssistant) -> dict[str, Any]:
+    return dict(hass.data.get(_PANEL_KEY) or PANEL_DEFAULTS)
+
+
+async def async_set_panel_settings(hass: HomeAssistant, values: dict[str, Any]) -> dict[str, Any]:
+    current = await async_load_panel_settings(hass)
+    if "prerelease" in values:
+        current["prerelease"] = bool(values["prerelease"])
+    if "prerelease_hacs" in values:
+        current["prerelease_hacs"] = str(values["prerelease_hacs"]) if values["prerelease_hacs"] else None
+    await _panel_store(hass).async_save(dict(current))
+    return dict(current)

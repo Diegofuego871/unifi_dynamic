@@ -280,7 +280,9 @@ Ein Klick auf eine Spaltenüberschrift sortiert die Tabelle aufsteigend
 danach, ein erneuter Klick dreht auf absteigend um. Ein kleiner Pfeil
 markiert die aktive Spalte und Richtung. Zeilen ohne Wert in der sortierten
 Spalte (keine IP, nie gesehen) landen immer am Ende, unabhängig von der
-Richtung.
+Richtung. Die Spalte **Verbindung** sortiert aufsteigend WLAN-Clients nach
+Empfang (bester zuerst), danach WLAN ohne Messwert und zuletzt Kabel;
+absteigend genau umgekehrt.
 
 Online/Offline-Auswahl, Verbindungsfilter, Sortierspalte und -richtung, die
 ausgeblendeten Spalten samt Reihenfolge, der Schalter „Bereits verknüpfte ausblenden"
@@ -354,7 +356,8 @@ dem Neustart von Home Assistant ist die neue Version aktiv. Ohne HACS gibt
 es nur den Hinweis mit Link, installiert wird dann manuell.
 
 Mit dem Schalter **„Vorabversionen anzeigen"** unter der Versionszeile
-(pro Benutzer gespeichert) bietet das Panel auch Beta-Versionen an, sofern
+(gilt nach „Speichern" für die ganze Home-Assistant-Instanz, weil die
+installierte Version für alle gleich ist) bietet das Panel auch Beta-Versionen an, sofern
 sie neuer sind als das letzte stabile Release. Als Vorabversion gilt, was
 auf GitHub als Pre-Release markiert ist oder einen Zusatz wie `b1` oder
 `rc1` in der Nummer trägt. Die Zeile ist dann violett
@@ -424,7 +427,10 @@ wenn Ping aktiv ist). Die Werte kommen mit der Clientliste; ein Tipp auf
 eine Kachel öffnet ein Unter-Fenster mit Zeitraum-Schalter (24 Std. / 7
 Tage / 30 Tage, gemeinsam für alle Unter-Fenster und pro Benutzer
 gespeichert) und Diagramm. Geladen wird erst dort; das X schliesst nur
-das Unter-Fenster, die Geräteansicht dahinter bleibt offen.
+das Unter-Fenster, die Geräteansicht dahinter bleibt offen. Oben wechseln
+Tabs (Verfügbarkeit / WLAN / Antwortzeit, auf dem Handy kurz „Verfügbar /
+WLAN / Ping") zwischen den Statistiken des Geräts, ohne das Fenster zu
+schliessen; Tabs gibt es nur bei mehr als einer Statistik.
 
 Das Unter-Fenster **„WLAN-Empfang"** zeigt Median, besten und
 schlechtesten Wert der Signalstärke, ein Diagramm in den Farben des
@@ -447,7 +453,7 @@ Aufbewahrungsdauer des Recorders. Dadurch lädt auch die 30-Tage-Ansicht
 sofort. Für die Zeit, bevor das Protokoll lief (die ersten Tage nach dem
 Update auf 2.7.0), ergänzt das Panel den Recorder-Verlauf der
 Online-Entität; das kann bei langen Zeiträumen einige Sekunden dauern —
-währenddessen läuft eine Lade-Animation (wählbar unter Einstellungen → Loader: Elefant auf dem Ball, Katze, Hamster im Laufrad, Pinguin mit Eisbär, Laufvogel mit Kojote oder Zufall; gespeichert pro Benutzer und sofort wirksam, ohne „Speichern“). Zeiten ohne Daten
+währenddessen läuft eine Lade-Animation (wählbar unter Einstellungen → Loader: Elefant auf dem Ball, Katze, Hamster im Laufrad, Pinguin mit Eisbär, Laufvogel mit Kojote oder Zufall; gespeichert pro Benutzer, wirksam wie alle Einstellungen nach „Speichern“). Zeiten ohne Daten
 (bevor der Client bekannt war, während Home Assistant nicht lief oder der
 UniFi-Controller nicht erreichbar war) sind schraffiert und zählen nicht
 mit. Deckt die Aufzeichnung weniger als 10 % des gewählten Zeitraums ab

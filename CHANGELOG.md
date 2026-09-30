@@ -5,6 +5,29 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.15.8] - 2026-09-30
+
+### Added
+
+- Tabs in the statistics window (availability, WiFi, response time): a tile
+  opens the window on its tab, and the tabs switch between the statistics
+  without closing it. Title, icon and content follow the tab; the time range
+  stays. On phones the labels are shortened ("Uptime", "WiFi", "Ping").
+  Tabs only appear when a device has more than one statistic.
+- The Connection column can now be sorted by signal: ascending shows
+  wireless clients with the best signal first, then wireless clients
+  without a value, then wired clients; descending is the reverse.
+
+### Changed
+
+- The loader choice now takes effect with "Save" like every other setting
+  (still stored per user). "Cancel" discards it.
+- "Show pre-releases" now applies to the whole Home Assistant instance
+  instead of per user, since the installed version is the same for
+  everyone. It is stored by the integration and takes effect with "Save".
+  The previous per-user choice is not carried over; switch it on again if
+  needed.
+
 ## [2.15.7] - 2026-09-29
 
 ### Fixed
@@ -1477,6 +1500,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.15.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.8
 [2.15.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.7
 [2.15.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.6
 [2.15.5]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.5

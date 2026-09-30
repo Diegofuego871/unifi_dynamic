@@ -289,6 +289,8 @@ const STRINGS = {
     tileWifi: "WLAN-Empfang",
     tileWifiShort: "WLAN",
     tilePing: "Antwortzeit",
+    // Tabs im Statistik-Fenster: [lang, kurz (Handy)]
+    statTabs: { avail: ["Verfügbarkeit", "Verfügbar"], wifi: ["WLAN", "WLAN"], ping: ["Antwortzeit", "Ping"] },
     tilePingSilent: "Kein Fehler",
     wifiTierNames: ["", "schlecht", "schwach", "ok", "sehr gut"],
     wifiMedian: "Median",
@@ -313,7 +315,7 @@ const STRINGS = {
     verInstalled: (v) => `Installiert: ${v}`,
     verPreShort: "Vorabversion",
     verPreToggle: "Vorabversionen anzeigen",
-    verPreToggleShort: "Auch Beta-Versionen zum Testen anbieten. Gilt nur für dich.",
+    verPreToggleShort: "Auch Beta-Versionen zum Testen anbieten. Gilt für alle Benutzer.",
     verPreHint:
       "HACS installiert Vorabversionen nur, wenn bei dieser Integration „Pre-release“ eingeschaltet ist: im HACS-Gerät die Entität „Pre-release“ aktivieren und einschalten.",
     verPreHintLink: "HACS-Gerät öffnen",
@@ -343,9 +345,7 @@ const STRINGS = {
     availRangeGroup: "Zeitraum",
     availLoading: "Verlauf wird geladen…",
     loaderTitle: "Loader",
-    loaderShort: "Lade-Animation, während der Verlauf geladen wird. Gilt nur für dich, auf allen Geräten, und wird sofort übernommen – ohne „Speichern“.",
-    loaderPicked: (name) => `Loader „${name}“ übernommen`,
-    loaderNow: "sofort wirksam",
+    loaderShort: "Lade-Animation, während der Verlauf geladen wird. Gilt nur für dich, auf allen Geräten.",
     settingsSaveHint: "„Speichern“ gilt für Abfrage, Automatisches Entfernen, Benachrichtigungen, Updates und Ping. Loader und Verbindung werden direkt übernommen.",
     loaderNames: {
       elephant: ["Elefant", "Balance auf dem Ball"],
@@ -665,6 +665,7 @@ const STRINGS = {
     tileWifi: "WiFi signal",
     tileWifiShort: "WiFi",
     tilePing: "Response time",
+    statTabs: { avail: ["Availability", "Uptime"], wifi: ["WiFi", "WiFi"], ping: ["Response time", "Ping"] },
     tilePingSilent: "Not an error",
     wifiTierNames: ["", "poor", "weak", "fair", "very good"],
     wifiMedian: "Median",
@@ -689,7 +690,7 @@ const STRINGS = {
     verInstalled: (v) => `Installed: ${v}`,
     verPreShort: "pre-release",
     verPreToggle: "Show pre-releases",
-    verPreToggleShort: "Also offer beta versions for testing. Applies only to you.",
+    verPreToggleShort: "Also offer beta versions for testing. Applies to all users.",
     verPreHint:
       "HACS only installs pre-releases when \"Pre-release\" is switched on for this integration: enable and switch on the \"Pre-release\" entity on the HACS device.",
     verPreHintLink: "Open HACS device",
@@ -719,9 +720,7 @@ const STRINGS = {
     availRangeGroup: "Time range",
     availLoading: "Loading history…",
     loaderTitle: "Loader",
-    loaderShort: "Animation shown while the history loads. Applies only to you, on all your devices, and takes effect right away – no \"Save\" needed.",
-    loaderPicked: (name) => `Loader "${name}" applied`,
-    loaderNow: "applies instantly",
+    loaderShort: "Animation shown while the history loads. Applies only to you, on all your devices.",
     settingsSaveHint: "\"Save\" applies to polling, automatic removal, notifications, updates and ping. Loader and connection take effect directly.",
     loaderNames: {
       elephant: ["Elephant", "Balancing on a ball"],
@@ -962,11 +961,8 @@ const DEFAULT_PREFS = {
   hub: "all",
   // Lade-Animation beim Verlauf (siehe LOADERS) oder "random".
   loader: "elephant",
-  // Vorabversionen (Beta) im Versionsbereich der Einstellungen anbieten.
-  prerelease: false,
-  // HACS-Schalter "Pre-release", den das Panel selbst eingeschaltet hat
-  // (Entity-ID). Nur diesen schaltet es beim Ausschalten wieder aus.
-  prereleaseHacs: null,
+  // Vorabversionen gelten seit 2.15.8 für die ganze Instanz (Backend,
+  // unifi_dynamic/set_panel), nicht mehr pro Benutzer.
 };
 
 // Lade-Animationen zur Auswahl in den Einstellungen. "random" wählt bei
@@ -1024,8 +1020,6 @@ function sanitizePrefs(raw) {
     availRange: Object.prototype.hasOwnProperty.call(AVAIL_RANGES, p.availRange) ? p.availRange : "24h",
     hub: typeof p.hub === "string" && p.hub ? p.hub : "all",
     loader: LOADER_CHOICES.includes(p.loader) ? p.loader : "elephant",
-    prerelease: p.prerelease === true,
-    prereleaseHacs: typeof p.prereleaseHacs === "string" && p.prereleaseHacs ? p.prereleaseHacs : null,
     // Zeitpunkt der letzten Änderung: entscheidet beim Laden, ob die lokale
     // Kopie oder der Stand von HA neuer ist.
     updated: typeof p.updated === "number" ? p.updated : 0,
@@ -1134,8 +1128,6 @@ class UnifiDynamicPanel extends HTMLElement {
     this._availRange = prefs.availRange || "24h";
     this._hub = prefs.hub || "all";
     this._loader = prefs.loader || "elephant";
-    this._prerelease = prefs.prerelease === true;
-    this._prereleaseHacs = prefs.prereleaseHacs || null;
   }
 
   _currentPrefs() {
@@ -1152,8 +1144,6 @@ class UnifiDynamicPanel extends HTMLElement {
       availRange: this._availRange,
       hub: this._hub,
       loader: this._loader,
-      prerelease: this._prerelease,
-      prereleaseHacs: this._prereleaseHacs || null,
     };
   }
 
@@ -1497,6 +1487,11 @@ class UnifiDynamicPanel extends HTMLElement {
       if (!this._settings || this._settings.entryId !== entryId) return;
       this._settings.data = data;
       this._settings.draft = JSON.parse(JSON.stringify(data.values));
+      this._applyPanelSettings(data.panel);
+      // Loader (pro Benutzer) und Vorabversionen (Instanz) gelten wie alles
+      // andere erst mit "Speichern".
+      this._settings.extraBase = { loader: this._loader, prerelease: Boolean(this._prerelease) };
+      this._settings.extra = { ...this._settings.extraBase };
     } catch (err) {
       if (!this._settings) return;
       this._settings.error = (err && err.message) || String(err);
@@ -1515,13 +1510,33 @@ class UnifiDynamicPanel extends HTMLElement {
     }
   }
 
-  // Geänderte Schlüssel gegenüber dem geladenen Stand.
+  // Geänderte Schlüssel gegenüber dem geladenen Stand: Hub-Optionen plus
+  // Loader und Vorabversionen (st.extra).
   _settingsChanges() {
+    const st = this._settings;
+    if (!st || !st.draft) return [];
+    return [...this._settingsEntryChanges(), ...this._settingsExtraChanges()];
+  }
+
+  _settingsEntryChanges() {
     const st = this._settings;
     if (!st || !st.draft) return [];
     return Object.keys(st.draft).filter(
       (k) => JSON.stringify(st.draft[k]) !== JSON.stringify(st.data.values[k])
     );
+  }
+
+  _settingsExtraChanges() {
+    const st = this._settings;
+    if (!st || !st.extra) return [];
+    return Object.keys(st.extra).filter((k) => st.extra[k] !== st.extraBase[k]);
+  }
+
+  // Gemeinsame Panel-Einstellungen der Instanz (get_options, version).
+  _applyPanelSettings(panel) {
+    if (!panel) return;
+    this._prerelease = panel.prerelease === true;
+    this._prereleaseHacs = panel.prerelease_hacs || null;
   }
 
   // Fehlermeldung je Feld, leer wenn gültig.
@@ -1823,7 +1838,9 @@ class UnifiDynamicPanel extends HTMLElement {
     const esc = (v) => this._escape(v);
     const names = t("loaderNames");
     const open = st.open.has("loader");
-    const current = LOADER_CHOICES.includes(this._loader) ? this._loader : "elephant";
+    const draft = st.extra ? st.extra.loader : this._loader;
+    const current = LOADER_CHOICES.includes(draft) ? draft : "elephant";
+    const changed = Boolean(st.extra && st.extra.loader !== st.extraBase.loader);
     const body = open
       ? `<div class="set-sec-body"><div class="opt-short ld-intro">${esc(t("loaderShort"))}</div><div class="ld-choices">${LOADER_CHOICES.map((k) => {
           const [name, desc] = names[k];
@@ -1839,7 +1856,9 @@ class UnifiDynamicPanel extends HTMLElement {
       : "";
     return `<section class="set-sec${open ? " open" : ""}">
         <button type="button" class="set-sec-head" data-set="section" data-id="loader" aria-expanded="${open}">
-          <span><span class="set-sec-title">${esc(t("loaderTitle"))}<span class="ld-now">${esc(t("loaderNow"))}</span></span><span class="set-sec-sum">${esc(names[current].join(" · "))}</span></span>
+          <span><span class="set-sec-title">${esc(t("loaderTitle"))}${
+            changed ? `<span class="set-badge">${esc(t("settingsChanged"))}</span>` : ""
+          }</span><span class="set-sec-sum">${esc(names[current].join(" · "))}</span></span>
           ${icon("chevron")}
         </button>
         ${body}
@@ -2193,7 +2212,7 @@ class UnifiDynamicPanel extends HTMLElement {
       }
       await this._callService("switch", "turn_on", { entity_id: sw.entityId });
       this._prereleaseHacs = sw.entityId;
-      this._savePrefs();
+      await this._hass.callWS({ type: "unifi_dynamic/set_panel", prerelease_hacs: sw.entityId });
       await this._refreshHacs();
     } catch (err) {
       v.hacsError = (err && err.message) || String(err);
@@ -2209,7 +2228,11 @@ class UnifiDynamicPanel extends HTMLElement {
     const id = this._prereleaseHacs;
     if (!id) return;
     this._prereleaseHacs = null;
-    this._savePrefs();
+    try {
+      await this._hass.callWS({ type: "unifi_dynamic/set_panel", prerelease_hacs: null });
+    } catch (err) {
+      // Nicht kritisch.
+    }
     const st = this._hass.states[id];
     if (st && st.state === "on") {
       try {
@@ -2238,7 +2261,10 @@ class UnifiDynamicPanel extends HTMLElement {
       // gemeldete Version nicht als stabil anbietet. Angezeigt wird sie
       // nur mit eingeschaltetem Schalter (_versionState).
       this._hass.callWS({ type: "unifi_dynamic/version", force, prerelease: true }).then(
-        (r) => (v.data = r),
+        (r) => {
+          v.data = r;
+          if (!this._settings || !this._settings.extra) this._applyPanelSettings(r && r.panel);
+        },
         (err) => (v.error = (err && err.message) || String(err))
       ),
     ];
@@ -2350,9 +2376,11 @@ class UnifiDynamicPanel extends HTMLElement {
   _prereleaseOptHtml() {
     const t = (k) => this._t(k);
     const esc = (x) => this._escape(x);
-    const on = Boolean(this._prerelease);
+    const st = this._settings;
+    const on = st && st.extra ? Boolean(st.extra.prerelease) : Boolean(this._prerelease);
+    const changed = st && st.extra && st.extra.prerelease !== st.extraBase.prerelease;
     return `<div class="ver-opt">
-        <div><div class="ver-opt-l">${esc(t("verPreToggle"))}</div><div class="ver-opt-d">${esc(t("verPreToggleShort"))}</div></div>
+        <div><div class="ver-opt-l">${esc(t("verPreToggle"))}${changed ? `<span class="set-badge">${esc(t("settingsChanged"))}</span>` : ""}</div><div class="ver-opt-d">${esc(t("verPreToggleShort"))}</div></div>
         <button type="button" class="sw-btn beta${on ? " on" : ""}" role="switch" aria-checked="${on}" data-ver="prerelease" aria-label="${esc(
           t("verPreToggle")
         )}"><span></span></button>
@@ -2467,11 +2495,11 @@ class UnifiDynamicPanel extends HTMLElement {
   async _versionAction(action) {
     const v = (this._version = this._version || {});
     if (action === "prerelease") {
-      this._prerelease = !this._prerelease;
-      this._savePrefs();
-      this._renderSettingsVersion();
-      if (!this._prerelease) await this._disableHacsPrerelease();
-      await this._loadVersion(false);
+      // Nur Entwurf: gilt nach "Speichern" für die ganze Instanz.
+      const st = this._settings;
+      if (!st || !st.extra) return;
+      st.extra.prerelease = !st.extra.prerelease;
+      this._renderSettings();
     } else if (action === "hacs-enable") {
       await this._enableHacsPrerelease();
     } else if (action === "hacs-device") {
@@ -2615,12 +2643,9 @@ class UnifiDynamicPanel extends HTMLElement {
       } else if (action === "save") this._saveSettings();
       else if (action === "stat") this._openStat(btn.dataset.kind);
       else if (action === "loader-pick") {
-        if (LOADER_CHOICES.includes(btn.dataset.kind) && btn.dataset.kind !== this._loader) {
-          this._loader = btn.dataset.kind;
-          this._loaderPick = null;
-          this._savePrefs();
+        if (st.extra && LOADER_CHOICES.includes(btn.dataset.kind) && btn.dataset.kind !== st.extra.loader) {
+          st.extra.loader = btn.dataset.kind;
           this._renderSettings();
-          this._toast(this._t("loaderPicked")(this._t("loaderNames")[this._loader][0]));
         }
       } else if (action === "conn-edit") this._openConn(false);
       else if (action === "conn-renew") this._openConn(true);
@@ -2734,19 +2759,35 @@ class UnifiDynamicPanel extends HTMLElement {
   async _saveSettings() {
     const st = this._settings;
     if (!st) return;
-    const changes = this._settingsChanges();
-    if (!changes.length || Object.keys(this._settingsErrors()).length) return;
+    const changes = this._settingsEntryChanges();
+    const extra = this._settingsExtraChanges();
+    if ((!changes.length && !extra.length) || Object.keys(this._settingsErrors()).length) return;
     const values = {};
     for (const key of changes) values[key] = st.draft[key];
     st.saving = true;
     st.saveError = null;
     this._renderSettings();
     try {
-      const result = await this._hass.callWS({
-        type: "unifi_dynamic/set_options",
-        entry_id: st.entryId,
-        values,
-      });
+      let result = null;
+      if (changes.length) {
+        result = await this._hass.callWS({
+          type: "unifi_dynamic/set_options",
+          entry_id: st.entryId,
+          values,
+        });
+      }
+      if (extra.includes("prerelease")) {
+        const panel = await this._hass.callWS({ type: "unifi_dynamic/set_panel", prerelease: st.extra.prerelease });
+        this._applyPanelSettings(panel);
+        // Ausgeschaltet: den HACS-Schalter zurücksetzen, falls das Panel ihn
+        // eingeschaltet hat.
+        if (!this._prerelease) await this._disableHacsPrerelease();
+      }
+      if (extra.includes("loader")) {
+        this._loader = st.extra.loader;
+        this._loaderPick = null;
+        this._savePrefs();
+      }
       this._toast(result && result.reload ? this._t("settingsSavedReload") : this._t("settingsSaved"));
       this._closeSettings();
       // Schutzliste und Namen können sich geändert haben.
@@ -3029,12 +3070,23 @@ class UnifiDynamicPanel extends HTMLElement {
     return Number(v).toLocaleString(lang, { minimumFractionDigits: v >= 100 ? 0 : 1, maximumFractionDigits: 1 });
   }
 
+  // Vorhandene Statistiken eines Clients, gleiche Regeln wie die Kacheln:
+  // WLAN nur bei WLAN-Clients mit Messwert, Antwortzeit nur mit Ping.
+  _statKinds(c) {
+    const stats = c.stats || {};
+    const kinds = ["avail"];
+    if (!c.is_wired && (typeof c.signal === "number" || (stats.signal && stats.signal.median != null))) kinds.push("wifi");
+    if (c.ping) kinds.push("ping");
+    return kinds;
+  }
+
   _statTilesHtml(c) {
     const t = (k) => this._t(k);
     const esc = (v) => this._escape(v);
     const stats = c.stats || {};
+    const kinds = this._statKinds(c);
     const tiles = [this._availTile(stats.avail, "avail", "data-dlg", t("tileAvail"))];
-    if (!c.is_wired && (typeof c.signal === "number" || (stats.signal && stats.signal.median != null))) {
+    if (kinds.includes("wifi")) {
       const dbm = stats.signal && stats.signal.median != null ? stats.signal.median : c.signal;
       const tier = signalBars(dbm);
       tiles.push(
@@ -3047,7 +3099,7 @@ class UnifiDynamicPanel extends HTMLElement {
         )
       );
     }
-    if (c.ping) {
+    if (kinds.includes("ping")) {
       const p = c.ping;
       const value =
         p.status === "no_reply"
@@ -3189,7 +3241,9 @@ class UnifiDynamicPanel extends HTMLElement {
     let title;
     let sub;
     let body;
-    const avatar = { ctl: "hub", wifi: "wifi", ping: "timer" }[st.kind] || "pulse";
+    const avatars = { ctl: "hub", avail: "pulse", wifi: "wifi", ping: "timer" };
+    const avatar = avatars[st.kind] || "pulse";
+    let tabs = "";
     if (st.kind === "ctl") {
       const src = this._settingsAvailSrc();
       if (!src) return this._closeStat();
@@ -3201,6 +3255,21 @@ class UnifiDynamicPanel extends HTMLElement {
       const c = this._dialogKey ? this._clientByKey(this._dialogKey) : null;
       if (!c) return this._closeStat();
       sub = c.name;
+      // Tabs zum Wechseln zwischen den Statistiken, ohne zu schliessen. Nur
+      // bei mehr als einer; fällt die offene weg (z. B. Ping aus), zur ersten.
+      const kinds = this._statKinds(c);
+      if (!kinds.includes(st.kind)) st.kind = kinds[0];
+      if (kinds.length > 1) {
+        const names = t("statTabs");
+        tabs = `<div class="stat-tabs" role="tablist">${kinds
+          .map((k) => {
+            const on = k === st.kind;
+            return `<button type="button" class="stat-tab${on ? " on" : ""}" role="tab" aria-selected="${on}" data-stat="tab" data-kind="${k}">${icon(
+              avatars[k]
+            )}<span class="lg">${esc(names[k][0])}</span><span class="sh">${esc(names[k][1])}</span></button>`;
+          })
+          .join("")}</div>`;
+      }
       if (st.kind === "wifi") {
         title = t("tileWifi");
         sub = [c.name, c.ap_name].filter(Boolean).join(" · ");
@@ -3223,7 +3292,7 @@ class UnifiDynamicPanel extends HTMLElement {
           t("dialogClose")
         )}">${icon("close")}</button>
       </div>
-      <div class="dlg-body">${body}</div>`;
+      <div class="dlg-body">${tabs}${body}</div>`;
     if (html === this._statHtml) return;
     const scroll = dialog.scrollTop;
     this._statHtml = html;
@@ -3249,6 +3318,15 @@ class UnifiDynamicPanel extends HTMLElement {
       if (!ev.target.closest(".avail-tip")) this._showAvailTip(null);
       if (ev.target.closest('[data-stat="close"]')) {
         this._closeStat();
+        return;
+      }
+      const tab = ev.target.closest('[data-stat="tab"]');
+      if (tab) {
+        if (this._stat && tab.dataset.kind !== this._stat.kind) {
+          this._stat.kind = tab.dataset.kind;
+          this._renderStat();
+          dialog.scrollTop = 0;
+        }
         return;
       }
       const btn = ev.target.closest("[data-dlg]");
@@ -4569,7 +4647,12 @@ class UnifiDynamicPanel extends HTMLElement {
   // sondern aus is_wired/online abgeleitet - hier auf das jeweilige
   // Rohfeld zurückgeführt, damit sortiert werden kann.
   _sortValue(client, key) {
-    if (key === "conn") return client.is_wired;
+    // Verbindung: WLAN nach Empfang (bester zuerst), dann WLAN ohne
+    // Messwert, dann Kabel. Absteigend genau umgekehrt.
+    if (key === "conn") {
+      if (client.is_wired) return 2000;
+      return typeof client.signal === "number" ? -client.signal : 1000;
+    }
     if (key === "linked") return client.linked_device ? client.linked_device.name : null;
     if (key === "status") return client.online;
     if (key === "ping") return client.ping && client.ping.median != null ? client.ping.median : null;
@@ -7083,16 +7166,6 @@ class UnifiDynamicPanel extends HTMLElement {
         @keyframes ld-rr-orbit { from { transform: rotate(0) translateX(12px) rotate(0); } to { transform: rotate(360deg) translateX(12px) rotate(-360deg); } }
         @keyframes ld-rr-dust { 0%, 42% { opacity: 0; transform: none; } 43% { opacity: .9; } 50% { opacity: 0; transform: translate(var(--dx), -14px) scale(1.8); } 100% { opacity: 0; } }
         /* Auswahl in den Einstellungen mit Mini-Vorschau */
-        .ld-now {
-          margin-left: 8px;
-          padding: 1px 7px;
-          border-radius: 999px;
-          background: var(--udc-primary-soft);
-          color: var(--udc-primary);
-          font-size: 11px;
-          font-weight: 500;
-          vertical-align: 1px;
-        }
         .ld-intro {
           margin: 0 0 10px;
         }
@@ -8377,6 +8450,59 @@ class UnifiDynamicPanel extends HTMLElement {
         }
         .stat-head {
           align-items: center;
+        }
+        /* Tabs: Segment über die volle Breite, gleiche Form wie der
+           Zeitraum-Schalter, aber grösser und mit Symbolen. */
+        .stat-tabs {
+          display: flex;
+          gap: 2px;
+          padding: 3px;
+          margin: 0 0 12px;
+          border-radius: 12px;
+          background: var(--udc-subtle);
+        }
+        .stat-tab {
+          flex: 1 1 0;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 6px;
+          border: none;
+          border-radius: 9px;
+          background: transparent;
+          color: var(--udc-text2);
+          font: inherit;
+          font-size: 13px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .stat-tab svg {
+          flex: 0 0 auto;
+          width: 16px;
+          height: 16px;
+          fill: currentColor;
+        }
+        .stat-tab.on {
+          background: var(--udc-card);
+          color: var(--udc-text);
+          font-weight: 500;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        }
+        .stat-tab.on svg {
+          fill: var(--udc-primary);
+        }
+        .stat-tab .sh {
+          display: none;
+        }
+        @media (max-width: 600px) {
+          .stat-tab .lg {
+            display: none;
+          }
+          .stat-tab .sh {
+            display: inline;
+          }
         }
         .stat-avatar {
           width: 44px;

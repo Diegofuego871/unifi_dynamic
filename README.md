@@ -273,7 +273,10 @@ as a chip.
 Clicking a column header sorts the table by that column, ascending;
 clicking it again reverses to descending. A small arrow marks the active
 column and direction. Rows with a missing value for the sorted column (no
-IP, never seen) always sort to the end, regardless of direction.
+IP, never seen) always sort to the end, regardless of direction. The
+**Connection** column sorts wireless clients by signal ascending (best
+first), then wireless without a value and finally wired; descending is the
+exact reverse.
 
 The online/offline choice, the connection filter, the sort column and
 direction, the hidden columns and their order, the "Hide already linked" switch and
@@ -337,8 +340,9 @@ required" with a "Restart now" button that asks first; the new version
 only becomes active after Home Assistant restarts. Without HACS there is
 just the note with the link, and you update manually.
 
-With the **"Show pre-releases"** switch below the version row (saved per
-user) the panel also offers beta versions if they are newer than the latest
+With the **"Show pre-releases"** switch below the version row (applies to
+the whole Home Assistant instance after "Save", since the installed version
+is the same for everyone) the panel also offers beta versions if they are newer than the latest
 stable release. A version counts as a pre-release if it is marked as a
 pre-release on GitHub or carries a suffix such as `b1` or `rc1`. The row then turns violet with a "Beta" label. HACS only
 installs pre-releases if the "Pre-release" entity on this integration's HACS
@@ -402,7 +406,10 @@ hours: availability (percentage and outages), WiFi (median signal strength
 with the WiFi fan, wireless clients only) and response time (only while
 ping is active). The values come with the client list; tapping a tile opens
 a sub-window with a range switch (24 h / 7 days / 30 days, shared by all
-sub-windows and saved per user) and a chart. Loading only happens there;
+sub-windows and saved per user) and a chart. Tabs at the top (Availability
+/ WiFi / Response time, on phones shortened to "Uptime / WiFi / Ping")
+switch between the device's statistics without closing the window; they
+only appear when there is more than one. Loading only happens there;
 the X closes only the sub-window, the device view behind it stays open.
 
 The **"WiFi signal"** sub-window shows median, best and worst signal
@@ -424,7 +431,7 @@ of how long the recorder keeps its data. That's why even the 30-day view
 loads instantly. For the time before the log was running (the first days
 after updating to 2.7.0), the panel adds the recorder history of the online
 entity; for long ranges that can take a few seconds — meanwhile an
-loading animation runs (selectable under Settings → Loader: elephant on a ball, cat, hamster in its wheel, penguin with polar bear, runner bird with coyote, or random; stored per user and applied instantly, without "Save"). Periods without data (before the client
+loading animation runs (selectable under Settings → Loader: elephant on a ball, cat, hamster in its wheel, penguin with polar bear, runner bird with coyote, or random; stored per user, applied like all settings after "Save"). Periods without data (before the client
 was known, while Home Assistant wasn't running or the UniFi controller was
 unreachable) are hatched and don't count. If the recording covers less than
 10 % of the selected range (for example shortly after installing), the bar

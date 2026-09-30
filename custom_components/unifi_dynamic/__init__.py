@@ -81,6 +81,7 @@ from .const import (
     WS_TYPE_SET_CONNECTION,
     WS_TYPE_PING_HISTORY,
     WS_TYPE_SIGNAL_HISTORY,
+    WS_TYPE_SET_PANEL,
     WS_TYPE_SET_OPTIONS,
     WS_TYPE_VERSION,
     WS_TYPE_LIST_CLIENTS,
@@ -132,6 +133,7 @@ _KIND_SUFFIX = {
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_register_brand_path(hass)
     await _async_register_panel(hass)
+    await update_check.async_load_panel_settings(hass)
     _async_register_websocket_commands(hass)
 
     coordinator = UnifiDynamicCoordinator(hass, entry)
@@ -974,6 +976,8 @@ def _ws_get_options(
                 "ping_interval": ping_mod.PING_INTERVAL_RANGE,
             },
             "ping_status": coordinator.ping.status if coordinator.ping is not None else "disabled",
+            # Gemeinsam für die ganze Instanz (Vorabversionen).
+            "panel": update_check.panel_settings(hass),
             # Kachel "Controller-Verfügbarkeit" (letzte 24 Stunden).
             "controller_avail": coordinator.availability_summary(AVAIL_CONTROLLER, 86400),
         },
@@ -1145,7 +1149,13 @@ async def _ws_version(
     release = await update_check.async_latest_release(hass, force=msg["force"])
     # Meldung unter "Reparaturen" gleich mitziehen (z.B. nach dem Update weg).
     await update_check.async_refresh_issue(hass, release)
-    result: dict[str, Any] = {"installed": installed, **release, "prerelease": None, "prerelease_url": None}
+    result: dict[str, Any] = {
+        "installed": installed,
+        **release,
+        "prerelease": None,
+        "prerelease_url": None,
+        "panel": update_check.panel_settings(hass),
+    }
     if msg["prerelease"]:
         pre = await update_check.async_latest_prerelease(hass, force=msg["force"])
         candidate = pre.get("prerelease")
@@ -1159,6 +1169,23 @@ async def _ws_version(
         if pre.get("error") and not result.get("error"):
             result["error"] = pre["error"]
     connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_SET_PANEL,
+        vol.Optional("prerelease"): bool,
+        vol.Optional("prerelease_hacs"): vol.Any(None, str),
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def _ws_set_panel(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Gemeinsame Panel-Einstellungen der Instanz speichern (Vorabversionen)."""
+    values = {k: msg[k] for k in ("prerelease", "prerelease_hacs") if k in msg}
+    connection.send_result(msg["id"], await update_check.async_set_panel_settings(hass, values))
 
 
 def _is_own_device(device: dr.DeviceEntry) -> bool:
@@ -1297,6 +1324,7 @@ def _async_register_websocket_commands(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, _ws_ping_history)
     websocket_api.async_register_command(hass, _ws_signal_history)
     websocket_api.async_register_command(hass, _ws_version)
+    websocket_api.async_register_command(hass, _ws_set_panel)
 
 
 # ---------------------------------------------------------------------------
