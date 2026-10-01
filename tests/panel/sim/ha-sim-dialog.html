@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- wie im HA-Frontend -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  /* Dunkles Design wie HA es per Variablen am <html> setzt */
+  html {
+    --primary-background-color: #111111;
+    --secondary-background-color: #282828;
+    --card-background-color: #1c1c1c;
+    --primary-text-color: #e1e1e1;
+    --secondary-text-color: #9b9b9b;
+    --disabled-text-color: #6f6f6f;
+    --divider-color: rgba(225, 225, 225, 0.12);
+    --error-color: #ef5350;
+    --primary-color: #03a9f4;
+    --success-color: #43a047;
+    --header-height: 56px;
+    --sim-safe-top: 47px; /* simuliert den iPhone-Safe-Area-Abstand */
+  }
+  html, body { margin: 0; height: 100%; background: var(--primary-background-color); }
+  /* Nachbau von hass-subpage im narrow-Modus: fix über den ganzen Viewport,
+     Kopfzeile oben (mit Safe-Area-Abstand), iframe füllt den Rest */
+  .subpage { position: fixed; inset: 0; display: block; }
+  .sim-toolbar {
+    padding-top: var(--sim-safe-top);
+    height: var(--header-height);
+    display: flex; align-items: center; gap: 12px; padding-left: 12px;
+    color: var(--primary-text-color); font-family: sans-serif; font-size: 20px;
+    border-bottom: 1px solid var(--divider-color);
+    box-sizing: content-box;
+  }
+  .sim-content {
+    height: calc(100% - var(--header-height) - var(--sim-safe-top) - 1px);
+  }
+  iframe { border: 0; display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<home-assistant>
+  <div class="subpage">
+    <div class="sim-toolbar"><span id="sim-menu">☰</span><span>UniFi Dynamic Clients</span></div>
+    <div class="sim-content">
+      <!-- exakt HAs IFRAME_SANDBOX -->
+      <iframe id="panel-frame"
+        title="UniFi Dynamic Clients"
+        sandbox="allow-forms allow-popups allow-pointer-lock allow-same-origin allow-scripts allow-modals allow-downloads"
+        allow="fullscreen"></iframe>
+    </div>
+  </div>
+</home-assistant>
+<script>
+window.__panelSettings = window.__panelSettings || { prerelease: false, prerelease_hacs: null };
+
+  const names = [
+    "Stromzähler Keller", "Licht Küche", "Werkbank Garage",
+    "Storen Wohnen", "Waschmaschine", "Storen Kinderzimmer",
+    "Lautsprecher Bad", "Storen Schlafzimmer", "Storen Büro",
+    "Thermostat Büro", "Lautsprecher Wohnzimmer", "Licht Spielzimmer",
+  ];
+  const aps = ["Keller", "Kinderzimmer", "Garage", "Wohnzimmer", "Büro", null];
+  const clients = [];
+  for (let i = 0; i < 40; i++) {
+    clients.push({
+      mac: `aa:bb:cc:dd:ee:${String(i).padStart(2, "0")}`,
+      name: `${names[i % names.length]} ${i}`,
+      ip: `192.0.2.${100 + i}`,
+      essid: aps[i % aps.length] ? "HomeNet" : null,
+      ap_name: aps[i % aps.length],
+      is_wired: aps[i % aps.length] === null,
+      seen_at: Date.now() / 1000 - i * 60,
+      online: i % 7 !== 0,
+      excluded: i % 5 === 0,
+      device_id: `dev-${i}`,
+      entry_id: "entry1",
+      host: "unifi.local",
+    });
+  }
+  const multiHub = new URLSearchParams(location.search).get("hubs") === "2";
+  if (multiHub) clients.forEach((c, i) => { if (i >= 30) { c.entry_id = "entry2"; c.host = "werkstatt.local"; } });
+  const hubInfo = [{ entry_id: "entry1", title: "UniFi Haus", host: "unifi.local" }, { entry_id: "entry2", title: "UniFi Werkstatt", host: "werkstatt.local" }];
+  const baseOpts = () => ({ scan_interval: 30, offline_after_failures: 30, purge_days: 30, purge_time: "19:00:00", purge_exclude: [], notify_service: "notify.handy_familie", notify_click_target: "panel", notify_when_empty: false, notify_new_clients: true, notify_controller_offline: true, message_name: true, message_connection: true, message_ssid: true, message_access_point: true, message_ip: true, message_mac: false, persistent_notification: true, persistent_when_empty: false, persistent_controller_offline: true, update_check: true });
+  // Ping nur mit ?ping=1 (sonst wie vor 2.14.0, damit ältere Tests gleich bleiben)
+  const pingOn = new URLSearchParams(location.search).get("ping") === "1";
+  window.__opts = { entry1: { ...baseOpts(), ping_enabled: pingOn, ping_interval: 60 }, entry2: { ...baseOpts(), scan_interval: 60, ping_enabled: false, ping_interval: 60 } };
+  // Ping (erfunden): Status je Hub, Entitäten je MAC, Antwortverhalten je Client
+  window.__pingStatus = { entry1: pingOn ? "ok" : "disabled", entry2: "disabled" };
+  window.__pingEntities = {};
+  window.__pingCalls = [];
+  const pingProfile = (c, i) => (i % 5 === 3 ? "silent" : i % 7 === 2 ? "lossy" : "ok");
+  const pingSummary = (c) => {
+    const i = clients.indexOf(c);
+    const prof = pingProfile(c, i);
+    if (prof === "silent") return { median: null, jitter: null, loss: 100, sent: 864, received: 0, status: "no_reply" };
+    return { median: 3 + (i % 9) * 1.7, jitter: 0.4 + (i % 4) * 0.3, loss: prof === "lossy" ? 6.5 : 0, sent: 864, received: prof === "lossy" ? 808 : 864, status: "ok" };
+  };
+  const pingBuckets = (c, range) => {
+    const size = range && range !== "24h" ? 3600 : 300;
+    const count = range === "30d" ? 720 : range === "7d" ? 168 : 288;
+    const i = clients.indexOf(c); const prof = pingProfile(c, i); const now = Date.now() / 1000; const out = [];
+    for (let k = count - 1; k >= 0; k--) {
+      const ts = Math.floor((now - k * size) / size) * size;
+      if (prof === "silent") { out.push([ts, null, null, 3, 0]); continue; }
+      const base = 3 + (i % 9) * 1.7; const spike = k % 53 === 7 ? 25 : 0; const wave = Math.sin(k / 12) * 1.2;
+      const lost = prof === "lossy" && k % 9 === 0 ? 1 : 0;
+      out.push([ts, +(base + wave + spike).toFixed(2), 0.6, 3, 3 - lost]);
+    }
+    return out;
+  };
+  window.__setCalls = [];
+  // Zusatzdaten für die Geräteansicht (erfunden)
+  clients.forEach((c, i) => {
+    c.hostname = i % 3 === 0 ? null : `host-${i}`;
+    c.rssi = c.is_wired ? null : 20 + i;
+    c.signal = c.is_wired ? null : -80 + i;
+    c.first_seen = i % 4 === 0 ? null : Date.now() / 1000 - 86400 * (i + 1);
+  });
+  clients[3].device_id = null; // Client ohne HA-Gerät
+  const entities = {}, states = {};
+  for (const c of clients) {
+    if (!c.device_id) continue;
+    const slug = c.name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    entities[`binary_sensor.${slug}_online`] = { entity_id: `binary_sensor.${slug}_online`, device_id: c.device_id, platform: "unifi_dynamic" };
+    entities[`sensor.${slug}_last_seen`] = { entity_id: `sensor.${slug}_last_seen`, device_id: c.device_id, platform: "unifi_dynamic" };
+    states[`binary_sensor.${slug}_online`] = { entity_id: `binary_sensor.${slug}_online`, state: c.online ? "on" : "off", attributes: { friendly_name: `${c.name} Online` } };
+    states[`sensor.${slug}_last_seen`] = { entity_id: `sensor.${slug}_last_seen`, state: "2026-09-23T10:00:00+00:00", attributes: { friendly_name: `${c.name} Zuletzt gesehen` } };
+  }
+  const haDevices = [];
+  const areas = ["Büro", "Keller", "Wohnzimmer", null];
+  for (let i = 0; i < 80; i++) {
+    haDevices.push({ id: `ha-${i}`, name: `HA Gerät ${String(i).padStart(2, "0")}`, area: areas[i % 4],
+      manufacturer: i % 2 ? "Shelly" : "Sonos", model: i % 2 ? "Plus 1PM" : "One", macs: [] });
+  }
+  haDevices.push({ id: "ha-thermo", name: "Bodenheizung", area: "Büro", manufacturer: "Shelly", model: "ST1820", macs: ["aa:bb:cc:dd:ee:01"] });
+  const links = { "aa:bb:cc:dd:ee:02": "ha-5" };
+  window.__links = links;
+  window.__listDevicesFails = false;
+  const summary = (id) => { const d = haDevices.find((x) => x.id === id); return d ? { ...d } : null; };
+  window.__wsCalls = [];
+  window.__locationChanged = [];
+  window.__moreInfo = [];
+  window.__removeFails = false;
+  window.addEventListener("location-changed", (ev) => {
+    window.__locationChanged.push({ path: location.pathname + location.search, detail: ev.detail });
+  });
+  document.querySelector("home-assistant").addEventListener("hass-more-info", (ev) => window.__moreInfo.push(ev.detail.entityId));
+  const lang = new URLSearchParams(location.search).get("lang") || "de";
+  document.querySelector("home-assistant").hass = {
+    language: lang,
+    entities,
+    states,
+    callService: async (domain, service, data) => {
+      (window.__services = window.__services || []).push({ domain, service, data });
+      if (window.__serviceFails) throw new Error("Dienst fehlgeschlagen");
+      return {};
+    },
+    formatEntityState: (s) => (s.state === "on" ? "Verbunden" : s.state === "off" ? "Getrennt" : s.state),
+    callWS: async (msg) => { if (msg.type === "frontend/get_user_data") { window.__udCalls = (window.__udCalls||0)+1; const raw = sessionStorage.getItem("ud_"+msg.key); return { value: raw ? JSON.parse(raw) : null }; }
+      if (msg.type === "frontend/set_user_data") { window.__udSets = (window.__udSets||0)+1; sessionStorage.setItem("ud_"+msg.key, JSON.stringify(msg.value)); return null; }
+
+      window.__wsCalls.push(msg);
+      if (msg.type === "call_service") {
+        (window.__services = window.__services || []).push({ domain: msg.domain, service: msg.service, data: msg.service_data });
+        if (window.__serviceFails) throw new Error(window.__serviceFails);
+        // HACS-Schalter "Pre-release" (Simulation)
+        if (msg.domain === "switch" && (msg.service === "turn_on" || msg.service === "turn_off")) {
+          const ha = document.querySelector("home-assistant").hass;
+          const id = msg.service_data.entity_id;
+          if (ha.states[id]) ha.states[id] = { ...ha.states[id], state: msg.service === "turn_on" ? "on" : "off" };
+          window.__hacsKnowsAfterRefresh = msg.service === "turn_on" ? window.__pre : window.__hacsStable || null;
+          document.querySelector("#panel-frame").contentDocument.querySelector("unifi-dynamic-panel").hass = { ...ha };
+        }
+        // HACS-Nachladen simulieren: update_entity übernimmt die "HACS-Kenntnis"
+        if (msg.service === "update_entity" && window.__hacsKnowsAfterRefresh) {
+          const ha = document.querySelector("home-assistant").hass;
+          const st = ha.states[msg.service_data.entity_id];
+          if (st) st.attributes = { ...st.attributes, latest_version: window.__hacsKnowsAfterRefresh };
+          document.querySelector("#panel-frame").contentDocument.querySelector("unifi-dynamic-panel").hass = { ...ha };
+        }
+        return null;
+      }
+      if (msg.type === "config/entity_registry/list") {
+        return (window.__entReg || []).map((e) => ({ ...e }));
+      }
+      if (msg.type === "config/entity_registry/update") {
+        (window.__regUpdates = window.__regUpdates || []).push(msg);
+        const e = (window.__entReg || []).find((x) => x.entity_id === msg.entity_id);
+        if (e && "disabled_by" in msg) e.disabled_by = msg.disabled_by;
+        // HA lädt HACS nach dem Aktivieren verzögert neu, erst dann gibt es die Entität
+        setTimeout(() => {
+          const ha = document.querySelector("home-assistant").hass;
+          ha.entities[msg.entity_id] = { entity_id: msg.entity_id, platform: "hacs", device_id: e ? e.device_id : null, translation_key: "pre-release" };
+          ha.states[msg.entity_id] = { entity_id: msg.entity_id, state: "off", attributes: {} };
+          document.querySelector("#panel-frame").contentDocument.querySelector("unifi-dynamic-panel").hass = { ...ha };
+        }, window.__reloadDelay || 1500);
+        return { entity_entry: e, reload_delay: 30 };
+      }
+      if (msg.type === "hacs/repositories/list") {
+        (window.__hacsWs = window.__hacsWs || []).push(msg.type);
+        return [{ id: "123456", full_name: "Diegofuego871/unifi_dynamic" }, { id: "9", full_name: "other/repo" }];
+      }
+      if (msg.type === "hacs/repository/refresh") {
+        (window.__hacsWs = window.__hacsWs || []).push(`${msg.type}:${msg.repository}`);
+        if (window.__hacsRefreshDelay) await new Promise((r) => setTimeout(r, window.__hacsRefreshDelay));
+        return null;
+      }
+      if (msg.type === "unifi_dynamic/version") {
+        window.__versionCalls = (window.__versionCalls || 0) + 1;
+        if (window.__versionFails) throw new Error("GitHub nicht erreichbar");
+        await new Promise((r) => setTimeout(r, window.__versionDelay || 20));
+        const v = window.__version || { installed: "2.9.1", latest: "2.9.1" };
+        const pre = msg.prerelease && window.__pre ? window.__pre : null;
+        return { installed: v.installed, latest: v.latest, release_url: `https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v${v.latest}`, checked_at: Date.now() / 1000 - (msg.force ? 0 : 3 * 3600), error: null,
+          prerelease: pre, prerelease_url: pre ? `https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v${pre}` : null, panel: { ...window.__panelSettings } };
+      }
+      if (msg.type === "unifi_dynamic/set_panel") {
+        (window.__setPanel = window.__setPanel || []).push(msg);
+        if ("prerelease" in msg) window.__panelSettings.prerelease = msg.prerelease;
+        if ("prerelease_hacs" in msg) window.__panelSettings.prerelease_hacs = msg.prerelease_hacs;
+        return { ...window.__panelSettings };
+      }
+      if (msg.type === "unifi_dynamic/list_hubs") {
+        const ids = [...new Set(clients.map((c) => c.entry_id))];
+        return { hubs: hubInfo.filter((h) => ids.includes(h.entry_id)).map((h) => ({ ...h, ping: window.__pingStatus[h.entry_id], clients: clients.filter((c) => c.entry_id === h.entry_id).length })) };
+      }
+      if (msg.type === "unifi_dynamic/get_options") {
+        if (window.__getOptsFails) throw new Error("boom");
+        await new Promise((r) => setTimeout(r, 40));
+        const values = { ...window.__opts[msg.entry_id], purge_exclude: clients.filter((c) => c.entry_id === msg.entry_id && c.excluded).map((c) => c.mac) };
+        return { hub: { ...hubInfo.find((h) => h.entry_id === msg.entry_id), clients: 0 }, values, panel: { ...window.__panelSettings },
+          notify_targets: [{ value: "none", label: "Keine Push-Benachrichtigung" }, { value: "notify.handy_familie", label: "notify.handy_familie" }, { value: "notify.mobile_app_pixel", label: "notify.mobile_app_pixel" }],
+          protected: values.purge_exclude.map((mac) => ({ mac, name: clients.find((c) => c.mac === mac)?.name || null })),
+          ping_status: window.__pingStatus[msg.entry_id],
+          controller_avail: window.__ctlAvail === undefined ? { pct: 99.9, outages: 1, longest: 540, covered: 86400 } : window.__ctlAvail,
+          connection: { host: (window.__conn && window.__conn.host) || "192.0.2.10", verify_ssl: !!(window.__conn && window.__conn.ssl), has_key: true, status: window.__connStatus || "ok" },
+          limits: { scan_interval: [10, 3600], offline_after_failures: [1, 2880], purge_days: [0, 3650], ping_interval: [30, 3600] } };
+      }
+      if (msg.type === "unifi_dynamic/ping_history") {
+        window.__pingCalls.push(msg);
+        if (window.__pingDelay) await new Promise((r) => setTimeout(r, window.__pingDelay));
+        const range = msg.range || "24h";
+        const spanOf = { "24h": 86400, "7d": 604800, "30d": 2592000 };
+        const c = clients.find((x) => x.mac === msg.mac && x.entry_id === msg.entry_id);
+        const st = window.__pingStatus[msg.entry_id];
+        if (!c || st !== "ok") return { status: st, interval: 60, bucket: 300, buckets: [], summary: null, last: null, entity: false, now: Date.now() / 1000 };
+        const fresh = window.__pingFresh && window.__pingFresh.includes(msg.mac);
+        const sm = pingSummary(c);
+        return { status: "ok", interval: 60, range, span: spanOf[range], bucket: range === "24h" ? 300 : 3600, buckets: fresh ? [] : pingBuckets(c, range),
+          summary: fresh ? null : { ...sm, median: sm.median == null ? null : +(sm.median * (range === "30d" ? 1.3 : range === "7d" ? 1.15 : 1)).toFixed(1) }, last: null,
+          entity: !!window.__pingEntities[msg.mac], now: Date.now() / 1000 };
+      }
+      if (msg.type === "unifi_dynamic/signal_history") {
+        (window.__sigCalls = window.__sigCalls || []).push(msg);
+        if (window.__sigDelay) await new Promise((r) => setTimeout(r, window.__sigDelay));
+        const range = msg.range || "24h";
+        const size = range === "24h" ? 300 : 3600;
+        const span = { "24h": 86400, "7d": 604800, "30d": 2592000 }[range];
+        const c = clients.find((x) => x.mac === msg.mac && x.entry_id === msg.entry_id);
+        const now = Date.now() / 1000;
+        if (!c || c.is_wired || (window.__sigEmpty || []).includes(msg.mac)) return { range, span, bucket: size, buckets: [], summary: null, now };
+        const base = typeof c.signal === "number" ? c.signal : -60;
+        const out = [];
+        for (let k = Math.round(span / size) - 1; k >= 0; k--) {
+          if (k % 40 < 3) continue; // Lücken (nicht im WLAN)
+          const ts = Math.floor((now - k * size) / size) * size;
+          const med = +(base + Math.sin(k / 9) * 4 + (k % 37 === 5 ? -8 : 0)).toFixed(1);
+          out.push([ts, med, +(med - 3).toFixed(1), +(med + 2).toFixed(1), size === 300 ? 10 : 120, k % 5 ? "ap:01" : "ap:02"]);
+        }
+        const meds = out.map((b) => b[1]).sort((a, b) => a - b);
+        return { range, span, bucket: size, buckets: out, now,
+          summary: { median: meds[Math.floor(meds.length / 2)], best: Math.max(...out.map((b) => b[3])), worst: Math.min(...out.map((b) => b[2])), samples: out.length * 10, blocks: out.length,
+            aps: [{ ap_mac: "ap:01", share: 80, name: c.ap_name || "Küche" }, { ap_mac: "ap:02", share: 20, name: "Wohnzimmer" }] } };
+      }
+      if (msg.type === "unifi_dynamic/ping_entity") {
+        window.__pingCalls.push(msg);
+        const was = !!window.__pingEntities[msg.mac];
+        window.__pingEntities[msg.mac] = msg.enabled;
+        return { changed: was !== msg.enabled };
+      }
+      if (msg.type === "unifi_dynamic/set_connection") {
+        (window.__connCalls = window.__connCalls || []).push(msg);
+        await new Promise((r) => setTimeout(r, window.__connDelay || 300));
+        const err = (window.__connErrors || []).shift() || null;
+        if (!err) { window.__conn = { host: msg.host, ssl: msg.verify_ssl }; window.__connStatus = "ok"; }
+        return { ok: !err, error: err };
+      }
+      if (msg.type === "unifi_dynamic/set_options") {
+        window.__setCalls.push(msg);
+        if (window.__setOptsFails) throw new Error("Ungültige Eingabe");
+        Object.assign(window.__opts[msg.entry_id], msg.values);
+        if (msg.values.purge_exclude) clients.forEach((c) => { if (c.entry_id === msg.entry_id) c.excluded = msg.values.purge_exclude.includes(c.mac); });
+        return { changed: true, reload: "scan_interval" in msg.values || "purge_time" in msg.values };
+      }
+      if (msg.type === "unifi_dynamic/availability") {
+        // window.__avail[mac] = {since: sek vor jetzt, events: [[sek vor jetzt, 1|0|null], ...]}
+        const a = window.__avail && window.__avail[msg.mac];
+        if (!a) return { since: null, events: [], now: Date.now() / 1000 };
+        const now = Date.now() / 1000;
+        const ev = a.events.map(([ago, s]) => [now - ago, s]);
+        const before = ev.filter((e) => e[0] <= msg.start), after = ev.filter((e) => e[0] > msg.start);
+        return { since: now - a.since, events: (before.length ? [[msg.start, before.at(-1)[1]]] : []).concat(after), now };
+      }
+      if (msg.type === "history/history_during_period") {
+        if (window.__historyFails) throw new Error("recorder down");
+        await new Promise((r) => setTimeout(r, window.__historyDelay || 30));
+        const id = msg.entity_ids[0];
+        const start = Date.parse(msg.start_time) / 1000, end = Date.parse(msg.end_time) / 1000;
+        // Erfundener Verlauf: window.__history[id] = [[sekunden vor Ende, "on"|"off"], ...] (älteste zuerst)
+        const def = (window.__history && window.__history[id]) || [[86400 * 40, "on"]];
+        const out = [];
+        for (const [ago, s] of def) {
+          const t = end - ago;
+          if (t <= start) { if (out.length) out[0] = { s, lu: start }; else out.push({ s, lu: start }); continue; }
+          out.push({ s, lu: t });
+        }
+        if (!def.length || end - def[0][0] > start) {} // Beginn im Zeitraum: kein Startzustand
+        return { [id]: out };
+      }
+      if (msg.type === "unifi_dynamic/list_clients" && window.__wsDown) { window.__listFails = (window.__listFails || 0) + 1; throw window.__wsDown; }
+      if (msg.type === "unifi_dynamic/list_clients" && window.__listDelay) await new Promise((r) => setTimeout(r, window.__listDelay));
+      if (msg.type === "unifi_dynamic/list_clients") return { clients: clients.map((c) => {
+        const ps = window.__pingStatus[c.entry_id] === "ok" ? pingSummary(c) : null;
+        const i = clients.indexOf(c);
+        const stats = { avail: i % 6 === 5 ? null : { pct: i % 4 === 1 ? 99.6 : 100, outages: i % 4 === 1 ? 2 : 0, longest: i % 4 === 1 ? 1860 : 0, covered: 86400 },
+          signal: c.is_wired || typeof c.signal !== "number" ? null : { median: c.signal - 1 } };
+        return { ...c, stats, linked_device: links[c.mac] ? summary(links[c.mac]) : null,
+          ping: ps ? { median: ps.median, loss: ps.loss, status: ps.status, entity: !!window.__pingEntities[c.mac] } : null };
+      }) };
+      if (msg.type === "unifi_dynamic/list_devices") {
+        if (window.__listDevicesFails) throw new Error("boom");
+        await new Promise((r) => setTimeout(r, 50));
+        return { devices: [...haDevices].sort((a, b) => a.name.localeCompare(b.name)) };
+      }
+      if (msg.type === "unifi_dynamic/link_device") {
+        if (msg.device_id === "ha-fail") throw new Error("Unbekanntes Gerät");
+        if (msg.device_id) links[msg.mac] = msg.device_id; else delete links[msg.mac];
+        return { changed: true };
+      }
+      if (msg.type === "unifi_dynamic/remove_client") {
+        if (window.__removeFails) throw new Error("Unauthorized");
+        const i = clients.findIndex((c) => c.mac === msg.mac && c.entry_id === msg.entry_id);
+        if (i >= 0) { clients.splice(i, 1); delete links[msg.mac]; }
+        return { removed: i >= 0 };
+      }
+      if (msg.type === "unifi_dynamic/exclude_client" || msg.type === "unifi_dynamic/unexclude_client") {
+        const c = clients.find((c) => c.mac === msg.mac);
+        if (c) c.excluded = msg.type === "unifi_dynamic/exclude_client";
+        return { changed: true };
+      }
+      return {};
+    },
+  };
+  document.getElementById("panel-frame").src = "/unifi_dynamic/panel/panel.html?v=24";
+</script>
+</body>
+</html>

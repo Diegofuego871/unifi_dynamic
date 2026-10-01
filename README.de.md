@@ -91,6 +91,11 @@ Clients"**.
 | Abfrageintervall | Wie oft die Clientliste abgefragt wird (Sekunden) |
 | Entfernen nach Tagen ohne Sichtung | 0 deaktiviert das automatische Entfernen |
 
+Verwaltet der Controller mehrere Sites, folgt ein Schritt **Site wählen**.
+Ein Hub überwacht genau eine Site; für weitere Sites die Integration pro
+Site erneut hinzufügen. Hat der Controller nur eine Site, entfällt der
+Schritt. Hubs aus der Zeit vor 2.16.0 nutzen die Site „default".
+
 ### Verbindung ändern
 
 Host, API-Key und SSL-Prüfung lassen sich ändern, ohne den Hub zu löschen,
@@ -98,11 +103,14 @@ zum Beispiel nach einem neuen API-Key oder wenn ein Controller mit gleicher
 oder neuer IP ersetzt wird:
 
 - **⋮ → Neu konfigurieren** an der Integration: Host, neuer API-Key (leer
-  lassen behält den bisherigen) und SSL-Prüfung.
+  lassen behält den bisherigen) und SSL-Prüfung; bei mehreren Sites danach
+  die Site.
 - **Erneut authentifizieren**: Lehnt der Controller den Key ab (HTTP
   401/403), meldet Home Assistant das unter Einstellungen, dort wird nur der
   neue Key eingegeben.
 - Im **Panel** unter Einstellungen → Verbindung (siehe [Panel](#panel)).
+  Die Site bleibt dort unverändert; gibt es sie auf einem neuen Host nicht,
+  wird nichts gespeichert.
 
 Alle drei Wege testen die Verbindung vor dem Speichern und behalten den
 Hub: Geräte, Entitäten, Verknüpfungen, Schutzliste, Verlauf und
@@ -323,7 +331,7 @@ gesperrt, weil die Einstellungen pro Hub gelten; mit nur einem Hub gibt es
 keine Auswahl, nur das Zahnrad.
 
 Zuunterst zeigt der zuklappbare Abschnitt **Verbindung** (zugeklappt mit
-Host und Status als Zusammenfassung) Host/IP, SSL-Prüfung, ob ein
+Host und Status als Zusammenfassung) Host/IP, Site, SSL-Prüfung, ob ein
 API-Key hinterlegt ist, und den Status („Verbunden", „API-Key ungültig",
 „Nicht erreichbar"). Der Key selbst wird nie angezeigt, auch nicht
 teilweise. „Verbindung ändern…" öffnet einen kleinen Dialog für Host, neuen
@@ -602,6 +610,27 @@ der bei jeder Sichtung gesetzt wird, nicht das UniFi-Feld `last_seen`. Damit
 sind Millisekunden-Varianten, fehlende Werte und eine abweichende
 Controller-Uhr kein Thema.
 
+Ein Client gilt als **offline**, wenn er länger als drei Abfrageintervalle,
+mindestens aber 60 Sekunden, nicht mehr gesehen wurde. Bei 30 Sekunden
+Intervall sind das 90 Sekunden, bei 2 Minuten 6 Minuten: ein einzelner
+verpasster Poll reicht nie.
+
+**„Last seen" und Recorder:** Solange ein Client online ist, rücken der
+Sensor „Last seen" sowie die Attribute `last_seen` und `rssi` am
+Online-Sensor nur in 5-Minuten-Schritten vor. Jede Änderung ist ein Eintrag
+in der Datenbank von Home Assistant; ohne diese Stufung wären es bei jedem
+Poll zwei pro online Client (bei 50 Clients und 30 Sekunden rund 290 000 pro
+Tag). Geht ein Client offline, zeigt „Last seen" sofort den genauen letzten
+Kontakt. Für „ist das Gerät da?" ist der Online-Sensor gedacht, der sofort
+umschaltet; eine Automation auf „Last seen älter als X" funktioniert ab
+X über 5 Minuten.
+
+**Eigene Dateien:** Cache, Verfügbarkeitsprotokoll, WLAN- und Ping-Verlauf
+liegen unter `.storage/`. Geschrieben wird spätestens 1 Minute (Cache),
+2 Minuten (Verfügbarkeit) bzw. 5 Minuten (WLAN, Ping) nach einer Änderung
+und beim Beenden von Home Assistant. Ein Absturz oder Stromausfall kostet
+also höchstens diese Zeitspanne.
+
 War Home Assistant länger als eine Stunde ohne erfolgreichen Poll, wird die
 Ausfallzeit allen Zeitstempeln gutgeschrieben. Sonst würde ein Neustart nach
 längerem Stillstand sämtliche Clients auf einmal als überfällig einstufen.
@@ -683,6 +712,23 @@ lässt sich in der Rückfrage selbst mit „Immer geöffnet" dauerhaft abstellen
 Die Namen der Access Points stammen aus `/stat/device`. Diese Liste wird
 deutlich seltener geholt als die Clientliste und im Cache gehalten. Schlägt
 der Abruf fehl, zeigen die Sensoren die MAC des Access Points.
+
+## Entwicklung und Tests
+
+Die Tests liegen unter `tests/` und laufen bei jedem Push als GitHub Action
+(`.github/workflows/tests.yml`):
+
+- **Python mit echtem Home Assistant** (`pytest-homeassistant-custom-component`):
+  Einrichtung mit Site-Auswahl, Neu konfigurieren, Coordinator (Site-Pfad,
+  Offline-Schwelle, „Last seen", Speichern im laufenden Betrieb) und
+  Übersetzungen. Dazu ältere Tests mit Attrappen (`tests/legacy/`).
+  Ausführen mit Python 3.13: `pip install pytest-homeassistant-custom-component`
+  und `python -m pytest`.
+- **Panel** (`tests/panel/`): ein Nachbau der Home-Assistant-Oberfläche mit
+  erfundenen Daten und über 20 Playwright-Suiten für Desktop und Handy.
+  Ausführen mit `npm ci`, `npx playwright-core install chromium` und
+  `node run.mjs` (einzelne Suiten: `node run.mjs settings version`).
+  Bildschirmfotos landen in `tests/panel/output/`.
 
 ## Changelog
 

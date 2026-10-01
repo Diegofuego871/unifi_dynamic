@@ -15,6 +15,13 @@
           "purge_days": "0 deaktiviert das automatische Entfernen."
         }
       },
+      "site": {
+        "title": "Site wählen",
+        "description": "Der Controller {host} verwaltet mehrere Sites. Wähle die Site, die dieser Hub überwachen soll. Für weitere Sites die Integration pro Site erneut hinzufügen.",
+        "data": {
+          "site": "Site"
+        }
+      },
       "reauth_confirm": {
         "title": "API-Key erneuern",
         "description": "Der Controller {host} lehnt den hinterlegten API-Key ab. Gib einen neuen Key ein; alles andere bleibt, wie es ist.",
@@ -34,16 +41,23 @@
           "host": "Adresse des UniFi-Controllers, ohne https://",
           "api_key": "Leer lassen, um den hinterlegten Key zu behalten."
         }
+      },
+      "reconfigure_site": {
+        "title": "Site wählen",
+        "description": "Der Controller {host} verwaltet mehrere Sites. Wähle die Site, die dieser Hub überwachen soll.",
+        "data": {
+          "site": "Site"
+        }
       }
     },
     "error": {
       "cannot_connect": "Host nicht erreichbar. Adresse und SSL-Einstellung prüfen.",
       "invalid_auth": "API-Key ungültig. Der Controller lehnt den Key ab.",
       "invalid_host": "Bitte Host oder IP angeben.",
-      "already_configured": "Dieser Host wird bereits von einem anderen Hub verwendet."
+      "already_configured": "Dieser Host mit dieser Site wird bereits von einem anderen Hub verwendet."
     },
     "abort": {
-      "already_configured": "Dieser Host ist bereits eingerichtet.",
+      "already_configured": "Dieser Host mit dieser Site ist bereits eingerichtet.",
       "reauth_successful": "API-Key erneuert.",
       "reconfigure_successful": "Verbindung aktualisiert."
     }
@@ -161,6 +175,24 @@
         "entry_id": {
           "name": "Config Entry",
           "description": "Optional. Ohne Angabe laufen alle eingerichteten UniFi-Hosts."
+        }
+      }
+    },
+    "remove_client": {
+      "name": "Client entfernen",
+      "description": "Entfernt einzelne Clients sofort, unabhängig von der Schwelle für das automatische Entfernen und von der Ausnahmeliste. Gelöscht werden die Entitäten und das Gerät. Ist ein Client noch aktiv, legt ihn der nächste Abgleich wieder an, dann mit neuen Entity-IDs. Das Ergebnis kommt als Antwort der Aktion zurück.",
+      "fields": {
+        "device_id": {
+          "name": "Geräte",
+          "description": "Die zu entfernenden Geräte. Mehrfachauswahl möglich."
+        },
+        "mac": {
+          "name": "MAC-Adressen",
+          "description": "Alternative zur Geräteauswahl, etwa für Geräte, die es in Home Assistant nicht mehr gibt. Doppelpunkte, Bindestriche oder eine blanke Hexfolge werden alle akzeptiert."
+        },
+        "entry_id": {
+          "name": "Config Entry",
+          "description": "Optional und nur für MAC-Adressen relevant. Ohne Angabe wird auf allen eingerichteten UniFi-Hosts gesucht."
         }
       }
     }

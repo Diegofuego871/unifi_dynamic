@@ -110,7 +110,9 @@ class UnifiClientOnlineBinarySensor(
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self._data
         is_wired = data.get("is_wired")
-        seen = self.coordinator.seen_at(self._mac)
+        # last_seen und rssi im selben 5-Minuten-Takt wie der Last-seen-Sensor,
+        # sonst wäre jeder Poll eine neue Attributzeile im Recorder.
+        seen = self.coordinator.reported_seen_at(self._mac)
 
         return {
             "mac": data.get("mac") or self._mac,
@@ -121,7 +123,7 @@ class UnifiClientOnlineBinarySensor(
             if is_wired is None
             else ("wired" if is_wired else "wlan"),
             "ssid": data.get("essid"),
-            "rssi": data.get("rssi"),
+            "rssi": self.coordinator.reported_rssi(self._mac),
             "ap": self.coordinator.access_point_name(data.get("ap_mac")),
             "ap_mac": data.get("ap_mac"),
         }

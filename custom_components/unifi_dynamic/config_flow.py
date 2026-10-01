@@ -29,6 +29,8 @@ from .const import (
     CONF_PURGE_EXCLUDE,
     CONF_PURGE_TIME,
     CONF_SCAN_INTERVAL,
+    CONF_SITE,
+    CONF_SITE_NAME,
     CONF_UPDATE_CHECK,
     CONF_VERIFY_SSL,
     DEFAULT_NOTIFY_CLICK_TARGET,
@@ -45,13 +47,14 @@ from .const import (
     DEFAULT_PURGE_DAYS,
     DEFAULT_PURGE_TIME,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_SITE,
     DEFAULT_UPDATE_CHECK,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     MESSAGE_FIELDS,
     NOTIFY_NONE,
 )
-from . import connection
+from . import connection, msg
 from .coordinator import preferred_client_name
 from .options_api import (
     OFFLINE_AFTER_RANGE,
@@ -125,13 +128,12 @@ def _client_options(
     ]
 
     known = set(clients)
+    unknown = msg.label(msg.hass_language(hass), "client_unknown")
     for mac in selected:
         mac_l = str(mac).strip().lower()
         if mac_l and mac_l not in known:
             options.append(
-                selector.SelectOptionDict(
-                    value=mac_l, label=f"{mac_l} (nicht mehr bekannt)"
-                )
+                selector.SelectOptionDict(value=mac_l, label=f"{mac_l} ({unknown})")
             )
 
     return options
@@ -144,10 +146,9 @@ def _notify_options(hass: HomeAssistant) -> list[selector.SelectOptionDict]:
     Enthält klassische notify-Services (dazu gehören notify-Gruppen) und, falls
     vorhanden, notify-Entities der neuen Plattform.
     """
+    lang = msg.hass_language(hass)
     options: list[selector.SelectOptionDict] = [
-        selector.SelectOptionDict(
-            value=NOTIFY_NONE, label="Keine Push-Benachrichtigung"
-        )
+        selector.SelectOptionDict(value=NOTIFY_NONE, label=msg.label(lang, "notify_none"))
     ]
 
     try:
@@ -166,7 +167,9 @@ def _notify_options(hass: HomeAssistant) -> list[selector.SelectOptionDict]:
     for entity_id in sorted(hass.states.async_entity_ids("notify")):
         if entity_id not in known:
             options.append(
-                selector.SelectOptionDict(value=entity_id, label=f"{entity_id} (Entity)")
+                selector.SelectOptionDict(
+                    value=entity_id, label=f"{entity_id} ({msg.label(lang, 'notify_entity')})"
+                )
             )
 
     return options
@@ -181,10 +184,44 @@ def _int_or(value: Any, default: int) -> int:
         return int(default)
 
 
+def _site_schema(sites: list[dict[str, str]], default: str | None) -> vol.Schema:
+    """Auswahl der Site, Anzeigename mit interner Bezeichnung."""
+    options = [
+        selector.SelectOptionDict(
+            value=s["site"],
+            label=s["name"] if s["name"] == s["site"] else f"{s['name']} ({s['site']})",
+        )
+        for s in sites
+    ]
+    known = {s["site"] for s in sites}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_SITE, default=default if default in known else sites[0]["site"]
+            ): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=options,
+                    mode=selector.SelectSelectorMode.LIST,
+                    sort=False,
+                )
+            )
+        }
+    )
+
+
+def _site_name(sites: list[dict[str, str]], site: str) -> str:
+    return next((s["name"] for s in sites if s["site"] == site), site)
+
+
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Erstkonfiguration."""
 
     VERSION = 1
+
+    def __init__(self) -> None:
+        # Zwischenstand zwischen Verbindungs- und Site-Schritt.
+        self._pending: dict[str, Any] = {}
+        self._sites: list[dict[str, str]] = []
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -196,30 +233,28 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             api_key = str(user_input[CONF_API_KEY]).strip()
             verify_ssl = bool(user_input.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL))
 
-            # Verhindert, dass derselbe Host zweimal eingerichtet wird.
-            await self.async_set_unique_id(host.lower())
-            self._abort_if_unique_id_configured()
-
-            error = await connection.async_check(self.hass, host, api_key, verify_ssl)
+            error, sites = await connection.async_check(self.hass, host, api_key, verify_ssl)
             if error:
                 errors["base"] = error
             else:
-                return self.async_create_entry(
-                    title=f"UniFi {host}",
-                    data={
-                        CONF_HOST: host,
-                        CONF_API_KEY: api_key,
-                        CONF_VERIFY_SSL: verify_ssl,
-                    },
-                    options={
-                        CONF_SCAN_INTERVAL: _int_or(
-                            user_input.get(CONF_SCAN_INTERVAL), DEFAULT_SCAN_INTERVAL
-                        ),
-                        CONF_PURGE_DAYS: _int_or(
-                            user_input.get(CONF_PURGE_DAYS), DEFAULT_PURGE_DAYS
-                        ),
-                    },
-                )
+                self._pending = {
+                    CONF_HOST: host,
+                    CONF_API_KEY: api_key,
+                    CONF_VERIFY_SSL: verify_ssl,
+                    CONF_SCAN_INTERVAL: _int_or(
+                        user_input.get(CONF_SCAN_INTERVAL), DEFAULT_SCAN_INTERVAL
+                    ),
+                    CONF_PURGE_DAYS: _int_or(
+                        user_input.get(CONF_PURGE_DAYS), DEFAULT_PURGE_DAYS
+                    ),
+                }
+                self._sites = sites
+                # Mehrere Sites: wählen lassen. Eine oder keine lesbare:
+                # diese bzw. "default", ohne weiteren Schritt.
+                if len(sites) > 1:
+                    return await self.async_step_site()
+                site = sites[0]["site"] if sites else DEFAULT_SITE
+                return await self._async_create(site, _site_name(sites, site))
 
         schema = vol.Schema(
             {
@@ -237,6 +272,43 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
 
+    async def async_step_site(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Site wählen, wenn der Controller mehrere hat."""
+        if user_input is not None:
+            site = str(user_input[CONF_SITE])
+            return await self._async_create(site, _site_name(self._sites, site))
+        return self.async_show_form(
+            step_id="site",
+            data_schema=_site_schema(self._sites, DEFAULT_SITE),
+            description_placeholders={"host": self._pending[CONF_HOST]},
+        )
+
+    async def _async_create(
+        self, site: str, site_name: str
+    ) -> config_entries.ConfigFlowResult:
+        host = self._pending[CONF_HOST]
+        # Pro Host und Site nur ein Hub.
+        await self.async_set_unique_id(connection.unique_id_for(host, site))
+        self._abort_if_unique_id_configured()
+        data = {
+            CONF_HOST: host,
+            CONF_API_KEY: self._pending[CONF_API_KEY],
+            CONF_VERIFY_SSL: self._pending[CONF_VERIFY_SSL],
+        }
+        if site != DEFAULT_SITE:
+            data[CONF_SITE] = site
+            data[CONF_SITE_NAME] = site_name
+        return self.async_create_entry(
+            title=connection.default_title(host, site, site_name),
+            data=data,
+            options={
+                CONF_SCAN_INTERVAL: self._pending[CONF_SCAN_INTERVAL],
+                CONF_PURGE_DAYS: self._pending[CONF_PURGE_DAYS],
+            },
+        )
+
     # -- Erneut authentifizieren (API-Key ungültig) ------------------------
 
     async def async_step_reauth(
@@ -251,7 +323,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             api_key = str(user_input[CONF_API_KEY]).strip()
-            error = await connection.async_check(
+            error, _sites = await connection.async_check(
                 self.hass,
                 entry.data[CONF_HOST],
                 api_key,
@@ -285,8 +357,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> config_entries.ConfigFlowResult:
         """
         Verbindungsdaten ändern, ohne den Hub neu anzulegen. Ein leeres
-        Key-Feld behält den bisherigen Key. Die ID des Hubs bleibt, damit
-        bleibt alles andere erhalten.
+        Key-Feld behält den bisherigen Key. Hat der Controller mehrere Sites,
+        folgt die Site-Auswahl. Die ID des Hubs bleibt, damit bleibt alles
+        andere erhalten.
         """
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
@@ -300,23 +373,20 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
             if not host:
                 errors[CONF_HOST] = connection.ERR_INVALID_HOST
-            elif connection.host_taken(self.hass, host, entry.entry_id):
-                errors[CONF_HOST] = connection.ERR_ALREADY_CONFIGURED
             else:
-                error = await connection.async_check(self.hass, host, api_key, verify_ssl)
+                error, sites = await connection.async_check(self.hass, host, api_key, verify_ssl)
                 if error:
                     errors["base"] = error
                 else:
-                    return self.async_update_reload_and_abort(
-                        entry,
-                        unique_id=host.lower(),
-                        title=connection.updated_title(entry, host),
-                        data_updates={
-                            CONF_HOST: host,
-                            CONF_API_KEY: api_key,
-                            CONF_VERIFY_SSL: verify_ssl,
-                        },
-                    )
+                    self._pending = {CONF_HOST: host, CONF_API_KEY: api_key, CONF_VERIFY_SSL: verify_ssl}
+                    self._sites = sites
+                    if len(sites) > 1:
+                        return await self.async_step_reconfigure_site()
+                    site = sites[0]["site"] if sites else DEFAULT_SITE
+                    result = self._async_reconfigure_done(site, _site_name(sites, site))
+                    if result is not None:
+                        return result
+                    errors[CONF_HOST] = connection.ERR_ALREADY_CONFIGURED
         return self.async_show_form(
             step_id="reconfigure",
             data_schema=vol.Schema(
@@ -331,6 +401,51 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_reconfigure_site(
+        self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        """Site beim Neu konfigurieren wählen; vorgewählt ist die bisherige."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            site = str(user_input[CONF_SITE])
+            result = self._async_reconfigure_done(site, _site_name(self._sites, site))
+            if result is not None:
+                return result
+            errors["base"] = connection.ERR_ALREADY_CONFIGURED
+        return self.async_show_form(
+            step_id="reconfigure_site",
+            data_schema=_site_schema(self._sites, connection.entry_site(entry)),
+            description_placeholders={"host": self._pending[CONF_HOST]},
+            errors=errors,
+        )
+
+    @callback
+    def _async_reconfigure_done(
+        self, site: str, site_name: str
+    ) -> config_entries.ConfigFlowResult | None:
+        """Übernehmen und neu laden; None, wenn Host und Site schon ein anderer Hub nutzt."""
+        entry = self._get_reconfigure_entry()
+        host = self._pending[CONF_HOST]
+        if connection.host_taken(self.hass, host, entry.entry_id, site):
+            return None
+        data = {
+            CONF_HOST: host,
+            CONF_API_KEY: self._pending[CONF_API_KEY],
+            CONF_VERIFY_SSL: self._pending[CONF_VERIFY_SSL],
+        }
+        if site == DEFAULT_SITE:
+            data_updates = {**data, CONF_SITE: None, CONF_SITE_NAME: None}
+        else:
+            data_updates = {**data, CONF_SITE: site, CONF_SITE_NAME: site_name}
+        new_data = {k: v for k, v in {**entry.data, **data_updates}.items() if v is not None}
+        return self.async_update_reload_and_abort(
+            entry,
+            unique_id=connection.unique_id_for(host, site),
+            title=connection.updated_title(entry, host, site, site_name),
+            data=new_data,
         )
 
     @staticmethod
@@ -416,7 +531,8 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         if notify_default not in {option["value"] for option in notify_options}:
             notify_options.append(
                 selector.SelectOptionDict(
-                    value=notify_default, label=f"{notify_default} (nicht gefunden)"
+                    value=notify_default,
+                    label=f"{notify_default} ({msg.label(msg.hass_language(self.hass), 'notify_missing')})",
                 )
             )
 

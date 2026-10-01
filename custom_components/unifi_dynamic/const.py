@@ -14,16 +14,27 @@ DEFAULT_VERIFY_SSL = False
 DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_PURGE_DAYS = 30
 
+# Site des Controllers. Gespeichert wird die interne Bezeichnung
+# ("internalReference" der Integration-API, z.B. "default"), die auch im Pfad
+# der klassischen API steht, dazu der Anzeigename. Hubs aus der Zeit vor
+# 2.16.0 haben keinen Eintrag und nutzen "default".
+CONF_SITE = "site"
+CONF_SITE_NAME = "site_name"
+DEFAULT_SITE = "default"
+
 # API-Pfade
 SITES_PATH = "/proxy/network/integration/v1/sites"
-CLIENTS_PATH = "/proxy/network/api/s/default/stat/sta"
-DEVICES_PATH = "/proxy/network/api/s/default/stat/device"
+CLIENTS_PATH = "/proxy/network/api/s/{site}/stat/sta"
+DEVICES_PATH = "/proxy/network/api/s/{site}/stat/device"
 
 REQUEST_TIMEOUT_SECONDS = 30
 
 # Persistenter Store
 STORAGE_VERSION = 1
-STORAGE_SAVE_DELAY = 10  # Sekunden, entprellt Schreibzugriffe
+# Sekunden: spätestens so lange nach einer Änderung wird geschrieben (siehe
+# storage_util.PeriodicSaver). Der Cache ändert sich bei jedem Poll; 60 s
+# halbieren die Schreibzugriffe gegenüber einem Poll alle 30 s.
+STORAGE_SAVE_DELAY = 60
 
 STORE_CLIENT_CACHE = "client_cache"
 STORE_AP_NAMES = "ap_names"
@@ -40,7 +51,7 @@ AVAIL_STORE_SUFFIX = "availability"
 AVAIL_KEEP_DAYS = 31
 # Schlüssel des Controllers im Verfügbarkeitsprotokoll (neben den Client-MACs).
 AVAIL_CONTROLLER = "controller"
-AVAIL_SAVE_DELAY = 120  # Sekunden; Wechsel sind selten, Verlust kurz vor Absturz verkraftbar
+AVAIL_SAVE_DELAY = 120  # Sekunden; spätestens so lange nach einem Wechsel wird geschrieben
 
 # Internes Cache-Feld: Epoch-Sekunden (UTC), zu denen die Integration den
 # Client zuletzt selbst in der UniFi-API gesehen hat. Einzige Grundlage für
@@ -79,8 +90,18 @@ FIELD_AP_NAME = "_ap_name"
 AP_NAMES_TTL = 900
 AP_NAMES_RETRY = 60
 
-# Ab dieser Zeit ohne Sichtung gilt ein Client als offline.
+# Ab dieser Zeit ohne Sichtung gilt ein Client als offline: mindestens 60 s,
+# bei längeren Abfrageintervallen 3 Intervalle (siehe
+# UnifiDynamicCoordinator.offline_after). So genügt ein einzelner verpasster
+# Poll nie, egal welches Intervall eingestellt ist.
 OFFLINE_AFTER_SECONDS = 60
+OFFLINE_AFTER_INTERVALS = 3
+
+# "Zuletzt gesehen" (Sensor und Attribut am Online-Sensor) und RSSI rücken bei
+# online Clients nur in diesen Schritten vor: jede Änderung ist ein Eintrag im
+# Recorder, und ein online Client ändert sich sonst bei jedem Poll. Beim
+# Wechsel auf offline gilt sofort der genaue letzte Kontakt.
+LAST_SEEN_STEP_SECONDS = 300
 
 # HA-Ausfälle dürfen nicht als Client-Abwesenheit zählen. Liegt der letzte
 # erfolgreiche Poll länger zurück, wird die Lücke allen _seen_at gutgeschrieben.
@@ -198,7 +219,7 @@ PANEL_STATIC_URL_PATH = f"{STATIC_URL_PATH}/panel"
 # Versionsstempel als Cache-Buster an der Seiten-URL; panel.html reicht ihn
 # an den Import der JS-Datei weiter. Wird bei jeder Änderung an panel.html
 # oder am Panel-JS von Hand erhöht, unabhängig von der Integrationsversion.
-PANEL_VERSION = "51"
+PANEL_VERSION = "52"
 PANEL_PAGE_URL = f"{PANEL_STATIC_URL_PATH}/{PANEL_HTML_FILE}?v={PANEL_VERSION}"
 
 DATA_PANEL_REGISTERED = "unifi_dynamic_panel_registered"

@@ -178,7 +178,9 @@ class LastSeenSensor(_UnifiDynamicSensor):
 
     @property
     def native_value(self) -> datetime | None:
-        seen = self.coordinator.seen_at(self._mac)
+        # Bei online Clients in 5-Minuten-Schritten, beim Wechsel auf offline
+        # der genaue letzte Kontakt (siehe coordinator._update_reported).
+        seen = self.coordinator.reported_seen_at(self._mac)
         if seen is None:
             return None
         return dt_util.utc_from_timestamp(seen)

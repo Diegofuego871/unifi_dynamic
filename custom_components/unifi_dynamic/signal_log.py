@@ -25,6 +25,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, STORAGE_VERSION
+from .storage_util import PeriodicSaver
 
 BLOCK_SECONDS = 300
 HOUR_SECONDS = 3600
@@ -96,6 +97,7 @@ class SignalLog:
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}_{entry_id}_{STORE_SUFFIX}"
         )
+        self._saver = PeriodicSaver(self._store, self.data, SAVE_DELAY)
         self._blocks: dict[str, list[list[Any]]] = {}
         self._hours: dict[str, list[list[Any]]] = {}
         # Laufender Block pro MAC: [Start, Werte, APs].
@@ -140,10 +142,10 @@ class SignalLog:
         }
 
     def schedule_save(self) -> None:
-        self._store.async_delay_save(self.data, SAVE_DELAY)
+        self._saver.schedule()
 
     async def async_save(self) -> None:
-        await self._store.async_save(self.data())
+        await self._saver.async_save()
 
     # -- Aufzeichnen -------------------------------------------------------
 
@@ -182,6 +184,16 @@ class SignalLog:
             self._hours.setdefault(mac, []).append(hour_from(hour[1], hour[0]))
 
     def prune(self, now: float) -> None:
+        # Abgelaufene laufende Blöcke und Stunden abschliessen, auch von
+        # Clients, die nicht mehr im WLAN sind. Sonst bliebe ihr letzter Block
+        # für immer "laufend" und erschiene in der 24-Stunden-Ansicht und der
+        # Kachel noch Tage später als aktueller Wert.
+        start = now - (now % BLOCK_SECONDS)
+        for mac in [m for m, o in self._open.items() if o[0] != start]:
+            self._close(mac)
+        hour_start = now - (now % HOUR_SECONDS)
+        for mac in [m for m, h in self._open_hour.items() if h[0] != hour_start]:
+            self._close_hour(mac)
         for store, keep in ((self._blocks, KEEP_BLOCKS), (self._hours, KEEP_HOURS)):
             limit = now - keep
             for mac in list(store):
@@ -205,12 +217,14 @@ class SignalLog:
         open_block = (
             block_from(current[1], current[2], current[0]) if current and current[1] else None
         )
+        now = time.time()
         if span not in RANGES or span == "24h":
-            out = list(self._blocks.get(mac, []))
-            if open_block is not None:
+            limit = now - RANGES["24h"]
+            out = [b for b in self._blocks.get(mac, []) if b[0] >= limit]
+            if open_block is not None and open_block[0] >= limit:
                 out.append(open_block)
             return out
-        limit = time.time() - RANGES[span]
+        limit = now - RANGES[span]
         out = [b for b in self._hours.get(mac, []) if b[0] >= limit]
         hour = self._open_hour.get(mac)
         blocks = list(hour[1]) if hour else []
@@ -222,7 +236,7 @@ class SignalLog:
                 blocks = []
             hour_start = start
             blocks.append(open_block)
-        if blocks and hour_start is not None:
+        if blocks and hour_start is not None and hour_start >= limit:
             out.append(hour_from(blocks, hour_start))
         return out
 

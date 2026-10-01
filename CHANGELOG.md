@@ -5,6 +5,65 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.16.0] - 2026-10-01
+
+### Added
+
+- **Site selection.** If the controller manages several sites, setup asks
+  which site the hub monitors; add the integration once per site. "Reconfigure"
+  can switch the site. Existing hubs keep using "default". The panel's
+  connection section shows the site.
+- **Tests in the repository** under `tests/`, run on every push by a new
+  GitHub Action: Python tests against a real Home Assistant
+  (`pytest-homeassistant-custom-component`) for setup, site selection,
+  reconfigure, coordinator and translations, plus the panel's Playwright
+  suites in a Home Assistant replica with made-up data.
+
+### Changed
+
+- **"Last seen" in 5-minute steps.** While a client is online, the "Last
+  seen" sensor and the `last_seen` and `rssi` attributes of the online
+  sensor only advance every 5 minutes; when it goes offline they show the
+  exact last contact immediately. Before, every poll wrote two database
+  entries per online client (about 290,000 per day for 50 clients at
+  30 seconds). Automations that treat "Last seen" as a heartbeat need a
+  threshold above 5 minutes; the online sensor still switches immediately.
+- **Offline threshold follows the polling interval.** A client is offline
+  after three polling intervals without a sighting, at least 60 seconds
+  (before: always 60 seconds). At 30 seconds nothing changes (90 seconds);
+  with longer intervals a single missed poll no longer marks clients offline.
+- The client cache is written at most once a minute instead of after every
+  poll, which halves the writes at a 30-second interval.
+- The panel code is split into `unifi-dynamic-panel.js`, `strings.js` (texts)
+  and `styles.js` (styles). No visible change.
+
+### Fixed
+
+- **Ping and WiFi history were only saved on shutdown.** Home Assistant
+  postpones a delayed save on every new change; with a poll every 30 seconds
+  and a 5-minute delay the history was never written while running, and a
+  crash or power cut lost everything since the last start. The same could
+  happen to the availability log. Saving now happens at the latest 5 minutes
+  (ping, WiFi), 2 minutes (availability) or 1 minute (cache) after a change.
+- **Outdated WiFi and ping values.** A client that had left the WiFi kept
+  showing its last block as the current 24-hour value in the tile and the
+  statistics, even days later. The 7- and 30-day views could include an hour
+  from outside the range.
+- **Buttons in the settings' version area could miss clicks.** The area was
+  rebuilt on every state change in Home Assistant, often several times per
+  second. The same pattern re-rendered the hub selection (closing an open
+  dropdown every 10 seconds) and the filter chips. Content is now only
+  replaced when it actually changed.
+- The panel no longer runs overlapping refreshes (an older answer could
+  overwrite a newer one) and pauses refreshing while it is in the background.
+- The "Remove client" action had no translation and showed German in an
+  English UI; `services.yaml` still named an outdated purge time. Labels in
+  the options dialog ("No push notification", "not found", "no longer known")
+  were always German and now follow the instance language.
+- The panel commands for the exclusion list now check that the entry belongs
+  to this integration.
+- Removed unused panel texts.
+
 ## [2.15.8] - 2026-09-30
 
 ### Added
@@ -1500,6 +1559,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.16.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.0
 [2.15.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.8
 [2.15.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.7
 [2.15.6]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.6

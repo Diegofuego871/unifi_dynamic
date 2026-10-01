@@ -103,6 +103,21 @@ _TITLES: dict[str, dict[str, str]] = {
     "action_purge": {LANG_DE: "Jetzt entfernen", LANG_EN: "Remove now"},
 }
 
+# Beschriftungen im Optionsdialog von Home Assistant, die nicht aus
+# strings.json kommen können (frei zusammengesetzte Auswahllisten). Sprache
+# ist die Instanzsprache, nicht die des angemeldeten Nutzers.
+_LABELS: dict[str, dict[str, str]] = {
+    "notify_none": {LANG_DE: "Keine Push-Benachrichtigung", LANG_EN: "No push notification"},
+    "notify_entity": {LANG_DE: "Entität", LANG_EN: "entity"},
+    "notify_missing": {LANG_DE: "nicht gefunden", LANG_EN: "not found"},
+    "client_unknown": {LANG_DE: "nicht mehr bekannt", LANG_EN: "no longer known"},
+}
+
+
+def label(lang: str, key: str) -> str:
+    return _LABELS[key][lang]
+
+
 _DRY_RUN_SUFFIX = {LANG_DE: " (Testlauf)", LANG_EN: " (dry run)"}
 _SUSPENDED_SUFFIX = {LANG_DE: " (ausgesetzt)", LANG_EN: " (suspended)"}
 

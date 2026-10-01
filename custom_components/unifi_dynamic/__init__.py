@@ -36,6 +36,7 @@ from .const import (
     ACTION_EXCLUDE,
     CONF_API_KEY,
     CONF_HOST,
+    CONF_SITE_NAME,
     CONF_VERIFY_SSL,
     CONF_PING_ENTITIES,
     DEFAULT_VERIFY_SSL,
@@ -825,11 +826,11 @@ def _ws_exclude_client(
 ) -> None:
     """Setzt einen Client auf die Ausnahmeliste, derselbe Weg wie die Meldungsaktion."""
     entry = hass.config_entries.async_get_entry(msg["entry_id"])
-    if entry is None:
+    if entry is None or entry.domain != DOMAIN:
         connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
         return
 
-    changed = _exclude_mac(hass, entry, msg[ATTR_MAC])
+    changed = _exclude_mac(hass, entry, str(msg[ATTR_MAC]).strip().lower())
     connection.send_result(msg["id"], {"changed": changed})
 
 
@@ -847,11 +848,11 @@ def _ws_unexclude_client(
 ) -> None:
     """Entfernt einen Client wieder von der Ausnahmeliste."""
     entry = hass.config_entries.async_get_entry(msg["entry_id"])
-    if entry is None:
+    if entry is None or entry.domain != DOMAIN:
         connection.send_error(msg["id"], "not_found", "Unbekannter Config-Entry")
         return
 
-    changed = _unexclude_mac(hass, entry, msg[ATTR_MAC])
+    changed = _unexclude_mac(hass, entry, str(msg[ATTR_MAC]).strip().lower())
     connection.send_result(msg["id"], {"changed": changed})
 
 
@@ -961,6 +962,10 @@ def _ws_get_options(
             # Verbindungsdaten ohne den API-Key selbst: nur ob einer hinterlegt ist.
             "connection": {
                 "host": str(coordinator.entry.data.get(CONF_HOST, "")),
+                # Site: interne Bezeichnung und Anzeigename ("default" bei
+                # Hubs von vor 2.16.0).
+                "site": coordinator.site,
+                "site_name": str(coordinator.entry.data.get(CONF_SITE_NAME) or coordinator.site),
                 "verify_ssl": bool(coordinator.entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL)),
                 "has_key": bool(coordinator.entry.data.get(CONF_API_KEY)),
                 "status": (

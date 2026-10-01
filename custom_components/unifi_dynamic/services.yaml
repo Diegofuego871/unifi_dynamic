@@ -1,7 +1,7 @@
 purge_now:
   name: Purge jetzt ausführen
   description: >-
-    Führt den Purge sofort aus, statt auf den täglichen Lauf um 03:30 zu warten.
+    Führt den Purge sofort aus, statt auf den täglichen Lauf zu warten.
     Das Ergebnis wird geloggt, als Benachrichtigung gemeldet und als
     Service-Antwort zurückgegeben.
   fields:

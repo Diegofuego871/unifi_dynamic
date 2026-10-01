@@ -1,0 +1,12 @@
+{
+  "name": "unifi-dynamic-panel-tests",
+  "private": true,
+  "type": "module",
+  "description": "End-to-End-Tests des Panels im Home-Assistant-Nachbau (Playwright, Chromium).",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

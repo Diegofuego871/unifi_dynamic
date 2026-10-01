@@ -15,6 +15,13 @@
           "purge_days": "0 disables automatic removal."
         }
       },
+      "site": {
+        "title": "Choose site",
+        "description": "The controller {host} manages several sites. Choose the site this hub should monitor. For further sites, add the integration once more per site.",
+        "data": {
+          "site": "Site"
+        }
+      },
       "reauth_confirm": {
         "title": "Renew API key",
         "description": "The controller {host} rejects the stored API key. Enter a new key; everything else stays as it is.",
@@ -34,16 +41,23 @@
           "host": "Address of the UniFi controller, without https://",
           "api_key": "Leave empty to keep the stored key."
         }
+      },
+      "reconfigure_site": {
+        "title": "Choose site",
+        "description": "The controller {host} manages several sites. Choose the site this hub should monitor.",
+        "data": {
+          "site": "Site"
+        }
       }
     },
     "error": {
       "cannot_connect": "Host not reachable. Check address and SSL setting.",
       "invalid_auth": "API key invalid. The controller rejects the key.",
       "invalid_host": "Please enter a host or IP.",
-      "already_configured": "This host is already used by another hub."
+      "already_configured": "This host and site are already used by another hub."
     },
     "abort": {
-      "already_configured": "This host is already configured.",
+      "already_configured": "This host and site are already configured.",
       "reauth_successful": "API key renewed.",
       "reconfigure_successful": "Connection updated."
     }
@@ -161,6 +175,24 @@
         "entry_id": {
           "name": "Config entry",
           "description": "Optional. Without it, all configured UniFi hosts run."
+        }
+      }
+    },
+    "remove_client": {
+      "name": "Remove client",
+      "description": "Removes individual clients immediately, regardless of the threshold for automatic removal and of the exception list. Their entities and device are deleted. If a client is still active, the next sync creates it again, with new entity IDs. The result is returned as the action response.",
+      "fields": {
+        "device_id": {
+          "name": "Devices",
+          "description": "The devices to remove. Multiple selection possible."
+        },
+        "mac": {
+          "name": "MAC addresses",
+          "description": "Alternative to the device selection, e.g. for devices that no longer exist in Home Assistant. Colons, hyphens or a plain hex string are all accepted."
+        },
+        "entry_id": {
+          "name": "Config entry",
+          "description": "Optional and only relevant for MAC addresses. Without it, all configured UniFi hosts are searched."
         }
       }
     }

@@ -55,6 +55,7 @@ from .const import (
     PING_TIMEOUT,
     STORAGE_VERSION,
 )
+from .storage_util import PeriodicSaver
 # Wertebereich des Intervalls, gemeinsam für Optionsdialog und Panel.
 from .options_api import PING_INTERVAL_RANGE
 
@@ -164,6 +165,7 @@ class PingMonitor:
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}_{self.entry.entry_id}_{PING_STORE_SUFFIX}"
         )
+        self._saver = PeriodicSaver(self._store, self._store_data, PING_SAVE_DELAY)
         # Abgeschlossene Blöcke pro MAC, älteste zuerst.
         self._buckets: dict[str, list[list[Any]]] = {}
         # Laufender Block pro MAC: [Start, Antwortzeiten, gesendet, empfangen].
@@ -219,7 +221,7 @@ class PingMonitor:
             self._unsub()
             self._unsub = None
         if self.status == STATUS_OK:
-            await self._store.async_save(self._store_data())
+            await self._saver.async_save()
 
     async def _async_detect(self) -> str:
         """Wie die Ping-Integration von HA: erst unprivilegiert, dann privilegiert."""
@@ -328,7 +330,7 @@ class PingMonitor:
             if mac not in pinged:
                 self._last.pop(mac)
         self._prune(now)
-        self._store.async_delay_save(self._store_data, PING_SAVE_DELAY)
+        self._saver.schedule()
 
     def _update_entities(self, now: float) -> bool:
         """
@@ -406,6 +408,16 @@ class PingMonitor:
             self._hourly.setdefault(mac, []).append(hour_from(hour))
 
     def _prune(self, now: float) -> None:
+        # Abgelaufene laufende Blöcke und Stunden abschliessen, auch von
+        # Clients, die nicht mehr gepingt werden: sonst blieben sie für immer
+        # "laufend" und erschienen in 7 und 30 Tagen auch ausserhalb des
+        # Zeitraums.
+        start = now - (now % PING_BUCKET_SECONDS)
+        for mac in [m for m, o in self._open.items() if o[0] != start]:
+            self._close(mac)
+        hour_start = now - (now % PING_HOUR_SECONDS)
+        for mac in [m for m, h in self._open_hour.items() if h[0] != hour_start]:
+            self._close_hour(mac)
         for store, keep in ((self._buckets, PING_KEEP_SECONDS), (self._hourly, PING_HOURLY_KEEP_SECONDS)):
             limit = now - keep
             for mac in list(store):
@@ -468,12 +480,14 @@ class PingMonitor:
             if current is not None and current[2]
             else None
         )
+        now = time.time()
         if span not in PING_RANGES or span == "24h":
-            out = list(self._buckets.get(mac, []))
-            if open_block is not None:
+            limit = now - PING_RANGES["24h"]
+            out = [b for b in self._buckets.get(mac, []) if b[0] >= limit]
+            if open_block is not None and open_block[0] >= limit:
                 out.append(open_block)
             return out
-        limit = time.time() - PING_RANGES[span]
+        limit = now - PING_RANGES[span]
         out = [b for b in self._hourly.get(mac, []) if b[0] >= limit]
         # Laufende Stunde samt laufendem Block, damit die letzte Stunde nicht fehlt.
         hour = self._open_hour.get(mac)
@@ -481,7 +495,7 @@ class PingMonitor:
         if open_block is not None:
             start = open_block[0] - (open_block[0] % PING_HOUR_SECONDS)
             if hour is None or hour[0] != start:
-                if hour is not None and hour[3]:
+                if hour is not None and hour[3] and hour[0] >= limit:
                     out.append(hour_from(hour))
                 hour = [start, [], [], 0, 0]
             if open_block[1] is not None:
@@ -490,7 +504,7 @@ class PingMonitor:
                 hour[2].append(open_block[2])
             hour[3] += open_block[3]
             hour[4] += open_block[4]
-        if hour is not None and hour[3]:
+        if hour is not None and hour[3] and hour[0] >= limit:
             out.append(hour_from(hour))
         return out
 

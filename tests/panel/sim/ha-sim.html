@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- wie im HA-Frontend -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  /* Dunkles Design wie HA es per Variablen am <html> setzt */
+  html {
+    --primary-background-color: #111111;
+    --secondary-background-color: #282828;
+    --card-background-color: #1c1c1c;
+    --primary-text-color: #e1e1e1;
+    --secondary-text-color: #9b9b9b;
+    --disabled-text-color: #6f6f6f;
+    --divider-color: rgba(225, 225, 225, 0.12);
+    --error-color: #ef5350;
+    --primary-color: #03a9f4;
+    --success-color: #43a047;
+    --header-height: 56px;
+    --sim-safe-top: 47px; /* simuliert den iPhone-Safe-Area-Abstand */
+  }
+  html, body { margin: 0; height: 100%; background: var(--primary-background-color); }
+  /* Nachbau von hass-subpage im narrow-Modus: fix über den ganzen Viewport,
+     Kopfzeile oben (mit Safe-Area-Abstand), iframe füllt den Rest */
+  .subpage { position: fixed; inset: 0; display: block; }
+  .sim-toolbar {
+    padding-top: var(--sim-safe-top);
+    height: var(--header-height);
+    display: flex; align-items: center; gap: 12px; padding-left: 12px;
+    color: var(--primary-text-color); font-family: sans-serif; font-size: 20px;
+    border-bottom: 1px solid var(--divider-color);
+    box-sizing: content-box;
+  }
+  .sim-content {
+    height: calc(100% - var(--header-height) - var(--sim-safe-top) - 1px);
+  }
+  iframe { border: 0; display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<home-assistant>
+  <div class="subpage">
+    <div class="sim-toolbar"><span id="sim-menu">☰</span><span>UniFi Dynamic Clients</span></div>
+    <div class="sim-content">
+      <!-- exakt HAs IFRAME_SANDBOX -->
+      <iframe id="panel-frame"
+        title="UniFi Dynamic Clients"
+        sandbox="allow-forms allow-popups allow-pointer-lock allow-same-origin allow-scripts allow-modals allow-downloads"
+        allow="fullscreen"></iframe>
+    </div>
+  </div>
+</home-assistant>
+<script>
+  const names = [
+    "Stromzähler Keller", "Licht Küche", "Werkbank Garage",
+    "Storen Wohnen", "Waschmaschine", "Storen Kinderzimmer",
+    "Lautsprecher Bad", "Storen Schlafzimmer", "Storen Büro",
+    "Thermostat Büro", "Lautsprecher Wohnzimmer", "Licht Spielzimmer",
+  ];
+  const aps = ["Keller", "Kinderzimmer", "Garage", "Wohnzimmer", "Büro", null];
+  const clients = [];
+  for (let i = 0; i < 40; i++) {
+    clients.push({
+      mac: `aa:bb:cc:dd:ee:${String(i).padStart(2, "0")}`,
+      name: `${names[i % names.length]} ${i}`,
+      ip: `192.0.2.${100 + i}`,
+      essid: aps[i % aps.length] ? "HomeNet" : null,
+      ap_name: aps[i % aps.length],
+      is_wired: aps[i % aps.length] === null,
+      seen_at: Date.now() / 1000 - i * 60,
+      online: i % 7 !== 0,
+      excluded: i % 5 === 0,
+      device_id: `dev-${i}`,
+      entry_id: "entry1",
+      host: "unifi.local",
+    });
+  }
+  window.__wsCalls = [];
+  window.__locationChanged = [];
+  window.addEventListener("location-changed", (ev) => {
+    window.__locationChanged.push({ path: location.pathname, detail: ev.detail });
+  });
+  document.querySelector("home-assistant").hass = {
+    language: "de",
+    callWS: async (msg) => { if (msg.type === "frontend/get_user_data") { window.__udCalls = (window.__udCalls||0)+1; const raw = sessionStorage.getItem("ud_"+msg.key); return { value: raw ? JSON.parse(raw) : null }; }
+      if (msg.type === "frontend/set_user_data") { window.__udSets = (window.__udSets||0)+1; sessionStorage.setItem("ud_"+msg.key, JSON.stringify(msg.value)); return null; }
+
+      window.__wsCalls.push(msg);
+      if (msg.type === "unifi_dynamic/list_clients") return { clients };
+      return {};
+    },
+  };
+  document.getElementById("panel-frame").src = "/unifi_dynamic/panel/panel.html?v=24";
+</script>
+</body>
+</html>

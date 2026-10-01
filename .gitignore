@@ -1,3 +1,8 @@
 # Python-Bytecode: wird von Python selbst erzeugt, gehört nicht ins Repo
 __pycache__/
 *.py[cod]
+
+# Tests
+.pytest_cache/
+tests/panel/node_modules/
+tests/panel/output/

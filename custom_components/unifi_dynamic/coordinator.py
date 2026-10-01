@@ -21,6 +21,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 
 from .signal_log import SignalLog
+from .storage_util import PeriodicSaver
 from .const import (
     AP_NAMES_RETRY,
     AP_NAMES_TTL,
@@ -32,7 +33,9 @@ from .const import (
     CONF_PURGE_DAYS,
     CONF_PURGE_EXCLUDE,
     CONF_SCAN_INTERVAL,
+    CONF_SITE,
     CONF_VERIFY_SSL,
+    DEFAULT_SITE,
     DEVICES_PATH,
     DEFAULT_OFFLINE_AFTER_FAILURES,
     DEFAULT_PURGE_DAYS,
@@ -47,6 +50,8 @@ from .const import (
     FIELD_AP_NAME,
     FIELD_FIRST_SEEN,
     FIELD_SEEN_AT,
+    LAST_SEEN_STEP_SECONDS,
+    OFFLINE_AFTER_INTERVALS,
     OFFLINE_AFTER_SECONDS,
     PURGE_SKIP_DISABLED,
     PURGE_SKIP_NO_CONTACT,
@@ -244,6 +249,8 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self.host: str = entry.data[CONF_HOST]
         self.api_key: str = entry.data[CONF_API_KEY]
         self.verify_ssl: bool = bool(entry.data.get(CONF_VERIFY_SSL, DEFAULT_VERIFY_SSL))
+        # Site des Controllers; Hubs von vor 2.16.0 nutzen "default".
+        self.site: str = str(entry.data.get(CONF_SITE) or DEFAULT_SITE)
 
         # Geteilte HA-Session statt eigener ClientSession.
         self.session = async_get_clientsession(hass, verify_ssl=self.verify_ssl)
@@ -272,6 +279,10 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         ) = None
 
         self._migration_done = False
+        # Für Entitäten gemeldeter Stand je Client: (zuletzt gesehen, RSSI).
+        # Rückt bei online Clients nur in LAST_SEEN_STEP_SECONDS vor, siehe
+        # _update_reported.
+        self._reported: dict[str, tuple[float, Any]] = {}
         self._removal_callbacks: list[Callable[[str], None]] = []
         # Ping-Messung (ping.PingMonitor), gesetzt in __init__.py.
         self.ping: Any = None
@@ -285,6 +296,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_cache"
         )
+        self._saver = PeriodicSaver(self._store, self._data_to_save, STORAGE_SAVE_DELAY)
 
         # Verfügbarkeitsprotokoll: MAC -> Wechsel [[zeit, zustand], ...],
         # älteste zuerst. Zustand 1 = online, 0 = offline, None = keine Daten
@@ -303,6 +315,9 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._avail_pruned_at = 0.0
         self._avail_store: Store[dict[str, Any]] = Store(
             hass, STORAGE_VERSION, f"{DOMAIN}_{entry.entry_id}_{AVAIL_STORE_SUFFIX}"
+        )
+        self._avail_saver = PeriodicSaver(
+            self._avail_store, self._avail_to_save, AVAIL_SAVE_DELAY
         )
 
         super().__init__(
@@ -328,17 +343,17 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         }
 
     def _schedule_save(self) -> None:
-        """Entprelltes persistentes Speichern."""
-        self._store.async_delay_save(self._data_to_save, STORAGE_SAVE_DELAY)
+        """Verzögertes Speichern, spätestens STORAGE_SAVE_DELAY nach der Änderung."""
+        self._saver.schedule()
 
     async def async_save_now(self) -> None:
         """Sofortiger Save, z. B. bei Unload oder Shutdown."""
         try:
-            await self._store.async_save(self._data_to_save())
+            await self._saver.async_save()
         except Exception as err:  # noqa: BLE001 - Save darf nie den Unload kippen
             _LOGGER.warning("Cache konnte nicht gespeichert werden: %s", err)
         try:
-            await self._avail_store.async_save(self._avail_to_save())
+            await self._avail_saver.async_save()
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Verfügbarkeitsprotokoll konnte nicht gespeichert werden: %s", err)
         try:
@@ -352,7 +367,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         return {"tick": self._avail_tick, "clients": self._avail}
 
     def _schedule_avail_save(self) -> None:
-        self._avail_store.async_delay_save(self._avail_to_save, AVAIL_SAVE_DELAY)
+        self._avail_saver.schedule()
 
     async def _async_load_availability(self) -> None:
         try:
@@ -461,7 +476,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             # Poll nach einem Start ist es leer, und alle Clients erschienen
             # einen Poll lang als offline.
             seen = as_epoch_seconds(data.get(FIELD_SEEN_AT))
-            online = seen is not None and (now - seen) <= OFFLINE_AFTER_SECONDS
+            online = seen is not None and (now - seen) <= self.offline_after
             events = self._avail.get(mac)
             last = events[-1][1] if events else "missing"
             state = 1 if online else 0
@@ -889,7 +904,49 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             return False
 
         reference = self._anchor if self._anchor is not None else time.time()
-        return (reference - seen) <= OFFLINE_AFTER_SECONDS
+        return (reference - seen) <= self.offline_after
+
+    @property
+    def offline_after(self) -> float:
+        """
+        Sekunden ohne Sichtung, ab denen ein Client offline ist: mindestens
+        OFFLINE_AFTER_SECONDS, sonst OFFLINE_AFTER_INTERVALS Abfrageintervalle.
+        """
+        interval = self.update_interval.total_seconds() if self.update_interval else 0
+        return max(OFFLINE_AFTER_SECONDS, OFFLINE_AFTER_INTERVALS * interval)
+
+    @callback
+    def _update_reported(self) -> None:
+        """
+        Gemeldeten Stand (zuletzt gesehen, RSSI) für die Entitäten nachführen.
+
+        Online: nur, wenn seit dem gemeldeten Wert LAST_SEEN_STEP_SECONDS
+        vergangen sind. Offline: sofort der genaue letzte Kontakt. Grundlage
+        sind Cache und letzter erfolgreicher Poll, nicht self.data - das ist
+        während des Updates noch der vorige Stand.
+        """
+        reference = self._anchor if self._anchor is not None else time.time()
+        limit = self.offline_after
+        for mac, data in self._client_cache.items():
+            seen = as_epoch_seconds(data.get(FIELD_SEEN_AT))
+            if seen is None:
+                continue
+            rssi = data.get("rssi")
+            prev = self._reported.get(mac)
+            online = (reference - seen) <= limit
+            if online and prev is not None and seen - prev[0] < LAST_SEEN_STEP_SECONDS:
+                continue
+            self._reported[mac] = (seen, rssi)
+
+    def reported_seen_at(self, mac: str) -> float | None:
+        """Zuletzt gesehen für die Entitäten (siehe _update_reported)."""
+        reported = self._reported.get(mac.lower())
+        return reported[0] if reported is not None else self.seen_at(mac)
+
+    def reported_rssi(self, mac: str) -> Any:
+        """RSSI im selben Takt wie reported_seen_at."""
+        reported = self._reported.get(mac.lower())
+        return reported[1] if reported is not None else self.client_data(mac).get("rssi")
 
     def panel_clients(self) -> list[dict[str, Any]]:
         """
@@ -988,7 +1045,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         getarnt werden.
         """
         self._avail_tick = time.time()
-        url = f"https://{self.host}{CLIENTS_PATH}"
+        url = f"https://{self.host}{CLIENTS_PATH.format(site=self.site)}"
         headers = {"X-API-KEY": self.api_key, "Accept": "application/json"}
 
         try:
@@ -1072,6 +1129,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # frischen Daten im Cache stehen. Setzt den Fehlerzähler zurück.
         self._register_success()
         self._avail_record(now)
+        self._update_reported()
 
         # Vor der Meldung über neue Clients, damit dort der AP-Name steht.
         refreshed = False
@@ -1152,7 +1210,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         Rein kosmetisch: schlägt der Aufruf fehl, zeigen die Sensoren die
         AP-MAC statt des Namens. Der Client-Poll bleibt davon unberührt.
         """
-        url = f"https://{self.host}{DEVICES_PATH}"
+        url = f"https://{self.host}{DEVICES_PATH.format(site=self.site)}"
         headers = {"X-API-KEY": self.api_key, "Accept": "application/json"}
 
         try:
@@ -1206,7 +1264,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         _LOGGER.warning(
             "AP-Namen konnten nicht von %s geladen werden (%s). Die Sensoren "
             "zeigen bis auf Weiteres die AP-MAC statt des Namens.",
-            DEVICES_PATH,
+            DEVICES_PATH.format(site=self.site),
             reason,
         )
 
@@ -1384,6 +1442,7 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # Ein später neu angelegter Client wird bewusst nicht automatisch
         # wieder verknüpft.
         self._device_links.pop(mac, None)
+        self._reported.pop(mac, None)
         if self._avail.pop(mac, None) is not None:
             self._schedule_avail_save()
 

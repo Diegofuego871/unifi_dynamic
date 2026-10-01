@@ -87,6 +87,11 @@ Requires Home Assistant 2024.12 or newer.
 | Polling interval | How often the client list is fetched (seconds) |
 | Remove after days without a sighting | 0 disables automatic removal |
 
+If the controller manages several sites, a **Choose site** step follows. A
+hub monitors exactly one site; add the integration once more for each
+further site. With a single site the step is skipped. Hubs from before
+2.16.0 use the site "default".
+
 ### Changing the connection
 
 Host, API key and SSL verification can be changed without deleting the
@@ -94,11 +99,14 @@ hub, for example after issuing a new API key or when a controller is
 replaced under the same or a new IP:
 
 - **⋮ → Reconfigure** on the integration: host, new API key (leave empty to
-  keep the stored one) and SSL verification.
+  keep the stored one) and SSL verification; with several sites, the site
+  afterwards.
 - **Re-authenticate**: if the controller rejects the key (HTTP 401/403),
   Home Assistant reports it under Settings, where only the new key is
   entered.
-- In the **panel** under Settings → Connection (see [Panel](#panel)).
+- In the **panel** under Settings → Connection (see [Panel](#panel)). The
+  site stays unchanged there; if it does not exist on a new host, nothing is
+  saved.
 
 All three test the connection before saving and keep the hub: devices,
 entities, links, protection list, history and settings are kept.
@@ -312,7 +320,7 @@ integration briefly reloads, which the dialog points out beforehand. With
 one hub there is no switch, just the gear.
 
 At the very bottom, the collapsible **Connection** section (collapsed with
-host and status as summary) shows host/IP, SSL verification, whether
+host and status as summary) shows host/IP, site, SSL verification, whether
 an API key is stored, and the status ("Connected", "API key invalid", "Not
 reachable"). The key itself is never shown, not even partially. "Change
 connection…" opens a small dialog for host, new API key (leave empty to keep
@@ -572,6 +580,26 @@ cache and ages. The basis for this is an own timestamp written on every
 sighting, not the UniFi field `last_seen`. That removes any issue with
 millisecond variants, missing values and a deviating controller clock.
 
+A client counts as **offline** once it has not been seen for more than three
+polling intervals, and at least 60 seconds. At a 30-second interval that is
+90 seconds, at 2 minutes it is 6 minutes: a single missed poll is never
+enough.
+
+**"Last seen" and the recorder:** while a client is online, the "Last seen"
+sensor and the `last_seen` and `rssi` attributes of the online sensor only
+advance in 5-minute steps. Every change is an entry in Home Assistant's
+database; without this, every poll would add two per online client (about
+290,000 per day for 50 clients at 30 seconds). When a client goes offline,
+"Last seen" immediately shows the exact last contact. For "is the device
+there?" use the online sensor, which switches immediately; an automation on
+"Last seen older than X" works for X above 5 minutes.
+
+**Own files:** cache, availability log, WiFi and ping history live under
+`.storage/`. They are written at the latest 1 minute (cache), 2 minutes
+(availability) or 5 minutes (WiFi, ping) after a change, and when Home
+Assistant shuts down. A crash or power cut therefore costs at most that
+span.
+
 If Home Assistant went more than an hour without a successful poll, the
 downtime is credited to every timestamp. Otherwise a restart after a longer
 standstill would classify all clients as overdue at once.
@@ -651,6 +679,22 @@ URL" in the app's general settings and can be turned off permanently with
 Access point names come from `/stat/device`. That list is fetched far less
 often than the client list and kept in the cache. If the request fails, the
 sensors show the access point's MAC instead.
+
+## Development and tests
+
+The tests live under `tests/` and run on every push as a GitHub Action
+(`.github/workflows/tests.yml`):
+
+- **Python with a real Home Assistant** (`pytest-homeassistant-custom-component`):
+  setup with site selection, reconfigure, coordinator (site path, offline
+  threshold, "Last seen", saving while running) and translations, plus
+  older tests with stubs (`tests/legacy/`). Run with Python 3.13:
+  `pip install pytest-homeassistant-custom-component` and `python -m pytest`.
+- **Panel** (`tests/panel/`): a replica of the Home Assistant UI with made-up
+  data and more than 20 Playwright suites for desktop and phone. Run with
+  `npm ci`, `npx playwright-core install chromium` and `node run.mjs`
+  (single suites: `node run.mjs settings version`). Screenshots go to
+  `tests/panel/output/`.
 
 ## Changelog
 

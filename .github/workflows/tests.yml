@@ -1,0 +1,61 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: Python (Home Assistant)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node.js (für die Prüfung der Panel-Texte)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Abhängigkeiten
+        run: pip install pytest-homeassistant-custom-component
+
+      - name: Tests
+        run: python -m pytest -q
+
+  panel:
+    name: Panel (Playwright)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests/panel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Abhängigkeiten
+        run: npm ci
+
+      - name: Chromium
+        run: npx playwright-core install --with-deps chromium
+
+      - name: Suiten
+        run: node run.mjs
+
+      - name: Bildschirmfotos bei Fehlern
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: panel-screenshots
+          path: tests/panel/output
