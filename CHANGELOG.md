@@ -5,6 +5,24 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.16.1] - 2026-10-05
+
+### Fixed
+
+- **Back arrow on Home Assistant pages opened from the panel.** After
+  opening a Home Assistant page from the panel (for example the device page
+  via "Open device page"), the arrow at the top left led to the device list
+  (`/config/devices/dashboard`) instead of back to the panel, in the browser
+  and in the Companion app. Cause: since frontend 20260930, Home Assistant
+  stores where a navigation came from in `history.state.from`, and the
+  device page's arrow only goes back in history when that value is set;
+  otherwise it opens its fixed back path. The panel navigated with an empty
+  history state. It now creates history entries exactly like Home
+  Assistant's own navigation (`from` = path of the panel; replacing an entry
+  keeps `root` and `from`). Verified in a real Home Assistant with frontend
+  20260930.0 and 20260128.6 (desktop and mobile, arrow and browser back),
+  plus new checks in the panel test suites.
+
 ## [2.16.0] - 2026-10-01
 
 ### Added
@@ -1559,6 +1577,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.1
 [2.16.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.0
 [2.15.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.8
 [2.15.7]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.7

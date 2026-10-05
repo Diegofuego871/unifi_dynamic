@@ -2157,18 +2157,29 @@ class UnifiDynamicPanel extends HTMLElement {
   // Navigation gehört ins Elternfenster (Home Assistant selbst): im iframe
   // würde history.pushState sonst nur das iframe auf eine HA-URL schicken.
   // Gleiches Muster wie HAs eigene navigate()-Funktion: pushState plus
-  // "location-changed" am window, auf das der HA-Router hört.
+  // "location-changed" am window, auf das der HA-Router hört. Alle
+  // Navigationen des Panels laufen über _navigate.
   _openDevice(deviceId) {
     if (!deviceId) return;
     this._navigate(`/config/devices/device/${deviceId}`, false);
   }
 
+  // Verlaufseintrag wie HAs navigate(): Seit Frontend 20260930 merkt sich HA
+  // in history.state.from, woher man kam. Fehlt "from", springt der Pfeil
+  // oben links der Geräteseite zur festen Geräteliste statt zurück ins Panel.
   _navigate(path, replace) {
     const target = window.parent || window;
+    const state = target.history.state;
     if (replace) {
-      target.history.replaceState(target.history.state, "", path);
+      // Wie HA: "root" und "from" des Eintrags bleiben erhalten.
+      const keep = state?.root ? { root: true } : null;
+      target.history.replaceState(
+        state?.from === undefined ? keep : { ...keep, from: state.from },
+        "",
+        path
+      );
     } else {
-      target.history.pushState(null, "", path);
+      target.history.pushState({ from: target.location.pathname }, "", path);
     }
     target.dispatchEvent(
       new target.CustomEvent("location-changed", { detail: { replace } })

@@ -26,6 +26,8 @@ const dlgText = (f) => ev(f, `return r.querySelector("dialog.device").innerText`
   await ev(f, `r.querySelector('tr[data-mac="aa:bb:cc:dd:ee:02"] .linked-link').click()`);
   const path = await p.evaluate(() => location.pathname);
   check("Klick in Tabelle öffnet HA-Geräteseite, kein Dialog", path === "/config/devices/device/ha-5" && !(await ev(f, `return r.querySelector("dialog.device").open`)), path);
+  const st0 = await p.evaluate(() => history.state);
+  check("HA-Geräteseite: history.state.from = Pfad vor der Navigation", st0?.from === "/ha-sim-dialog.html", JSON.stringify(st0));
   // Suche nach Gerätename
   await ev(f, `const s=r.querySelector(".search");s.value="HA Gerät 05";s.dispatchEvent(new Event("input"))`);
   const rows = await ev(f, `return [...r.querySelectorAll("tbody tr[data-key]")].map(t=>t.dataset.mac)`);

@@ -167,6 +167,10 @@ await openBtn.asElement().tap();
 await page.waitForTimeout(200);
 const nav = await page.evaluate(() => ({ path: location.pathname, events: window.__locationChanged }));
 check("Geräteseite: Elternfenster navigiert + location-changed", nav.path === "/config/devices/device/dev-0" && nav.events.length === 1, JSON.stringify(nav));
+// HA (Frontend ab 20260930) braucht history.state.from, sonst führt der
+// Pfeil der Geräteseite zur Geräteliste statt zurück ins Panel.
+const navState = await page.evaluate(() => history.state);
+check("Geräteseite: history.state.from = Pfad vor der Navigation", navState?.from === "/ha-sim.html", JSON.stringify(navState));
 
 // --- 4. Löschen: confirm() im Sandbox-iframe + WebSocket über Eltern-hass
 await page.goto("http://127.0.0.1:8950/ha-sim.html");
