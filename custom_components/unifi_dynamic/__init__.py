@@ -1180,7 +1180,6 @@ async def _ws_version(
     {
         vol.Required("type"): WS_TYPE_SET_PANEL,
         vol.Optional("prerelease"): bool,
-        vol.Optional("prerelease_hacs"): vol.Any(None, str),
     }
 )
 @websocket_api.require_admin
@@ -1189,7 +1188,7 @@ async def _ws_set_panel(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Gemeinsame Panel-Einstellungen der Instanz speichern (Vorabversionen)."""
-    values = {k: msg[k] for k in ("prerelease", "prerelease_hacs") if k in msg}
+    values = {k: msg[k] for k in ("prerelease",) if k in msg}
     connection.send_result(msg["id"], await update_check.async_set_panel_settings(hass, values))
 
 

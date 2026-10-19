@@ -827,7 +827,6 @@ class UnifiDynamicPanel extends HTMLElement {
   _applyPanelSettings(panel) {
     if (!panel) return;
     this._prerelease = panel.prerelease === true;
-    this._prereleaseHacs = panel.prerelease_hacs || null;
   }
 
   // Fehlermeldung je Feld, leer wenn gültig.
@@ -1438,8 +1437,10 @@ class UnifiDynamicPanel extends HTMLElement {
   }
 
   // Schalter "Pre-release" von HACS für dieses Repository: eine Entität am
-  // selben HACS-Gerät wie die Update-Entität. Standardmässig deaktiviert;
-  // deaktiviert heisst hier: nicht in hass.states.
+  // selben HACS-Gerät wie die Update-Entität. Das Panel liest nur, ob er
+  // eingeschaltet ist; an HACS-Entitäten ändert es nichts. Standardmässig
+  // ist er deaktiviert (dann nicht in hass.states) und wird im HACS-Gerät
+  // vom Benutzer aktiviert und eingeschaltet.
   _hacsPreReleaseSwitch() {
     const hass = this._hass;
     const upd = this._hacsUpdateEntity();
@@ -1455,93 +1456,8 @@ class UnifiDynamicPanel extends HTMLElement {
         String(e.entity_id).startsWith("switch.") &&
         /pre.?release/i.test(`${e.entity_id} ${e.translation_key || ""}`)
     );
-    // Deaktivierte Entitäten stehen nicht in hass.entities: dann gilt, was
-    // die Entity-Registry geliefert hat (siehe _loadHacsSwitch).
-    const regSw = !sw && this._hacsSwitchReg && this._hacsSwitchReg.deviceId === deviceId ? this._hacsSwitchReg : null;
-    const entityId = sw ? sw.entity_id : regSw ? regSw.entityId : null;
-    const state = entityId ? hass.states[entityId] : null;
-    return {
-      deviceId,
-      entityId,
-      on: Boolean(state && state.state === "on"),
-      disabled: Boolean(!sw && regSw && regSw.disabled),
-    };
-  }
-
-  // Schalter "Pre-release" in der Entity-Registry suchen, auch wenn er
-  // deaktiviert ist (HACS legt ihn deaktiviert an).
-  async _loadHacsSwitch() {
-    const upd = this._hacsUpdateEntity();
-    const reg = upd && this._hass.entities && this._hass.entities[upd.entity_id];
-    if (!reg || !reg.device_id) return;
-    try {
-      const list = await this._hass.callWS({ type: "config/entity_registry/list" });
-      const e = (Array.isArray(list) ? list : []).find(
-        (x) =>
-          x &&
-          x.platform === "hacs" &&
-          x.device_id === reg.device_id &&
-          String(x.entity_id).startsWith("switch.") &&
-          /pre.?release/i.test(`${x.entity_id} ${x.translation_key || ""} ${x.original_name || ""}`)
-      );
-      this._hacsSwitchReg = e ? { deviceId: reg.device_id, entityId: e.entity_id, disabled: Boolean(e.disabled_by) } : null;
-    } catch (err) {
-      this._hacsSwitchReg = null;
-    }
-  }
-
-  // "In HACS freischalten": Entität aktivieren (falls nötig), warten, bis
-  // Home Assistant sie nach dem Neuladen von HACS freigibt (etwa 30 s),
-  // einschalten und HACS die Versionen neu laden lassen. Nur auf Knopfdruck.
-  async _enableHacsPrerelease() {
-    const v = (this._version = this._version || {});
-    let sw = this._hacsPreReleaseSwitch();
-    if (!sw || !sw.entityId) return;
-    v.hacsEnabling = true;
-    v.hacsError = null;
-    this._renderSettingsVersion();
-    try {
-      if (sw.disabled || !this._hass.states[sw.entityId]) {
-        await this._hass.callWS({ type: "config/entity_registry/update", entity_id: sw.entityId, disabled_by: null });
-        const until = Date.now() + 90000;
-        while (!this._hass.states[sw.entityId] && Date.now() < until) {
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-        if (!this._hass.states[sw.entityId]) throw new Error(this._t("verPreEnableTimeout"));
-        this._hacsSwitchReg = { ...(this._hacsSwitchReg || {}), deviceId: sw.deviceId, entityId: sw.entityId, disabled: false };
-      }
-      await this._callService("switch", "turn_on", { entity_id: sw.entityId });
-      this._prereleaseHacs = sw.entityId;
-      await this._hass.callWS({ type: "unifi_dynamic/set_panel", prerelease_hacs: sw.entityId });
-      await this._refreshHacs();
-    } catch (err) {
-      v.hacsError = (err && err.message) || String(err);
-    }
-    v.hacsEnabling = false;
-    this._renderSettingsVersion();
-    await this._loadVersion(false);
-  }
-
-  // Beim Ausschalten von "Vorabversionen anzeigen": den HACS-Schalter nur
-  // zurücksetzen, wenn das Panel ihn selbst eingeschaltet hat.
-  async _disableHacsPrerelease() {
-    const id = this._prereleaseHacs;
-    if (!id) return;
-    this._prereleaseHacs = null;
-    try {
-      await this._hass.callWS({ type: "unifi_dynamic/set_panel", prerelease_hacs: null });
-    } catch (err) {
-      // Nicht kritisch.
-    }
-    const st = this._hass.states[id];
-    if (st && st.state === "on") {
-      try {
-        await this._callService("switch", "turn_off", { entity_id: id });
-        await this._refreshHacs();
-      } catch (err) {
-        // Nicht kritisch: der Schalter bleibt dann in HACS an.
-      }
-    }
+    const state = sw ? hass.states[sw.entity_id] : null;
+    return { deviceId, on: Boolean(state && state.state === "on") };
   }
 
   async _loadVersion(force = false) {
@@ -1594,7 +1510,6 @@ class UnifiDynamicPanel extends HTMLElement {
     }
     v.checking = false;
     if (v.data && v.data.error && !v.data.latest) v.error = v.data.error;
-    if (this._versionState().betaBlocked) await this._loadHacsSwitch();
     this._renderSettingsVersion();
   }
 
@@ -1695,7 +1610,9 @@ class UnifiDynamicPanel extends HTMLElement {
         <div class="ver-t"><b>${esc(title)}</b><small>${esc(sub)}</small></div>
         ${right ? `<div class="ver-btns">${right}</div>` : ""}
       </div>`;
-    const notes = url
+    // Link nur für https: die Adresse kommt von GitHub und aus dem
+    // HACS-Attribut "release_url", nicht aus unserem Code.
+    const notes = url && /^https:\/\//i.test(url)
       ? `<a class="ver-link" href="${esc(url)}" target="_blank" rel="noopener">${esc(t("verReleaseNotes"))}${icon("open")}</a>`
       : "";
     if (v.restarting) return row("rst", "reset", t("verRestarting"), t("verRestartSub"), "");
@@ -1741,23 +1658,14 @@ class UnifiDynamicPanel extends HTMLElement {
         : betaBlocked
         ? `<button type="button" class="ver-btn primary" disabled>${icon("verDownload")}${esc(t("verUpdate"))}</button>`
         : "";
-      const canEnable = Boolean(preSwitch && preSwitch.entityId);
       const hint = betaBlocked
-        ? `<div class="ver-hint">${esc(t(canEnable ? "verPreHintEnable" : "verPreHint"))}${
-            v.hacsError ? `<div class="ver-hint-err">${esc(t("verPreEnableError"))} ${esc(v.hacsError)}</div>` : ""
-          }<div class="ver-hint-acts">${
-            canEnable
-              ? `<button type="button" class="ver-btn" data-ver="hacs-enable" ${v.hacsEnabling ? 'disabled aria-busy="true"' : ""}>${
-                  v.hacsEnabling ? `<span class="ver-spin"></span>${esc(t("verPreEnabling"))}` : `${icon("flask")}${esc(t("verPreEnable"))}`
-                }</button>`
-              : ""
-          }${
+        ? `<div class="ver-hint">${esc(t("verPreHint"))}${
             preSwitch && preSwitch.deviceId
-              ? `<button type="button" class="ver-hint-link" data-ver="hacs-device" data-device-id="${esc(preSwitch.deviceId)}">${esc(
-                  t("verPreHintLink")
-                )}</button>`
+              ? `<div class="ver-hint-acts"><button type="button" class="ver-hint-link" data-ver="hacs-device" data-device-id="${esc(
+                  preSwitch.deviceId
+                )}">${esc(t("verPreHintLink"))}</button></div>`
               : ""
-          }</div></div>`
+          }</div>`
         : "";
       const html = row(beta ? "upd beta" : "upd", beta ? "flask" : "verUp", t("verAvailable")(latest), sub, `${notes}${checkBtn}${installBtn}`);
       // Etikett "Beta" in den Titel, Hinweis in den Kasten.
@@ -1799,13 +1707,11 @@ class UnifiDynamicPanel extends HTMLElement {
       if (!st || !st.extra) return;
       st.extra.prerelease = !st.extra.prerelease;
       this._renderSettings();
-    } else if (action === "hacs-enable") {
-      await this._enableHacsPrerelease();
     } else if (action === "hacs-device") {
       const sw = this._hacsPreReleaseSwitch();
       if (sw && sw.deviceId) {
         this._closeSettings();
-        this._navigate(`/config/devices/device/${sw.deviceId}`, false);
+        this._navigate(`/config/devices/device/${encodeURIComponent(sw.deviceId)}`, false);
       }
     } else if (action === "check") {
       await this._loadVersion(true);
@@ -2074,9 +1980,6 @@ class UnifiDynamicPanel extends HTMLElement {
       if (extra.includes("prerelease")) {
         const panel = await this._hass.callWS({ type: "unifi_dynamic/set_panel", prerelease: st.extra.prerelease });
         this._applyPanelSettings(panel);
-        // Ausgeschaltet: den HACS-Schalter zurücksetzen, falls das Panel ihn
-        // eingeschaltet hat.
-        if (!this._prerelease) await this._disableHacsPrerelease();
       }
       if (extra.includes("loader")) {
         this._loader = st.extra.loader;
@@ -2161,7 +2064,7 @@ class UnifiDynamicPanel extends HTMLElement {
   // Navigationen des Panels laufen über _navigate.
   _openDevice(deviceId) {
     if (!deviceId) return;
-    this._navigate(`/config/devices/device/${deviceId}`, false);
+    this._navigate(`/config/devices/device/${encodeURIComponent(deviceId)}`, false);
   }
 
   // Verlaufseintrag wie HAs navigate(): Seit Frontend 20260930 merkt sich HA
@@ -3988,10 +3891,14 @@ class UnifiDynamicPanel extends HTMLElement {
     }
   }
 
+  // Maskiert für Text und für Attributwerte in doppelten oder einfachen
+  // Anführungszeichen. innerHTML eines Textknotens maskiert nur & < >; ein
+  // Gerätename (kommt per DHCP aus dem Netzwerk) mit " würde sonst ein
+  // Attribut schliessen und eigene Attribute wie onfocus einschleusen.
   _escape(value) {
     const div = document.createElement("div");
     div.textContent = value == null ? "" : String(value);
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
   _headerCellHtml(key, label) {
@@ -5114,7 +5021,7 @@ class UnifiDynamicPanel extends HTMLElement {
 
     const menuEl = this.shadowRoot.querySelector(".menu");
     const row = this.shadowRoot.querySelector(
-      `tr[data-key="${this._openMenuKey}"]`
+      `tr[data-key="${CSS.escape(this._openMenuKey)}"]`
     );
     const btn = row ? row.querySelector(".menu-btn") : null;
     if (!menuEl || !btn) return;

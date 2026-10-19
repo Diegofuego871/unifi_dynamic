@@ -3027,13 +3027,6 @@ export const PANEL_CSS = `
           gap: 8px 14px;
           margin-top: 8px;
         }
-        .ver-hint-acts .ver-btn {
-          color: var(--udc-text);
-        }
-        .ver-hint-err {
-          margin-top: 6px;
-          color: var(--udc-error);
-        }
         .ver-hint-link {
           padding: 0;
           border: none;

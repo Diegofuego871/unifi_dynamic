@@ -288,14 +288,8 @@ export const STRINGS = {
     verPreToggle: "Vorabversionen anzeigen",
     verPreToggleShort: "Auch Beta-Versionen zum Testen anbieten. Gilt für alle Benutzer.",
     verPreHint:
-      "HACS installiert Vorabversionen nur, wenn bei dieser Integration „Pre-release“ eingeschaltet ist: im HACS-Gerät die Entität „Pre-release“ aktivieren und einschalten.",
+      "HACS installiert Vorabversionen nur, wenn bei dieser Integration „Pre-release“ eingeschaltet ist: im HACS-Gerät die Entität „Pre-release“ aktivieren und einschalten. Das Panel ändert nichts an HACS.",
     verPreHintLink: "HACS-Gerät öffnen",
-    verPreHintEnable:
-      "HACS installiert Vorabversionen nur, wenn bei dieser Integration „Pre-release“ eingeschaltet ist. Das Panel kann das für dich erledigen: Es aktiviert die Entität in HACS und schaltet sie ein. HACS lädt dabei kurz neu (etwa 30 Sekunden). Schaltest du „Vorabversionen anzeigen“ später aus, wird sie wieder ausgeschaltet.",
-    verPreEnable: "In HACS freischalten",
-    verPreEnabling: "Wird freigeschaltet … (bis 30 s)",
-    verPreEnableError: "Freischalten fehlgeschlagen:",
-    verPreEnableTimeout: "HACS hat die Entität nicht rechtzeitig bereitgestellt. Bitte im HACS-Gerät prüfen.",
     verInstalledVia: (v, hacs) => `Installiert: ${v}${hacs ? " · über HACS" : ""}`,
     verNoHacs: "Installation über HACS oder manuell (siehe Release Notes).",
     verReleaseNotes: "Release Notes",
@@ -659,14 +653,8 @@ export const STRINGS = {
     verPreToggle: "Show pre-releases",
     verPreToggleShort: "Also offer beta versions for testing. Applies to all users.",
     verPreHint:
-      "HACS only installs pre-releases when \"Pre-release\" is switched on for this integration: enable and switch on the \"Pre-release\" entity on the HACS device.",
+      "HACS only installs pre-releases when \"Pre-release\" is switched on for this integration: enable and switch on the \"Pre-release\" entity on the HACS device. The panel does not change anything in HACS.",
     verPreHintLink: "Open HACS device",
-    verPreHintEnable:
-      "HACS only installs pre-releases when \"Pre-release\" is switched on for this integration. The panel can do this for you: it enables the entity in HACS and switches it on. HACS briefly reloads (about 30 seconds). If you later switch \"Show pre-releases\" off, it is switched off again.",
-    verPreEnable: "Enable in HACS",
-    verPreEnabling: "Enabling … (up to 30 s)",
-    verPreEnableError: "Enabling failed:",
-    verPreEnableTimeout: "HACS did not provide the entity in time. Please check the HACS device.",
     verInstalledVia: (v, hacs) => `Installed: ${v}${hacs ? " · via HACS" : ""}`,
     verNoHacs: "Install via HACS or manually (see release notes).",
     verReleaseNotes: "Release notes",

@@ -157,36 +157,21 @@ for (const mobile of [false, true]) {
   await togglePre(); await setHacs({ installed_version: "2.15.0", latest_version: "2.15.0" }, "off"); await pushHass(); await p.waitForTimeout(500);
   await click('[data-ver="hacs-device"]'); await p.waitForTimeout(300);
   check(`[${tag}] Link öffnet HACS-Gerät`, (await p.evaluate(() => location.pathname + location.hash + (window.__nav || ""))).includes("") && await ev(`return !r.querySelector("dialog.settings").open`));
-  // --- "In HACS freischalten": Entität deaktiviert -> aktivieren, warten, einschalten
+  // --- Entität "Pre-release" in HACS deaktiviert: Hinweis und Link, aber das Panel schaltet nichts
   await click(".gear-btn");
   await f.waitForFunction(new Function(`return ${R}.querySelector('dialog.settings[open] .ver-slot')`), null, { timeout: 5000 });
   await p.evaluate(() => {
     const ha = document.querySelector("home-assistant").hass; const sid = "switch.unifi_dynamic_clients_pre_release";
     delete ha.entities[sid]; delete ha.states[sid];
     window.__entReg = [{ entity_id: sid, platform: "hacs", device_id: "hacsdev1", translation_key: "pre-release", disabled_by: "integration" }];
-    window.__regUpdates = []; window.__services = []; window.__hacsStable = "2.15.0"; window.__hacsKnowsAfterRefresh = null;
+    window.__services = []; window.__hacsStable = "2.15.0"; window.__hacsKnowsAfterRefresh = null;
   });
   await setHacs({ installed_version: "2.15.0", latest_version: "2.15.0" }, null);
-  // Vorabversionen noch an (aus dem Abschnitt davor)? sicherstellen
   if (!(await ev(`return r.querySelector('[data-ver="prerelease"]').getAttribute("aria-checked")==="true"`))) await togglePre();
   await ev(`${panel}._loadVersion(false)`); await p.waitForTimeout(500);
-  check(`[${tag}] deaktivierte Entität gefunden: Knopf "In HACS freischalten"`, await ev(`return !!r.querySelector('[data-ver="hacs-enable"]') && r.querySelector(".ver-hint").innerText.includes("30 Sekunden")`), await vt());
-  await p.screenshot({ path: `${OUT}/stat-${tag}-beta-enable.png` });
-  await click('[data-ver="hacs-enable"]');
-  await p.waitForTimeout(400);
-  check(`[${tag}] während Freischalten: Fortschritt, gesperrt`, await ev(`const b=r.querySelector('[data-ver="hacs-enable"]'); return !!b && b.disabled && b.innerText.includes("freigeschaltet")`));
-  await f.waitForFunction(new Function(`const v=${R}.querySelector("dialog.settings .ver"); return v && !v.querySelector(".ver-hint") && !v.querySelector(".ver-btn.primary").disabled`), null, { timeout: 10000 });
-  const reg = await p.evaluate(() => ({ upd: window.__regUpdates, svc: window.__services.filter((x) => x.domain === "switch") }));
-  check(`[${tag}] aktiviert (disabled_by null), eingeschaltet, Aktualisieren frei`, reg.upd.length === 1 && reg.upd[0].disabled_by === null && reg.svc.at(-1).service === "turn_on", JSON.stringify(reg));
-  check(`[${tag}] gemerkt, dass das Panel den Schalter eingeschaltet hat`, (await p.evaluate(() => window.__panelSettings.prerelease_hacs)) === "switch.unifi_dynamic_clients_pre_release");
-  // Vorabversionen aus -> HACS-Schalter wieder aus
-  await togglePre(); await p.waitForTimeout(600);
-  const off = await p.evaluate(() => ({ svc: window.__services.filter((x) => x.domain === "switch").at(-1), st: document.querySelector("home-assistant").hass.states["switch.unifi_dynamic_clients_pre_release"].state }));
-  check(`[${tag}] Ausschalten räumt HACS-Schalter auf`, off.svc.service === "turn_off" && off.st === "off", JSON.stringify(off));
-  // Nicht vom Panel eingeschaltet -> nicht anfassen
-  await p.evaluate(() => { window.__services = []; const ha = document.querySelector("home-assistant").hass; ha.states["switch.unifi_dynamic_clients_pre_release"].state = "on"; });
-  await togglePre(); await p.waitForTimeout(300); await togglePre(); await p.waitForTimeout(500);
-  check(`[${tag}] fremd eingeschalteter HACS-Schalter bleibt`, (await p.evaluate(() => window.__services.filter((x) => x.domain === "switch").length)) === 0);
+  check(`[${tag}] deaktivierte HACS-Entität: Hinweis + Link zum HACS-Gerät, kein Knopf zum Freischalten`, await ev(`const h=r.querySelector(".ver-hint"); return !!h && !!h.querySelector('[data-ver="hacs-device"]') && !r.querySelector('[data-ver="hacs-enable"]') && h.innerText.includes("ändert nichts an HACS")`), await vt());
+  await p.screenshot({ path: `${OUT}/stat-${tag}-beta-hint.png` });
+  check(`[${tag}] Panel schaltet nichts in HACS (keine Registry-Änderung, kein Schalterdienst)`, (await p.evaluate(() => (window.__hacsWrites || []).length)) === 0, JSON.stringify(await p.evaluate(() => window.__hacsWrites)));
   // --- GitHub-Pre-Release ohne Zusatz in der Nummer (Tag v2.15.4 als Pre-Release)
   await p.evaluate(() => {
     const ha = document.querySelector("home-assistant").hass; const sid = "switch.unifi_dynamic_clients_pre_release";
@@ -199,12 +184,13 @@ for (const mobile of [false, true]) {
   await ev(`${panel}._loadVersion(false)`); await p.waitForTimeout(400);
   check(`[${tag}] Pre-Release 2.15.4, Schalter aus: aktuell 2.15.3`, !(await vt()).includes("2.15.4") && await ev(`return !r.querySelector("dialog.settings .ver").classList.contains("beta")`), await vt());
   await togglePre(); await p.waitForTimeout(600);
-  check(`[${tag}] Pre-Release 2.15.4 ohne b/rc: violett, Beta, gesperrt, "In HACS freischalten"`, (await vt()).includes("2.15.4") && (await vt()).includes("Beta") && await ev(`const v=r.querySelector("dialog.settings .ver"); return v.classList.contains("beta") && v.querySelector(".ver-btn.primary").disabled && !!v.querySelector('[data-ver="hacs-enable"]')`), await vt());
+  check(`[${tag}] Pre-Release 2.15.4 ohne b/rc: violett, Beta, gesperrt, Link zum HACS-Gerät`, (await vt()).includes("2.15.4") && (await vt()).includes("Beta") && await ev(`const v=r.querySelector("dialog.settings .ver"); return v.classList.contains("beta") && v.querySelector(".ver-btn.primary").disabled && !!v.querySelector('[data-ver="hacs-device"]') && !v.querySelector('[data-ver="hacs-enable"]')`), await vt());
   await setHacs({ installed_version: "2.15.3", latest_version: "2.15.4" }, "on"); await pushHass(); await p.waitForTimeout(300);
   check(`[${tag}] HACS kennt 2.15.4 (Pre-release an): installierbar`, await ev(`const v=r.querySelector("dialog.settings .ver"); return v.classList.contains("beta") && !v.querySelector(".ver-btn.primary").disabled && !v.querySelector(".ver-hint")`), await vt());
   await p.evaluate(() => { window.__services = []; });
   await togglePre(); await p.waitForTimeout(600);
   check(`[${tag}] Schalter aus: HACS-2.15.4 nicht als stabil angeboten`, !(await vt()).includes("2.15.4"), await vt());
+  check(`[${tag}] über den ganzen Ablauf kein Eingriff in HACS-Entitäten`, (await p.evaluate(() => (window.__hacsWrites || []).length)) === 0, JSON.stringify(await p.evaluate(() => window.__hacsWrites)));
   check(`[${tag}] keine JS-Fehler`, t.errors.length === 0, t.errors.join("; "));
   await t.ctx.close();
 }

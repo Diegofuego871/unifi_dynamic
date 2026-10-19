@@ -27,10 +27,11 @@ def chk(l,c,i=""):
     global ok; ok&=bool(c); print(("PASS " if c else "FAIL ")+l, i if not c else "")
 async def main():
     h=H()
-    chk("Standard aus", U.panel_settings(h)=={"prerelease":False,"prerelease_hacs":None})
+    chk("Standard aus", U.panel_settings(h)=={"prerelease":False})
     await U.async_load_panel_settings(h); chk("geladen: aus", U.panel_settings(h)["prerelease"] is False)
     r=await U.async_set_panel_settings(h,{"prerelease":True}); chk("an, gespeichert", r["prerelease"] and DATA["unifi_dynamic_panel"]["prerelease"])
-    await U.async_set_panel_settings(h,{"prerelease_hacs":"switch.x"}); chk("HACS-Schalter gemerkt, prerelease bleibt", U.panel_settings(h)=={"prerelease":True,"prerelease_hacs":"switch.x"})
-    await U.async_set_panel_settings(h,{"prerelease_hacs":None}); chk("HACS-Schalter vergessen", U.panel_settings(h)["prerelease_hacs"] is None)
+    await U.async_set_panel_settings(h,{"prerelease_hacs":"switch.x"}); chk("unbekanntes Feld prerelease_hacs wird nicht gespeichert", U.panel_settings(h)=={"prerelease":True} and "prerelease_hacs" not in DATA["unifi_dynamic_panel"])
+    DATA["unifi_dynamic_panel"]["prerelease_hacs"]="switch.alt"
+    h3=H(); h3.data={}; await U.async_load_panel_settings(h3); chk("alter gespeicherter Wert prerelease_hacs wird ignoriert", U.panel_settings(h3)=={"prerelease":True})
     h2=H(); h2.data={}; await U.async_load_panel_settings(h2); chk("Neustart: aus dem Speicher", U.panel_settings(h2)["prerelease"] is True)
 asyncio.run(main()); print("ALL PASS" if ok else "SOME FAILED")

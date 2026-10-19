@@ -60,6 +60,13 @@ for (const mobile of [false, true]) {
   t = await verText();
   check(`[${tag}] mit HACS: Aktualisieren-Knopf`, t.includes("über HACS") && await ev(`return !!r.querySelector('[data-ver="install"]')`), t);
   await p.screenshot({ path: `${OUT}/version-${tag}-update.png` });
+  // Release-Adresse aus HACS ohne https: (z. B. javascript:) wird nicht verlinkt
+  await setHacs({ installed_version: "2.9.1", latest_version: "2.10.0", release_url: "javascript:window.__pwned=1" });
+  await pushHass();
+  check(`[${tag}] Release-Adresse mit javascript: wird nicht verlinkt`, await ev(`return !r.querySelector("dialog.settings .ver-link") && ![...r.querySelectorAll("a")].some(a=>/^javascript:/i.test(a.getAttribute("href")||""))`), await verText());
+  await setHacs({ installed_version: "2.9.1", latest_version: "2.10.0" });
+  await pushHass();
+  check(`[${tag}] Release-Adresse mit https: bleibt verlinkt`, await ev(`const a=r.querySelector("dialog.settings .ver-link"); return !!a && a.getAttribute("href").startsWith("https://github.com/")`));
   await p.evaluate(() => { window.__services = []; });
   await ev(`r.querySelector('[data-ver="install"]').click()`);
   await p.waitForTimeout(50);

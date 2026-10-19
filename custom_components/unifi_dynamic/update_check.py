@@ -42,11 +42,10 @@ _CACHE_KEY = f"{DOMAIN}_latest_release"
 _PRE_CACHE_KEY = f"{DOMAIN}_latest_prerelease"
 _TIMER_KEY = f"{DOMAIN}_update_timer"
 # Gemeinsame Panel-Einstellungen der Instanz (nicht pro Hub, nicht pro
-# Benutzer): Vorabversionen anbieten, und welchen HACS-Schalter "Pre-release"
-# das Panel selbst eingeschaltet hat (nur den schaltet es wieder aus).
+# Benutzer): Vorabversionen anbieten.
 _PANEL_KEY = f"{DOMAIN}_panel_settings"
 _PANEL_STORE_KEY = f"{DOMAIN}_panel"
-PANEL_DEFAULTS: dict[str, Any] = {"prerelease": False, "prerelease_hacs": None}
+PANEL_DEFAULTS: dict[str, Any] = {"prerelease": False}
 ISSUE_ID = "update_available"
 DAILY = timedelta(days=1)
 # Erste Prüfung nach dem Start zufällig verteilt, damit nicht alle
@@ -250,10 +249,9 @@ async def async_load_panel_settings(hass: HomeAssistant) -> dict[str, Any]:
     """Einmal laden und in hass.data halten; danach synchron lesbar."""
     if _PANEL_KEY not in hass.data:
         stored = await _panel_store(hass).async_load() or {}
-        hass.data[_PANEL_KEY] = {
-            "prerelease": bool(stored.get("prerelease", False)),
-            "prerelease_hacs": str(stored["prerelease_hacs"]) if stored.get("prerelease_hacs") else None,
-        }
+        # Ein früher gespeichertes "prerelease_hacs" wird ignoriert und beim
+        # nächsten Speichern nicht mehr geschrieben.
+        hass.data[_PANEL_KEY] = {"prerelease": bool(stored.get("prerelease", False))}
     return hass.data[_PANEL_KEY]
 
 
@@ -266,7 +264,5 @@ async def async_set_panel_settings(hass: HomeAssistant, values: dict[str, Any]) 
     current = await async_load_panel_settings(hass)
     if "prerelease" in values:
         current["prerelease"] = bool(values["prerelease"])
-    if "prerelease_hacs" in values:
-        current["prerelease_hacs"] = str(values["prerelease_hacs"]) if values["prerelease_hacs"] else None
     await _panel_store(hass).async_save(dict(current))
     return dict(current)

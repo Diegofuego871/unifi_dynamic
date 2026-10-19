@@ -5,6 +5,40 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.17.0] - 2026-10-19
+
+### Security
+
+- **Quotes are now escaped in HTML attributes.** The panel's text escaping
+  covered `&`, `<` and `>` but not `"` and `'`, yet values end up inside
+  double-quoted attributes (`data-copy` of the copy buttons, `data-name` of
+  the table rows, the `title` of the linked-device button, among others).
+  Client names, hostnames, SSIDs and access point names come from the
+  network (DHCP, guest Wi-Fi included), so a hostname containing `"` could
+  close the attribute and add event handlers, running in the panel's
+  administrator session. `"` and `'` are now escaped in the one shared
+  function, which covers every use at once.
+- Also hardened: the selector that finds the open row menu escapes its key,
+  device ids in navigation paths are URL-encoded, and the release-notes link
+  is only shown for `https:` addresses (the address comes from GitHub and
+  from HACS's `release_url` attribute).
+- New test suite with hostile values (quotes, tags, event handlers in
+  names, hostnames, IPs, MACs, SSIDs, access points, hub titles, Home
+  Assistant device names, areas and notification targets) walked through the
+  table, row menu, device view, device picker and settings on desktop and
+  mobile. It fails against the old escaping and passes now.
+
+### Removed
+
+- **"Enable in HACS" button.** The panel no longer enables, switches on or
+  switches off HACS's "Pre-release" entity, and no longer changes HACS's
+  entity registry entries. An integration should not touch another
+  integration's entities. The note now only links to the HACS device, where
+  you enable and switch on "Pre-release" yourself. The setting
+  `prerelease_hacs` in the panel settings is gone; an old stored value is
+  ignored. The panel still only reads whether the switch is on, and keeps
+  asking HACS to refresh and to install the update via its update entity.
+
 ## [2.16.1] - 2026-10-05
 
 ### Fixed
@@ -1577,6 +1611,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.17.0
 [2.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.1
 [2.16.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.0
 [2.15.8]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.15.8

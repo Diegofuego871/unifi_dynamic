@@ -354,12 +354,11 @@ is the same for everyone) the panel also offers beta versions if they are newer 
 stable release. A version counts as a pre-release if it is marked as a
 pre-release on GitHub or carries a suffix such as `b1` or `rc1`. The row then turns violet with a "Beta" label. HACS only
 installs pre-releases if the "Pre-release" entity on this integration's HACS
-device is enabled and switched on. HACS creates it disabled; the **"Enable
-in HACS"** button in the note enables it, waits for HACS to reload (about 30
-seconds) and switches it on. Switching "Show pre-releases" off again
-switches it off, but only if the panel switched it on. Until then "Update"
-stays disabled; the note also links directly to the HACS device. The daily
-check under "Repairs" never reports pre-releases.
+device is enabled and switched on. HACS creates it disabled. The panel does
+not change anything in HACS: you enable and switch on the entity yourself in
+the HACS device. Until then "Update" stays disabled; the note links directly
+to the HACS device. The daily check under "Repairs" never reports
+pre-releases.
 
 Below it is the **controller availability** as a tile with the value of
 the last 24 hours, next to the connection status. Tapping the tile opens a

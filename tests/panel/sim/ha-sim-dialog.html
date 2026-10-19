@@ -52,7 +52,7 @@
   </div>
 </home-assistant>
 <script>
-window.__panelSettings = window.__panelSettings || { prerelease: false, prerelease_hacs: null };
+window.__panelSettings = window.__panelSettings || { prerelease: false };
 
   const names = [
     "Stromzähler Keller", "Licht Küche", "Werkbank Garage",
@@ -118,6 +118,22 @@ window.__panelSettings = window.__panelSettings || { prerelease: false, prerelea
     c.first_seen = i % 4 === 0 ? null : Date.now() / 1000 - 86400 * (i + 1);
   });
   clients[3].device_id = null; // Client ohne HA-Gerät
+  // ?hostile=1: Werte, wie sie ein Angreifer im Netzwerk wählen könnte (Hostname
+  // per DHCP, SSID, Gerätename in HA ...). Prüft, dass nichts als HTML gilt.
+  const hostileOn = new URLSearchParams(location.search).get("hostile") === "1";
+  const HX = (l) => `${l}"'<img src=x onerror="window.__pwned=1">&amp;<b autofocus tabindex=0 onfocus="window.__pwned=1" x="`;
+  window.__hostile = HX;
+  if (hostileOn) {
+    for (const i of [1, 2, 4, 5, 7]) {
+      const c = clients[i];
+      c.name = HX("n" + i); c.hostname = HX("h" + i); c.ip = HX("ip" + i);
+      if (!c.is_wired) { c.essid = HX("s" + i); c.ap_name = HX("ap" + i); }
+    }
+    clients[5].excluded = true;
+    clients[7].mac = `aa:bb:cc:dd:ee:"'<x>]`;
+    hubInfo[0].title = HX("hub"); hubInfo[0].host = HX("host");
+    clients.forEach((c) => { if (c.entry_id === "entry1") c.host = hubInfo[0].host; });
+  }
   const entities = {}, states = {};
   for (const c of clients) {
     if (!c.device_id) continue;
@@ -136,6 +152,10 @@ window.__panelSettings = window.__panelSettings || { prerelease: false, prerelea
   haDevices.push({ id: "ha-thermo", name: "Bodenheizung", area: "Büro", manufacturer: "Shelly", model: "ST1820", macs: ["aa:bb:cc:dd:ee:01"] });
   const links = { "aa:bb:cc:dd:ee:02": "ha-5" };
   window.__links = links;
+  if (hostileOn) {
+    Object.assign(haDevices[5], { name: HX("dev"), area: HX("area"), manufacturer: HX("man"), model: HX("mod") });
+    haDevices[6].name = HX("pick");
+  }
   window.__listDevicesFails = false;
   const summary = (id) => { const d = haDevices.find((x) => x.id === id); return d ? { ...d } : null; };
   window.__wsCalls = [];
@@ -153,6 +173,8 @@ window.__panelSettings = window.__panelSettings || { prerelease: false, prerelea
     states,
     callService: async (domain, service, data) => {
       (window.__services = window.__services || []).push({ domain, service, data });
+      // Dauerprotokoll (wird nie geleert): Eingriffe in fremde Schalter.
+      if (domain === "switch") (window.__hacsWrites = window.__hacsWrites || []).push({ domain, service, data });
       if (window.__serviceFails) throw new Error("Dienst fehlgeschlagen");
       return {};
     },
@@ -163,6 +185,7 @@ window.__panelSettings = window.__panelSettings || { prerelease: false, prerelea
       window.__wsCalls.push(msg);
       if (msg.type === "call_service") {
         (window.__services = window.__services || []).push({ domain: msg.domain, service: msg.service, data: msg.service_data });
+        if (msg.domain === "switch") (window.__hacsWrites = window.__hacsWrites || []).push({ domain: msg.domain, service: msg.service, data: msg.service_data });
         if (window.__serviceFails) throw new Error(window.__serviceFails);
         // HACS-Schalter "Pre-release" (Simulation)
         if (msg.domain === "switch" && (msg.service === "turn_on" || msg.service === "turn_off")) {
@@ -186,6 +209,7 @@ window.__panelSettings = window.__panelSettings || { prerelease: false, prerelea
       }
       if (msg.type === "config/entity_registry/update") {
         (window.__regUpdates = window.__regUpdates || []).push(msg);
+        (window.__hacsWrites = window.__hacsWrites || []).push({ type: msg.type, entity_id: msg.entity_id });
         const e = (window.__entReg || []).find((x) => x.entity_id === msg.entity_id);
         if (e && "disabled_by" in msg) e.disabled_by = msg.disabled_by;
         // HA lädt HACS nach dem Aktivieren verzögert neu, erst dann gibt es die Entität
@@ -218,7 +242,6 @@ window.__panelSettings = window.__panelSettings || { prerelease: false, prerelea
       if (msg.type === "unifi_dynamic/set_panel") {
         (window.__setPanel = window.__setPanel || []).push(msg);
         if ("prerelease" in msg) window.__panelSettings.prerelease = msg.prerelease;
-        if ("prerelease_hacs" in msg) window.__panelSettings.prerelease_hacs = msg.prerelease_hacs;
         return { ...window.__panelSettings };
       }
       if (msg.type === "unifi_dynamic/list_hubs") {
@@ -230,7 +253,7 @@ window.__panelSettings = window.__panelSettings || { prerelease: false, prerelea
         await new Promise((r) => setTimeout(r, 40));
         const values = { ...window.__opts[msg.entry_id], purge_exclude: clients.filter((c) => c.entry_id === msg.entry_id && c.excluded).map((c) => c.mac) };
         return { hub: { ...hubInfo.find((h) => h.entry_id === msg.entry_id), clients: 0 }, values, panel: { ...window.__panelSettings },
-          notify_targets: [{ value: "none", label: "Keine Push-Benachrichtigung" }, { value: "notify.handy_familie", label: "notify.handy_familie" }, { value: "notify.mobile_app_pixel", label: "notify.mobile_app_pixel" }],
+          notify_targets: [{ value: "none", label: "Keine Push-Benachrichtigung" }, { value: "notify.handy_familie", label: hostileOn ? HX("notify") : "notify.handy_familie" }, { value: "notify.mobile_app_pixel", label: "notify.mobile_app_pixel" }],
           protected: values.purge_exclude.map((mac) => ({ mac, name: clients.find((c) => c.mac === mac)?.name || null })),
           ping_status: window.__pingStatus[msg.entry_id],
           controller_avail: window.__ctlAvail === undefined ? { pct: 99.9, outages: 1, longest: 540, covered: 86400 } : window.__ctlAvail,
