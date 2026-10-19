@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   table, row menu, device view, device picker and settings on desktop and
   mobile. It fails against the old escaping and passes now.
 
+### Changed
+
+- The Python tests no longer depend on a random value: the first daily
+  update check (random delay of 5 to 65 minutes in operation) could fire
+  during tests that advance time and fail on the unmocked GitHub request.
+
 ### Removed
 
 - **"Enable in HACS" button.** The panel no longer enables, switches on or

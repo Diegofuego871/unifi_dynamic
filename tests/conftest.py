@@ -22,6 +22,20 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 
 @pytest.fixture(autouse=True)
+def no_early_update_check(monkeypatch):
+    """
+    Die erste tägliche Update-Prüfung startet im Betrieb nach einer
+    Zufallszeit von 5 bis 65 Minuten. Tests, die die Zeit um Minuten
+    vorschieben, lösen sie sonst je nach Zufallswert aus, und der Aufruf an
+    GitHub hat keinen Mock. Feste, lange Wartezeit macht das deterministisch.
+    """
+    from custom_components.unifi_dynamic import update_check
+
+    monkeypatch.setattr(update_check, "FIRST_CHECK_DELAY", (6 * 3600, 6 * 3600))
+    yield
+
+
+@pytest.fixture(autouse=True)
 def skip_frontend(hass):
     """
     Das Frontend gilt als geladen: das Testpaket bringt das
