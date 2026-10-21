@@ -1484,17 +1484,16 @@ class UnifiDynamicPanel extends HTMLElement {
         (err) => (v.error = (err && err.message) || String(err))
       ),
     ];
-    // HACS prüft sonst nur alle paar Tage: auf Knopfdruck sofort neu laden.
+    // Auf Knopfdruck die Update-Entität von HACS neu laden lassen.
     if (force) jobs.push(this._refreshHacs());
     await Promise.all(jobs);
-    // GitHub kennt eine neuere Version als HACS: HACS einmal pro Sitzung
-    // auch ohne Knopfdruck nachladen lassen, sonst lässt es sich nicht
-    // über HACS installieren.
+    // GitHub kennt eine neuere Version als HACS: die Update-Entität einmal
+    // pro Sitzung auch ohne Knopfdruck neu laden lassen.
     const { hacs, a, latest } = this._versionState();
     if (!force && hacs && !v.hacsRefreshed && latest && (!a.latest_version || this._cmpVersion(latest, a.latest_version) > 0)) {
       v.hacsRefreshed = true;
-      // Während HACS nachlädt, nicht zum Klick auf "Nach Updates suchen"
-      // auffordern: das Panel erledigt genau das gerade selbst.
+      // Während die Entität neu lädt, nicht zum Klick auf "Nach Updates
+      // suchen" auffordern: das Panel erledigt genau das gerade selbst.
       v.hacsSyncing = true;
       this._renderSettingsVersion();
       await this._refreshHacs();
@@ -1519,21 +1518,15 @@ class UnifiDynamicPanel extends HTMLElement {
     return this._hass.callWS({ type: "call_service", domain, service, service_data: data });
   }
 
-  // HACS die Versionen des Repositories neu laden lassen (seine eigenen
-  // WebSocket-Befehle, wie der Menüpunkt "Informationen aktualisieren"),
-  // dann die Update-Entität. Alles bestmöglich: fehlt ein Befehl in einer
-  // HACS-Version, bleibt es beim Aktualisieren der Entität.
+  // Die Update-Entität von HACS über den öffentlichen Dienst
+  // homeassistant.update_entity neu laden lassen. Interne HACS-Befehle
+  // (hacs/repositories/list, hacs/repository/refresh) nutzt das Panel
+  // bewusst nicht: sie gehören HACS und können sich ändern. Folge: HACS
+  // prüft sonst nur alle paar Stunden, eine eben erschienene Version kann
+  // erst später erscheinen.
   async _refreshHacs() {
     const hacs = this._hacsUpdateEntity();
     if (!hacs) return;
-    try {
-      const repos = await this._hass.callWS({ type: "hacs/repositories/list" });
-      const list = Array.isArray(repos) ? repos : (repos && repos.repositories) || [];
-      const repo = list.find((r) => String(r.full_name || "").toLowerCase() === "diegofuego871/unifi_dynamic");
-      if (repo) await this._hass.callWS({ type: "hacs/repository/refresh", repository: String(repo.id) });
-    } catch (err) {
-      // Älteres oder neueres HACS ohne diese Befehle.
-    }
     try {
       await this._callService("homeassistant", "update_entity", { entity_id: hacs.entity_id });
     } catch (err) {

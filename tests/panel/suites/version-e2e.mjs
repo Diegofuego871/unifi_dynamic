@@ -93,27 +93,26 @@ for (const mobile of [false, true]) {
   //    stattdessen Hinweis; HACS wird automatisch nachgeladen
   await ev(`${panel}._version = null`);
   await setHacs({ installed_version: "2.9.1", latest_version: "2.9.1" });
-  await p.evaluate(() => { window.__version = { installed: "2.9.1", latest: "2.10.0" }; window.__services = []; window.__hacsWs = []; window.__hacsKnowsAfterRefresh = null; });
-  await p.evaluate(() => { window.__hacsRefreshDelay = 1500; });
+  await p.evaluate(() => { window.__version = { installed: "2.9.1", latest: "2.10.0" }; window.__services = []; window.__hacsKnowsAfterRefresh = null; });
   await open();
   await p.waitForTimeout(400);
   t = await verText();
   check(`[${tag}] während Abgleich: "Wird mit HACS abgeglichen", Knopf gesperrt mit Spinner`, t.includes("Wird mit HACS abgeglichen") && !t.includes("HACS kennt diese Version noch nicht") && await ev(`const b=r.querySelector('[data-ver="check"]'); return !!b && b.disabled && !!b.querySelector(".ver-spin")`), t);
   await p.screenshot({ path: `${OUT}/version-${tag}-syncing.png` });
-  await p.evaluate(() => { window.__hacsRefreshDelay = 0; });
   await p.waitForTimeout(5500);
   t = await verText();
   check(`[${tag}] HACS veraltet: kein Aktualisieren, Hinweis + Suchen`, t.includes("Version 2.10.0 verfügbar") && t.includes("HACS kennt diese Version noch nicht") && !(await ev(`return !!r.querySelector('[data-ver="install"]')`)) && await ev(`return !!r.querySelector('[data-ver="check"]')`), t);
-  let hws = await p.evaluate(() => window.__hacsWs);
-  check(`[${tag}] HACS automatisch nachgeladen (Repo 123456)`, hws.includes("hacs/repository/refresh:123456"), JSON.stringify(hws));
+  // Nur der öffentliche Dienst, keine internen HACS-Befehle
+  let hws = await p.evaluate(() => ({ writes: window.__hacsWrites || [], updates: window.__services.filter((x) => x.service === "update_entity").length }));
+  check(`[${tag}] Entität automatisch neu geladen (update_entity), keine internen HACS-Befehle`, hws.updates >= 1 && hws.writes.length === 0, JSON.stringify(hws));
   // 4b. Automatischer Abgleich bringt die Version: direkt "Aktualisieren", nie der Hinweis
   await ev(`${panel}._version = null`);
   await setHacs({ installed_version: "2.9.1", latest_version: "2.9.1" });
-  await p.evaluate(() => { window.__hacsKnowsAfterRefresh = "2.10.0"; window.__hacsRefreshDelay = 800; window.__seenPending = false; });
+  await p.evaluate(() => { window.__hacsKnowsAfterRefresh = "2.10.0"; window.__seenPending = false; });
   await open();
   for (let i = 0; i < 30; i++) { if ((await verText()).includes("HACS kennt diese Version noch nicht")) await p.evaluate(() => { window.__seenPending = true; }); await p.waitForTimeout(100); }
   check(`[${tag}] Abgleich erfolgreich: kein Hinweis, Aktualisieren da`, !(await p.evaluate(() => window.__seenPending)) && await ev(`return !!r.querySelector('[data-ver="install"]')`), await verText());
-  await p.evaluate(() => { window.__hacsRefreshDelay = 0; window.__hacsKnowsAfterRefresh = null; });
+  await p.evaluate(() => { window.__hacsKnowsAfterRefresh = null; });
   await ev(`${panel}._version = null`);
   await setHacs({ installed_version: "2.9.1", latest_version: "2.9.1" });
   await open();
@@ -164,6 +163,7 @@ for (const mobile of [false, true]) {
   check(`[${tag}] Prüffehler angezeigt`, t.includes("Prüfung fehlgeschlagen") && t.includes("GitHub nicht erreichbar"), t);
   await p.evaluate(() => { window.__versionFails = false; });
   check(`[${tag}] kein Überlauf`, await ev(`const d=r.querySelector("dialog.settings"); return d.scrollWidth<=d.clientWidth+1`));
+  check(`[${tag}] über den ganzen Ablauf keine internen HACS-Befehle`, (await p.evaluate(() => (window.__hacsWrites || []).length)) === 0, JSON.stringify(await p.evaluate(() => window.__hacsWrites)));
   check(`[${tag}] keine JS-Fehler`, errors.length === 0, errors.join("; "));
   await ctx.close();
 }

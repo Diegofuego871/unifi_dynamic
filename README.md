@@ -342,8 +342,11 @@ newer version exists, "Version x available", a link to the release notes
 and — if the integration was installed via HACS — an "Update" button
 appear. It installs through HACS (the same way as Settings → Updates), and
 a bar shows the running installation. If HACS doesn't know a new version
-yet (GitHub is faster), the panel has HACS reload its versions and only
-offers the button once HACS knows it — until then the row shows a note. Afterwards the row reports "restart
+yet (GitHub is faster), the panel reloads HACS's update entity (public
+service `homeassistant.update_entity`; HACS's internal commands are not
+used) and only offers the button once HACS knows the version — until then
+the row shows a note. HACS itself only checks every few hours, so a release
+that has just been published can show up there later. Afterwards the row reports "restart
 required" with a "Restart now" button that asks first; the new version
 only becomes active after Home Assistant restarts. Without HACS there is
 just the note with the link, and you update manually.

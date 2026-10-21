@@ -5,6 +5,24 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.17.1] - 2026-10-21
+
+### Changed
+
+- **No more internal HACS commands.** "Check for updates" and the automatic
+  comparison no longer call HACS's own WebSocket commands
+  (`hacs/repositories/list`, `hacs/repository/refresh`). Those belong to
+  HACS and can change with any HACS release; an integration should not
+  drive another integration's internals. The panel now only reloads HACS's
+  update entity through the public service `homeassistant.update_entity`
+  and installs with `update.install`. Consequence: HACS itself only checks
+  every few hours, so a release that has just been published can show up
+  in HACS later; until then the row shows the note that HACS does not know
+  the version yet. The Python part never used HACS internals.
+- Tests: the simulator logs every internal HACS command, and the version and
+  statistics suites fail if the panel sends one (red against 2.17.0, green
+  now).
+
 ## [2.17.0] - 2026-10-19
 
 ### Security
@@ -1617,6 +1635,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.17.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.17.1
 [2.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.17.0
 [2.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.1
 [2.16.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.0

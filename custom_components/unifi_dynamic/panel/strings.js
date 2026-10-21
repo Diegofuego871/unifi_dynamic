@@ -299,7 +299,7 @@ export const STRINGS = {
     verInstallError: "Aktualisieren fehlgeschlagen:",
     verHacsSyncing: "Wird mit HACS abgeglichen …",
     verHacsPending:
-      "HACS kennt diese Version noch nicht. \"Nach Updates suchen\" lässt HACS die Versionen neu laden; sonst später erneut versuchen.",
+      "HACS kennt diese Version noch nicht. HACS prüft nur alle paar Stunden; \"Nach Updates suchen\" lädt die Update-Entität neu, sonst später erneut versuchen.",
     verRestartNeeded: (v) => `${v} installiert – Neustart nötig`,
     verRestartSub: "Aktiv wird die neue Version erst nach einem Neustart von Home Assistant.",
     verRestart: "Jetzt neu starten",
@@ -664,7 +664,7 @@ export const STRINGS = {
     verInstallError: "Update failed:",
     verHacsSyncing: "Syncing with HACS …",
     verHacsPending:
-      "HACS doesn't know this version yet. \"Check for updates\" makes HACS reload its versions; otherwise try again later.",
+      "HACS doesn't know this version yet. HACS only checks every few hours; \"Check for updates\" reloads the update entity, otherwise try again later.",
     verRestartNeeded: (v) => `${v} installed – restart required`,
     verRestartSub: "The new version only becomes active after restarting Home Assistant.",
     verRestart: "Restart now",

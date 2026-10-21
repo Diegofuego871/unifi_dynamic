@@ -221,13 +221,10 @@ window.__panelSettings = window.__panelSettings || { prerelease: false };
         }, window.__reloadDelay || 1500);
         return { entity_entry: e, reload_delay: 30 };
       }
-      if (msg.type === "hacs/repositories/list") {
-        (window.__hacsWs = window.__hacsWs || []).push(msg.type);
-        return [{ id: "123456", full_name: "Diegofuego871/unifi_dynamic" }, { id: "9", full_name: "other/repo" }];
-      }
-      if (msg.type === "hacs/repository/refresh") {
-        (window.__hacsWs = window.__hacsWs || []).push(`${msg.type}:${msg.repository}`);
-        if (window.__hacsRefreshDelay) await new Promise((r) => setTimeout(r, window.__hacsRefreshDelay));
+      // Interne HACS-Befehle gehören HACS: das Panel darf sie nicht senden.
+      // Jeder Aufruf landet im Dauerprotokoll, die Suiten prüfen, dass es leer bleibt.
+      if (String(msg.type).startsWith("hacs/")) {
+        (window.__hacsWrites = window.__hacsWrites || []).push({ type: msg.type });
         return null;
       }
       if (msg.type === "unifi_dynamic/version") {
