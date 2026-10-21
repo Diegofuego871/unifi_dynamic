@@ -64,13 +64,22 @@ sobald der Client vom UniFi-Controller länger nicht mehr gemeldet wird.
 
 Voraussetzung: Home Assistant 2024.12 oder neuer.
 
-### Über HACS (Custom Repository)
+### Über HACS (empfohlen)
 
-1. HACS öffnen → Drei-Punkte-Menü (oben rechts) → **Custom repositories**.
-2. Repository-URL `https://github.com/Diegofuego871/unifi_dynamic` eintragen,
-   Kategorie **Integration** wählen.
-3. „UniFi Dynamic Clients" in HACS suchen und installieren.
-4. Home Assistant neu starten.
+Die Integration gehört zu den Standard-Repositories von HACS.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Diegofuego871&repository=unifi_dynamic&category=integration)
+
+1. Auf den Knopf oben tippen (er öffnet die Integration in HACS in deiner
+   Home-Assistant-Instanz) oder HACS selbst öffnen und nach
+   „UniFi Dynamic Clients" suchen.
+2. **Herunterladen** wählen.
+3. Home Assistant neu starten.
+
+Taucht sie in HACS noch nicht auf (neue Einträge brauchen bis zu 8 Stunden),
+als Custom Repository hinzufügen: HACS → Drei-Punkte-Menü (oben rechts) →
+**Custom repositories**, Repository
+`https://github.com/Diegofuego871/unifi_dynamic`, Kategorie **Integration**.
 
 ### Manuell
 

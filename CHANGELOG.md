@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   every few hours, so a release that has just been published can show up
   in HACS later; until then the row shows the note that HACS does not know
   the version yet. The Python part never used HACS internals.
+- README (English and German): installation via HACS is now the primary
+  method, with the "Open your Home Assistant instance" button; the custom
+  repository route stays as a fallback (the integration is now part of the
+  HACS default repositories).
 - Tests: the simulator logs every internal HACS command, and the version and
   statistics suites fail if the panel sends one (red against 2.17.0, green
   now).

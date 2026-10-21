@@ -61,13 +61,22 @@ the client has not been reported by the UniFi controller for a while.
 
 Requires Home Assistant 2024.12 or newer.
 
-### Via HACS (custom repository)
+### Via HACS (recommended)
 
-1. Open HACS → three-dot menu (top right) → **Custom repositories**.
-2. Enter the repository URL `https://github.com/Diegofuego871/unifi_dynamic`
-   and choose the category **Integration**.
-3. Search for "UniFi Dynamic Clients" in HACS and install it.
-4. Restart Home Assistant.
+The integration is part of the HACS default repositories.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Diegofuego871&repository=unifi_dynamic&category=integration)
+
+1. Tap the button above (it opens the integration in your Home Assistant
+   instance in HACS), or open HACS yourself and search for
+   "UniFi Dynamic Clients".
+2. Click **Download**.
+3. Restart Home Assistant.
+
+If it does not show up in HACS yet (new entries can take up to 8 hours), add
+it as a custom repository: HACS → three-dot menu (top right) →
+**Custom repositories**, repository
+`https://github.com/Diegofuego871/unifi_dynamic`, category **Integration**.
 
 ### Manually
 
