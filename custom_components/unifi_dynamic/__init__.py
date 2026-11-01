@@ -31,7 +31,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later, async_track_time_change
 from homeassistant.util import dt as dt_util
 
-from . import connection as conn_api, options_api, ping as ping_mod, update_check
+from . import connection as conn_api, options_api, ping as ping_mod, statistics_cleanup, update_check
 from .const import (
     ACTION_EXCLUDE,
     CONF_API_KEY,
@@ -201,6 +201,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(entry.add_update_listener(_options_updated))
     update_check.async_start_daily(hass)
+    statistics_cleanup.async_schedule_orphan_cleanup(hass)
 
     _register_notification_action_handler(hass, entry, coordinator)
 
@@ -260,6 +261,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """
+    Hub wird entfernt: Langzeitstatistiken seiner Sensoren löschen.
+
+    Läuft, bevor Home Assistant die Registry-Einträge löscht, die Entitäten
+    sind hier also noch auffindbar.
+    """
+    statistics_cleanup.async_clear_entry_statistics(hass, entry.entry_id)
+
+
 @callback
 def _cleanup_ping_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """
@@ -278,6 +289,7 @@ def _cleanup_ping_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
     prefixes = tuple(f"{DOMAIN}.{entry.entry_id}.{kind}." for kind in ping_mod.PING_ENTITY_KINDS)
     for reg_entry in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
         if reg_entry.domain == "sensor" and str(reg_entry.unique_id).startswith(prefixes):
+            statistics_cleanup.async_clear_statistics(hass, [reg_entry.entity_id])
             ent_reg.async_remove(reg_entry.entity_id)
 
 
@@ -1636,6 +1648,7 @@ def _cleanup_wireless_only_entities(
                 f"{DOMAIN}.{entry.entry_id}.{kind}.{mac}",
             )
             if entity_id:
+                statistics_cleanup.async_clear_statistics(hass, [entity_id])
                 ent_reg.async_remove(entity_id)
                 removed += 1
 

@@ -98,7 +98,7 @@ check("Links laden (klein, leere verworfen)", o2._device_links == {"aa:bb:cc:00:
 # Purge/Entfernen räumt Link auf
 o3 = C.__new__(C)
 o3._client_cache = {"aa:bb:cc:00:00:01": {}}; o3._known_names = {}; o3._device_links = {"aa:bb:cc:00:00:01": "dev1"}
-o3.data = {}; o3.entry = MagicMock(); o3._entity_entries_for_mac = lambda e, m: []; o3._notify_removed = lambda m: None; o3._reported = {}; o3._avail = {}
+o3.data = {}; o3.hass = MagicMock(); o3.entry = MagicMock(); o3._entity_entries_for_mac = lambda e, m: []; o3._notify_removed = lambda m: None; o3._reported = {}; o3._avail = {}
 coord.get_client_device = lambda *a: None
 o3._remove_client_records("aa:bb:cc:00:00:01", MagicMock(), MagicMock(), [])
 check("Client entfernt -> Link weg", o3._device_links == {})

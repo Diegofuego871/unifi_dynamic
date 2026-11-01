@@ -220,7 +220,9 @@ Notes:
   70 clients: roughly 20,000). In addition, the integration deletes
   recorder entries of the ping entities older than 30 days, daily at the
   purge time (and shortly after startup) – even if the recorder's
-  `purge_keep_days` is longer. Long-term statistics are kept. If you don't
+  `purge_keep_days` is longer. Long-term statistics of existing sensors are
+  kept; when a client or hub is removed, its long-term statistics are
+  deleted with it (no "orphaned statistics" left behind). If you don't
   want the sensors in the recorder at all, exclude them, e.g.
   `recorder: exclude: entity_globs: - sensor.unifi_dynamic_*_ping`.
 

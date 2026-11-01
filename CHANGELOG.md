@@ -5,6 +5,35 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.18.0] - 2026-11-01
+
+### Fixed
+
+- **No more orphaned long-term statistics.** The ping sensors ("Ping",
+  "Packet loss") write long-term statistics. When the integration removed a
+  client's entities, the statistics stayed in the database, and tools such
+  as Spook reported "orphaned long-term statistics" (for example
+  `sensor.unifi_dynamic_<client>_packet_loss`). Statistics are now deleted
+  wherever the integration removes sensors: automatic purge, "Remove client"
+  (panel, service, websocket), switching ping off, the cleanup of wireless
+  entities of wired-only clients, and removing a hub (integration entry).
+  The recorder's own clear function is used; without a recorder nothing
+  happens, and errors only go to the log.
+
+### Added
+
+- **One-time cleanup of old leftovers.** Five minutes after startup the
+  integration deletes long-term statistics that are left behind by earlier
+  versions: statistics whose name starts with `sensor.unifi_dynamic_` and
+  that have neither an entity registry entry nor a state. Statistics of other
+  integrations are never touched. A client that was renamed away from the
+  `sensor.unifi_dynamic_` prefix cannot be recognised and stays (clear it in
+  Developer tools → Statistics if needed).
+- Tests: new `tests/test_statistics_cleanup.py` (client removal and hub
+  removal clear the sensor statistics; orphan detection only touches our own
+  names; no recorder or a recorder error is harmless). The two removal tests
+  fail against 2.17.1 and pass now.
+
 ## [2.17.1] - 2026-10-21
 
 ### Changed
@@ -1642,6 +1671,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.18.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.18.0
 [2.17.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.17.1
 [2.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.17.0
 [2.16.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.16.1

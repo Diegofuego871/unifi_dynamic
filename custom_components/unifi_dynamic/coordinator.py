@@ -20,6 +20,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import slugify
 
+from . import statistics_cleanup
 from .signal_log import SignalLog
 from .storage_util import PeriodicSaver
 from .const import (
@@ -1427,6 +1428,11 @@ class UnifiDynamicCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         Gibt die Zahl entfernter Entitäten und Geräte zurück.
         """
         client_entries = self._entity_entries_for_mac(entries, mac)
+        # Zuerst die Langzeitstatistiken (Ping-Sensoren), sonst bleiben sie als
+        # "verwaist" in der Datenbank.
+        statistics_cleanup.async_clear_statistics(
+            self.hass, (ent.entity_id for ent in client_entries if ent.domain == "sensor")
+        )
         for ent in client_entries:
             ent_reg.async_remove(ent.entity_id)
 
