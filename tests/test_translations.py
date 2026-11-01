@@ -72,3 +72,10 @@ def test_manifest_declares_used_components() -> None:
     for component in ("recorder", "frontend", "http", "websocket_api", "persistent_notification"):
         if re.search(rf"homeassistant\.components\.{component}\b", source):
             assert component in declared, f"{component} wird genutzt, steht aber nicht im Manifest"
+
+
+def test_manifest_keys_sorted_like_hassfest() -> None:
+    """Hassfest verlangt: domain, name, dann alphabetisch."""
+    keys = list(_load("manifest.json"))
+    assert keys[:2] == ["domain", "name"]
+    assert keys[2:] == sorted(keys[2:]), f"Schlüssel nicht sortiert: {keys}"

@@ -1,11 +1,11 @@
 {
   "domain": "unifi_dynamic",
   "name": "UniFi Dynamic Clients",
-  "codeowners": [
-    "@Diegofuego871"
-  ],
   "after_dependencies": [
     "recorder"
+  ],
+  "codeowners": [
+    "@Diegofuego871"
   ],
   "config_flow": true,
   "dependencies": [
