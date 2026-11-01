@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -61,3 +62,13 @@ def test_panel_strings_complete() -> None:
     )
     diff = json.loads(result.stdout)
     assert diff == {"onlyDe": [], "onlyEn": []}
+
+
+def test_manifest_declares_used_components() -> None:
+    """Hassfest verlangt, dass genutzte Komponenten im Manifest stehen (recorder: optional)."""
+    manifest = _load("manifest.json")
+    declared = set(manifest.get("dependencies", [])) | set(manifest.get("after_dependencies", []))
+    source = "\n".join(f.read_text(encoding="utf-8") for f in INTEGRATION.glob("*.py"))
+    for component in ("recorder", "frontend", "http", "websocket_api", "persistent_notification"):
+        if re.search(rf"homeassistant\.components\.{component}\b", source):
+            assert component in declared, f"{component} wird genutzt, steht aber nicht im Manifest"

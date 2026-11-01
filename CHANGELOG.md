@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   entities of wired-only clients, and removing a hub (integration entry).
   The recorder's own clear function is used; without a recorder nothing
   happens, and errors only go to the log.
+  The recorder is declared as an optional dependency (`after_dependencies`
+  in `manifest.json`), as hassfest requires for components that use it.
 
 ### Added
 
