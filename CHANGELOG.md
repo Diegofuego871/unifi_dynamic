@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   method, with the "Open your Home Assistant instance" button; the custom
   repository route stays as a fallback (the integration is now part of the
   HACS default repositories).
+- README header (English and German): icon, title, the "open in HACS" button
+  and badges (HACS default, release, Home Assistant version, active installs
+  from the Home Assistant analytics, licence, tests, HACS / hassfest).
 - Tests: the simulator logs every internal HACS command, and the version and
   statistics suites fail if the panel sends one (red against 2.17.0, green
   now).

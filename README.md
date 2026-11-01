@@ -1,10 +1,26 @@
-# UniFi Dynamic Clients
-
 **English** · [Deutsch](README.de.md)
 
-Home Assistant integration that automatically creates a device with matching
-entities for every UniFi client, wired or wireless, and removes it again once
-the client has not been reported by the UniFi controller for a while.
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/Diegofuego871/unifi_dynamic/main/custom_components/unifi_dynamic/brand/icon@2x.png" alt="UniFi Dynamic Clients" width="112" height="112">
+
+<h1>UniFi Dynamic Clients</h1>
+
+<p>Home Assistant integration that automatically creates a device with matching entities for every UniFi client, wired or wireless, and removes it again once the client has not been reported by the UniFi controller for a while.</p>
+
+<p><a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Diegofuego871&repository=unifi_dynamic&category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store."></a></p>
+
+<p>
+<a href="https://hacs.xyz/"><img src="https://img.shields.io/badge/HACS-Default-41BDF5.svg" alt="HACS Default"></a>
+<a href="https://github.com/Diegofuego871/unifi_dynamic/releases"><img src="https://img.shields.io/github/v/release/Diegofuego871/unifi_dynamic?label=release" alt="Latest release"></a>
+<img src="https://img.shields.io/badge/Home%20Assistant-2024.12%2B-41BDF5.svg" alt="Home Assistant 2024.12+">
+<a href="https://analytics.home-assistant.io/custom_integrations.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&amp;query=%24.unifi_dynamic.total&amp;label=active%20installs&amp;color=41BDF5" alt="Active installs (Home Assistant analytics)"></a>
+<a href="https://github.com/Diegofuego871/unifi_dynamic/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Diegofuego871/unifi_dynamic?label=licence" alt="Licence: MIT"></a>
+<a href="https://github.com/Diegofuego871/unifi_dynamic/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/Diegofuego871/unifi_dynamic/tests.yml?branch=main&label=tests" alt="Tests"></a>
+<a href="https://github.com/Diegofuego871/unifi_dynamic/actions/workflows/validate.yml"><img src="https://img.shields.io/github/actions/workflow/status/Diegofuego871/unifi_dynamic/validate.yml?branch=main&label=HACS%20%2F%20hassfest" alt="HACS / hassfest"></a>
+</p>
+
+</div>
 
 ![Panel showing the client table, with search, filters and the row menu open](docs/panel-screenshot-en.png)
 
