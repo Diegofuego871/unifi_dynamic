@@ -144,7 +144,7 @@
               "update_check": "Check for updates daily"
             },
             "data_description": {
-              "update_check": "Queries the published releases on GitHub once a day and reports a new version under Settings → Repairs, with a link to the release notes. Complements HACS, which only checks every few days; turn it off if you don't want the duplicate notice."
+              "update_check": "Queries the published releases on GitHub once a day and reports a new version under Settings → Repairs, with a link to the release notes. Complements the Marketplace, which only checks every few days; turn it off if you don't want the duplicate notice."
             }
           },
           "ping": {
@@ -208,7 +208,7 @@
   "issues": {
     "update_available": {
       "title": "UniFi Dynamic Clients {latest} is available",
-      "description": "Installed is {installed}. Update via HACS or with the gear button in the \"UniFi Dynamic Clients\" panel (settings). The daily check can be turned off in the integration options under \"Updates\"."
+      "description": "Installed is {installed}. Update via the Marketplace or with the gear button in the \"UniFi Dynamic Clients\" panel (settings). The daily check can be turned off in the integration options under \"Updates\"."
     }
   }
 }

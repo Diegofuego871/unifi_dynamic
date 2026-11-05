@@ -5,6 +5,31 @@ All notable changes to this integration are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.19.0] - 2026-11-05
+
+### Changed
+
+- **Marketplace instead of HACS.** Since Home Assistant 2026.11 HACS is built
+  into Home Assistant as the **Marketplace** (same catalog). The panel and the
+  texts of the integration now speak of the Marketplace instead of HACS: the
+  version row (installed via the Marketplace, "Syncing with the Marketplace",
+  "The Marketplace doesn't know this version yet"), the note for pre-releases
+  ("Open Marketplace device"), the texts of the options and of the update
+  notice in the repair. On older Home Assistant versions the same catalog is
+  still called HACS; the README says so.
+- **Marketplace entities recognised.** The update entity of the integration
+  and the "Pre-release" switch are recognised under the platform
+  `marketplace` (Home Assistant 2026.11 and later) as well as `hacs` (before).
+  This covers the "Update" button, the check for a newer version and the
+  pre-release logic.
+- **README (English and German):** installation via the Marketplace is the
+  primary method ("Open your Home Assistant instance" button, search, download),
+  with "Add from link" as a fallback and a note for HACS on older versions; the
+  badge reads "Marketplace Default".
+- Tests: the suites `version` and `statdlg` check the new texts and that the
+  platform `marketplace` is recognised for the update entity and the switch
+  (red when only `hacs` is known).
+
 ## [2.18.0] - 2026-11-01
 
 ### Fixed
@@ -1673,6 +1698,7 @@ First version published on GitHub.
 - SSID and access point sensors only for clients ever seen on wireless.
   Existing entities of wired-only clients are cleaned up at startup.
 
+[2.19.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.19.0
 [2.18.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.18.0
 [2.17.1]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.17.1
 [2.17.0]: https://github.com/Diegofuego871/unifi_dynamic/releases/tag/v2.17.0

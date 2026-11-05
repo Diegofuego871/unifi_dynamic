@@ -144,7 +144,7 @@
               "update_check": "Täglich nach Updates suchen"
             },
             "data_description": {
-              "update_check": "Fragt einmal täglich die veröffentlichten Releases auf GitHub ab und meldet eine neue Version unter Einstellungen → Reparaturen, mit Link zu den Release Notes. Ergänzt HACS, das nur alle paar Tage prüft; wer die doppelte Meldung nicht möchte, schaltet es aus."
+              "update_check": "Fragt einmal täglich die veröffentlichten Releases auf GitHub ab und meldet eine neue Version unter Einstellungen → Reparaturen, mit Link zu den Release Notes. Ergänzt den Marketplace, der nur alle paar Tage prüft; wer die doppelte Meldung nicht möchte, schaltet es aus."
             }
           },
           "ping": {
@@ -208,7 +208,7 @@
   "issues": {
     "update_available": {
       "title": "UniFi Dynamic Clients {latest} ist verfügbar",
-      "description": "Installiert ist {installed}. Aktualisieren über HACS oder über das Zahnrad im Panel „UniFi Dynamic Clients\" (Einstellungen). Die tägliche Prüfung lässt sich in den Optionen der Integration unter „Updates\" ausschalten."
+      "description": "Installiert ist {installed}. Aktualisieren über den Marketplace oder über das Zahnrad im Panel „UniFi Dynamic Clients\" (Einstellungen). Die tägliche Prüfung lässt sich in den Optionen der Integration unter „Updates\" ausschalten."
     }
   }
 }

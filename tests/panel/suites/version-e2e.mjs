@@ -51,15 +51,21 @@ for (const mobile of [false, true]) {
   check(`[${tag}] Blatt und Zeile springen nicht`, before.top === during.top && before.h === during.h && before.verH === during.verH && Math.abs(before.btnW - during.btnW) < 1, JSON.stringify([before, during]));
   await p.waitForTimeout(500);
   t = await verText();
-  check(`[${tag}] ohne HACS Update gefunden: Hinweis, Release Notes, kein Knopf`, t.includes("Version 2.10.0 verfügbar") && t.includes("Installation über HACS oder manuell") && t.includes("Release Notes") && !(await ev(`return !!r.querySelector('[data-ver="install"]')`)), t);
+  check(`[${tag}] ohne HACS Update gefunden: Hinweis, Release Notes, kein Knopf`, t.includes("Version 2.10.0 verfügbar") && t.includes("Installation über den Marketplace oder manuell") && t.includes("Release Notes") && !(await ev(`return !!r.querySelector('[data-ver="install"]')`)), t);
   check(`[${tag}] Release-Link zeigt auf GitHub`, (await ev(`return r.querySelector(".ver-link").href`)).endsWith("/releases/tag/v2.10.0"));
   await p.evaluate(() => { window.__versionDelay = 20; });
   // 3. Mit HACS: Aktualisieren-Knopf
   await setHacs({ installed_version: "2.9.1", latest_version: "2.10.0" });
   await pushHass();
   t = await verText();
-  check(`[${tag}] mit HACS: Aktualisieren-Knopf`, t.includes("über HACS") && await ev(`return !!r.querySelector('[data-ver="install"]')`), t);
+  check(`[${tag}] mit HACS: Aktualisieren-Knopf`, t.includes("über den Marketplace") && await ev(`return !!r.querySelector('[data-ver="install"]')`), t);
   await p.screenshot({ path: `${OUT}/version-${tag}-update.png` });
+  // Marketplace ab Home Assistant 2026.11: Plattform "marketplace" statt "hacs"
+  await p.evaluate(() => { document.querySelector("home-assistant").hass.entities["update.unifi_dynamic_clients_update"].platform = "marketplace"; });
+  await pushHass();
+  check(`[${tag}] Plattform "marketplace" erkannt: Aktualisieren-Knopf`, await ev(`return !!r.querySelector('[data-ver="install"]')`) && (await verText()).includes("über den Marketplace"), await verText());
+  await p.evaluate(() => { document.querySelector("home-assistant").hass.entities["update.unifi_dynamic_clients_update"].platform = "hacs"; });
+  await pushHass();
   // Release-Adresse aus HACS ohne https: (z. B. javascript:) wird nicht verlinkt
   await setHacs({ installed_version: "2.9.1", latest_version: "2.10.0", release_url: "javascript:window.__pwned=1" });
   await pushHass();
@@ -97,11 +103,11 @@ for (const mobile of [false, true]) {
   await open();
   await p.waitForTimeout(400);
   t = await verText();
-  check(`[${tag}] während Abgleich: "Wird mit HACS abgeglichen", Knopf gesperrt mit Spinner`, t.includes("Wird mit HACS abgeglichen") && !t.includes("HACS kennt diese Version noch nicht") && await ev(`const b=r.querySelector('[data-ver="check"]'); return !!b && b.disabled && !!b.querySelector(".ver-spin")`), t);
+  check(`[${tag}] während Abgleich: "Wird mit dem Marketplace abgeglichen", Knopf gesperrt mit Spinner`, t.includes("Wird mit dem Marketplace abgeglichen") && !t.includes("Der Marketplace kennt diese Version noch nicht") && await ev(`const b=r.querySelector('[data-ver="check"]'); return !!b && b.disabled && !!b.querySelector(".ver-spin")`), t);
   await p.screenshot({ path: `${OUT}/version-${tag}-syncing.png` });
   await p.waitForTimeout(5500);
   t = await verText();
-  check(`[${tag}] HACS veraltet: kein Aktualisieren, Hinweis + Suchen`, t.includes("Version 2.10.0 verfügbar") && t.includes("HACS kennt diese Version noch nicht") && !(await ev(`return !!r.querySelector('[data-ver="install"]')`)) && await ev(`return !!r.querySelector('[data-ver="check"]')`), t);
+  check(`[${tag}] HACS veraltet: kein Aktualisieren, Hinweis + Suchen`, t.includes("Version 2.10.0 verfügbar") && t.includes("Der Marketplace kennt diese Version noch nicht") && !(await ev(`return !!r.querySelector('[data-ver="install"]')`)) && await ev(`return !!r.querySelector('[data-ver="check"]')`), t);
   // Nur der öffentliche Dienst, keine internen HACS-Befehle
   let hws = await p.evaluate(() => ({ writes: window.__hacsWrites || [], updates: window.__services.filter((x) => x.service === "update_entity").length }));
   check(`[${tag}] Entität automatisch neu geladen (update_entity), keine internen HACS-Befehle`, hws.updates >= 1 && hws.writes.length === 0, JSON.stringify(hws));
@@ -110,7 +116,7 @@ for (const mobile of [false, true]) {
   await setHacs({ installed_version: "2.9.1", latest_version: "2.9.1" });
   await p.evaluate(() => { window.__hacsKnowsAfterRefresh = "2.10.0"; window.__seenPending = false; });
   await open();
-  for (let i = 0; i < 30; i++) { if ((await verText()).includes("HACS kennt diese Version noch nicht")) await p.evaluate(() => { window.__seenPending = true; }); await p.waitForTimeout(100); }
+  for (let i = 0; i < 30; i++) { if ((await verText()).includes("Der Marketplace kennt diese Version noch nicht")) await p.evaluate(() => { window.__seenPending = true; }); await p.waitForTimeout(100); }
   check(`[${tag}] Abgleich erfolgreich: kein Hinweis, Aktualisieren da`, !(await p.evaluate(() => window.__seenPending)) && await ev(`return !!r.querySelector('[data-ver="install"]')`), await verText());
   await p.evaluate(() => { window.__hacsKnowsAfterRefresh = null; });
   await ev(`${panel}._version = null`);

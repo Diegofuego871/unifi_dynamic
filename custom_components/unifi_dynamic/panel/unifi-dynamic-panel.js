@@ -3,7 +3,7 @@
  * und Aktionen (löschen, Ausnahmeliste) pro Zeile.
  *
  * Bewusst ein reines Vanilla-Web-Component ohne Lit oder sonstige externe
- * Bibliothek: Die Integration wird über HACS als reine Dateikopie
+ * Bibliothek: Die Integration wird über den Marketplace (bis Home Assistant 2026.11 HACS) als reine Dateikopie
  * installiert, es gibt keinen Build-Schritt. Lit steht Panels (anders als
  * manchen Lovelace-Karten über Tricks) nicht als globales Modul zur
  * Verfügung; ein CDN-Import würde die Integration von Internetzugriff im
@@ -33,6 +33,11 @@ const RETRY_GIVE_UP_MS = 30000;
 // Texte und Styles in eigenen Modulen. Der Cache-Buster (?v=...) dieser Datei
 // gilt auch für sie, sonst lädt der Browser nach einem Update alte Teile.
 const MODULE_VERSION = new URL(import.meta.url).search;
+
+// Plattform der Update-Entitäten des Marketplace: bis Home Assistant 2026.11
+// "hacs", danach der eingebaute "marketplace". Beide gelten. (In den
+// Kommentaren unten steht "HACS" für beide.)
+const MARKET_PLATFORMS = ["hacs", "marketplace"];
 const [{ STRINGS }, { PANEL_CSS }] = await Promise.all([
   import(`./strings.js${MODULE_VERSION}`),
   import(`./styles.js${MODULE_VERSION}`),
@@ -1381,13 +1386,13 @@ class UnifiDynamicPanel extends HTMLElement {
   // Installieren geht nur über HACS (update.install).
   // ---------------------------------------------------------------------
 
-  // Update-Entität von HACS für dieses Repository. Erkannt an der Plattform
-  // und am Link bzw. Titel, nicht an einer festen Entity-ID.
+  // Update-Entität des Marketplace für dieses Repository. Erkannt an der
+  // Plattform und am Link bzw. Titel, nicht an einer festen Entity-ID.
   _hacsUpdateEntity() {
     const hass = this._hass;
     if (!hass || !hass.entities || !hass.states) return null;
     for (const e of Object.values(hass.entities)) {
-      if (!e || e.platform !== "hacs" || !String(e.entity_id).startsWith("update.")) continue;
+      if (!e || !MARKET_PLATFORMS.includes(e.platform) || !String(e.entity_id).startsWith("update.")) continue;
       const st = hass.states[e.entity_id];
       if (!st) continue;
       const a = st.attributes || {};
@@ -1436,7 +1441,7 @@ class UnifiDynamicPanel extends HTMLElement {
     );
   }
 
-  // Schalter "Pre-release" von HACS für dieses Repository: eine Entität am
+  // Schalter "Pre-release" des Marketplace für dieses Repository: eine Entität am
   // selben HACS-Gerät wie die Update-Entität. Das Panel liest nur, ob er
   // eingeschaltet ist; an HACS-Entitäten ändert es nichts. Standardmässig
   // ist er deaktiviert (dann nicht in hass.states) und wird im HACS-Gerät
@@ -1451,7 +1456,7 @@ class UnifiDynamicPanel extends HTMLElement {
     const sw = Object.values(hass.entities).find(
       (e) =>
         e &&
-        e.platform === "hacs" &&
+        MARKET_PLATFORMS.includes(e.platform) &&
         e.device_id === deviceId &&
         String(e.entity_id).startsWith("switch.") &&
         /pre.?release/i.test(`${e.entity_id} ${e.translation_key || ""}`)

@@ -3,10 +3,10 @@ Versionsprüfung für die Einstellungen im Panel.
 
 Die installierte Version kommt aus dem Manifest der laufenden Integration,
 die neueste aus den GitHub-Releases des Repositories. Das ist der Rückfall,
-wenn HACS fehlt, und ergänzt HACS, das nur alle paar Tage prüft. Auf Wunsch
-prüft die Integration täglich selbst und meldet eine neue Version unter
-"Reparaturen". Installiert wird hier nichts: das bleibt HACS (update.install)
-vorbehalten.
+wenn der Marketplace (bis Home Assistant 2026.11 HACS) fehlt, und ergänzt
+ihn, denn er prüft nur alle paar Tage. Auf Wunsch prüft die Integration
+täglich selbst und meldet eine neue Version unter "Reparaturen". Installiert
+wird hier nichts: das bleibt dem Marketplace (update.install) vorbehalten.
 """
 
 from __future__ import annotations

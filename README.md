@@ -11,7 +11,7 @@
 <p><a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Diegofuego871&repository=unifi_dynamic&category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Open your Home Assistant instance and open a repository inside the Home Assistant Community Store."></a></p>
 
 <p>
-<a href="https://hacs.xyz/"><img src="https://img.shields.io/badge/HACS-Default-41BDF5.svg" alt="HACS Default"></a>
+<a href="https://hacs.xyz/"><img src="https://img.shields.io/badge/Marketplace-Default-41BDF5.svg" alt="Marketplace Default"></a>
 <a href="https://github.com/Diegofuego871/unifi_dynamic/releases"><img src="https://img.shields.io/github/v/release/Diegofuego871/unifi_dynamic?label=release" alt="Latest release"></a>
 <img src="https://img.shields.io/badge/Home%20Assistant-2024.12%2B-41BDF5.svg" alt="Home Assistant 2024.12+">
 <a href="https://analytics.home-assistant.io/custom_integrations.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&amp;query=%24.unifi_dynamic.total&amp;label=active%20installs&amp;color=41BDF5" alt="Active installs (Home Assistant analytics)"></a>
@@ -77,22 +77,23 @@
 
 Requires Home Assistant 2024.12 or newer.
 
-### Via HACS (recommended)
+### Via the Marketplace (recommended)
 
-The integration is part of the HACS default repositories.
+The integration is in the default catalog of the **Marketplace** (Settings ›
+Marketplace in Home Assistant). Up to Home Assistant 2026.10 the same catalog
+is called **HACS**; everything below works the same there.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Diegofuego871&repository=unifi_dynamic&category=integration)
 
-1. Tap the button above (it opens the integration in your Home Assistant
-   instance in HACS), or open HACS yourself and search for
-   "UniFi Dynamic Clients".
+1. Tap the button above (it opens the integration in your Marketplace), or
+   open the Marketplace yourself and search for "UniFi Dynamic Clients".
 2. Click **Download**.
 3. Restart Home Assistant.
 
-If it does not show up in HACS yet (new entries can take up to 8 hours), add
-it as a custom repository: HACS → three-dot menu (top right) →
-**Custom repositories**, repository
-`https://github.com/Diegofuego871/unifi_dynamic`, category **Integration**.
+If it does not show up yet (new entries can take up to 8 hours, or the
+search does not find it), add it by link: Marketplace → "Add from link" →
+`https://github.com/Diegofuego871/unifi_dynamic`, type **Integration**. In
+HACS this is the three-dot menu (top right) → **Custom repositories**.
 
 ### Manually
 
@@ -181,7 +182,7 @@ also be edited right in the panel with the gear button (see
 
 | Option | Meaning | Default |
 | --- | --- | --- |
-| Check for updates daily | Queries the published releases on GitHub once a day (first check at a random time 5–65 minutes after startup) and reports a new version under **Settings → Repairs**, with a link to the release notes. The notice disappears after updating or when turned off. Complements HACS, which only checks every few days; turn it off if you don't want the duplicate notice. Applies to the whole integration as long as it is on for at least one hub. | on |
+| Check for updates daily | Queries the published releases on GitHub once a day (first check at a random time 5–65 minutes after startup) and reports a new version under **Settings → Repairs**, with a link to the release notes. The notice disappears after updating or when turned off. Complements the Marketplace, which only checks every few days; turn it off if you don't want the duplicate notice. Applies to the whole integration as long as it is on for at least one hub. | on |
 
 ### Ping (response time)
 
@@ -363,31 +364,35 @@ button appears at the top of the settings.
 
 At the very top of the settings is the integration's **version** with a
 "Check for updates" button. The integration queries the published releases
-on GitHub itself (also without HACS; when opening at most every 6 hours,
-plus the daily check from the "Updates" section) and, if present, has HACS re-check its update entity as well. If a
+on GitHub itself (also without the Marketplace; when opening at most every 6
+hours, plus the daily check from the "Updates" section) and, if present, has
+the Marketplace re-check its update entity as well. If a
 newer version exists, "Version x available", a link to the release notes
-and — if the integration was installed via HACS — an "Update" button
-appear. It installs through HACS (the same way as Settings → Updates), and
-a bar shows the running installation. If HACS doesn't know a new version
-yet (GitHub is faster), the panel reloads HACS's update entity (public
-service `homeassistant.update_entity`; HACS's internal commands are not
-used) and only offers the button once HACS knows the version — until then
-the row shows a note. HACS itself only checks every few hours, so a release
-that has just been published can show up there later. Afterwards the row reports "restart
+and — if the integration was installed via the Marketplace — an "Update"
+button appear. It installs through the Marketplace (the same way as Settings
+→ Updates), and a bar shows the running installation. If the Marketplace
+doesn't know a new version yet (GitHub is faster), the panel reloads its
+update entity (public service `homeassistant.update_entity`; the internal
+commands of the Marketplace are not used) and only offers the button once the
+Marketplace knows the version — until then the row shows a note. The
+Marketplace itself only checks every few hours, so a release that has just
+been published can show up there later. Afterwards the row reports "restart
 required" with a "Restart now" button that asks first; the new version
-only becomes active after Home Assistant restarts. Without HACS there is
-just the note with the link, and you update manually.
+only becomes active after Home Assistant restarts. Without the Marketplace
+there is just the note with the link, and you update manually. The update
+entity is recognised under the platform `marketplace` (Home Assistant 2026.11
+and later) as well as `hacs` (before).
 
 With the **"Show pre-releases"** switch below the version row (applies to
 the whole Home Assistant instance after "Save", since the installed version
 is the same for everyone) the panel also offers beta versions if they are newer than the latest
 stable release. A version counts as a pre-release if it is marked as a
-pre-release on GitHub or carries a suffix such as `b1` or `rc1`. The row then turns violet with a "Beta" label. HACS only
-installs pre-releases if the "Pre-release" entity on this integration's HACS
-device is enabled and switched on. HACS creates it disabled. The panel does
-not change anything in HACS: you enable and switch on the entity yourself in
-the HACS device. Until then "Update" stays disabled; the note links directly
-to the HACS device. The daily check under "Repairs" never reports
+pre-release on GitHub or carries a suffix such as `b1` or `rc1`. The row then turns violet with a "Beta" label. The
+Marketplace only installs pre-releases if the "Pre-release" entity on this
+integration's Marketplace device is enabled and switched on. It is created
+disabled. The panel does not change anything in the Marketplace: you enable
+and switch on the entity yourself in the Marketplace device. Until then
+"Update" stays disabled; the note links directly to the Marketplace device. The daily check under "Repairs" never reports
 pre-releases.
 
 Below it is the **controller availability** as a tile with the value of
@@ -583,8 +588,8 @@ area scroll on its own. The page inside uses Home Assistant's existing,
 already signed-in connection from the surrounding window (no separate login
 or token), and takes over the active theme's colors so it matches light and
 dark mode. The table itself is a self-contained Web Component with no
-external library and no build step — HACS installs this integration as a
-plain file copy, so there is nothing to bundle. It talks to the backend
+external library and no build step — the Marketplace (HACS before Home
+Assistant 2026.11) installs this integration as a plain file copy, so there is nothing to bundle. It talks to the backend
 through six WebSocket commands (`unifi_dynamic/list_clients`,
 `unifi_dynamic/remove_client`, `unifi_dynamic/exclude_client`,
 `unifi_dynamic/unexclude_client`, plus `unifi_dynamic/list_devices` and

@@ -150,6 +150,12 @@ for (const mobile of [false, true]) {
   // HACS-Schalter an, HACS kennt die Beta -> installierbar
   await setHacs({ installed_version: "2.15.0", latest_version: "2.16.0b1" }, "on"); await pushHass(); await p.waitForTimeout(300);
   check(`[${tag}] HACS Pre-release an: Aktualisieren frei, kein Hinweis`, await ev(`const v=r.querySelector("dialog.settings .ver"); return v.classList.contains("beta") && !v.querySelector(".ver-btn.primary").disabled && !v.querySelector(".ver-hint")`), await vt());
+  // Marketplace ab Home Assistant 2026.11: Plattform "marketplace", Schalter wird ebenfalls erkannt
+  await p.evaluate(() => { const ha = document.querySelector("home-assistant").hass; for (const id of ["update.unifi_dynamic_clients_update", "switch.unifi_dynamic_clients_pre_release"]) ha.entities[id].platform = "marketplace"; });
+  await pushHass(); await p.waitForTimeout(300);
+  check(`[${tag}] Plattform "marketplace": Beta installierbar, Pre-release-Schalter erkannt`, await ev(`const v=r.querySelector("dialog.settings .ver"); return v.classList.contains("beta") && !v.querySelector(".ver-btn.primary").disabled && !v.querySelector(".ver-hint")`), await vt());
+  await p.evaluate(() => { const ha = document.querySelector("home-assistant").hass; for (const id of ["update.unifi_dynamic_clients_update", "switch.unifi_dynamic_clients_pre_release"]) ha.entities[id].platform = "hacs"; });
+  await pushHass();
   // Schalter wieder aus -> keine Beta, auch wenn HACS sie kennt
   await togglePre(); await p.waitForTimeout(500);
   check(`[${tag}] Beta aus: HACS-Beta wird nicht angeboten`, !(await vt()).includes("2.16.0b1"), await vt());
@@ -169,7 +175,7 @@ for (const mobile of [false, true]) {
   await setHacs({ installed_version: "2.15.0", latest_version: "2.15.0" }, null);
   if (!(await ev(`return r.querySelector('[data-ver="prerelease"]').getAttribute("aria-checked")==="true"`))) await togglePre();
   await ev(`${panel}._loadVersion(false)`); await p.waitForTimeout(500);
-  check(`[${tag}] deaktivierte HACS-Entität: Hinweis + Link zum HACS-Gerät, kein Knopf zum Freischalten`, await ev(`const h=r.querySelector(".ver-hint"); return !!h && !!h.querySelector('[data-ver="hacs-device"]') && !r.querySelector('[data-ver="hacs-enable"]') && h.innerText.includes("ändert nichts an HACS")`), await vt());
+  check(`[${tag}] deaktivierte HACS-Entität: Hinweis + Link zum HACS-Gerät, kein Knopf zum Freischalten`, await ev(`const h=r.querySelector(".ver-hint"); return !!h && !!h.querySelector('[data-ver="hacs-device"]') && !r.querySelector('[data-ver="hacs-enable"]') && h.innerText.includes("ändert nichts am Marketplace")`), await vt());
   await p.screenshot({ path: `${OUT}/stat-${tag}-beta-hint.png` });
   check(`[${tag}] Panel schaltet nichts in HACS (keine Registry-Änderung, kein Schalterdienst)`, (await p.evaluate(() => (window.__hacsWrites || []).length)) === 0, JSON.stringify(await p.evaluate(() => window.__hacsWrites)));
   // --- GitHub-Pre-Release ohne Zusatz in der Nummer (Tag v2.15.4 als Pre-Release)
